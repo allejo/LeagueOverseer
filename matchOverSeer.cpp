@@ -164,11 +164,11 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 	
 	if(command == "match")
 	{
-		bz_debugMessage(2,"Match Over Seer: Offical match started.");
-		bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match started.");
 		if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn"))
 		{
 			officialMatch = true;
+			bz_debugMessage(2,"Match Over Seer: Offical match started.");
+			bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match started.");
 		}
 		else if(playerData->team == eObservers)
 			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");

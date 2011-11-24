@@ -107,20 +107,30 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			redScore=0;
 			memset(redTeam, 0, 20);
 			memset(greenTeam, 0, 20);
+			time_t t = time(NULL);
+			tm * now = gmtime(&t);
+			char match_date[20];
+			
+			sprintf(match_date, "%02d-%02d-%02d %02d:%02d:%02d", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
 			
 			if(matchCanceled)
 			{
 				matchCanceled = false;
 				bz_debugMessage(2,"Match Over Seer: Offical match was not reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was not reported.");
+				
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Red Team Score: %i",redScore);
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Green Team Score: %i",greenScore);
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Match Time Limit: %i", bz_getTimeLimit());
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Red Team: %s",redTeam);
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Green Team: %s",greenTeam);
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Date: %s", match_date);
 			}
 			else
 			{
 				bz_debugMessage(2,"Match Over Seer: Offical match was reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was reported.");
 				//TODO: report the match
-				
-				
 			}
 		}
 		break;

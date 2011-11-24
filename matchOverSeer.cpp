@@ -167,8 +167,9 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 		if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn"))
 		{
 			officialMatch = true;
-			bz_debugMessage(2,"Match Over Seer: Offical match started.");
-			bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match started.");
+			bz_debugMessagef(2,"Match Over Seer: Offical match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match started by %s.",playerData->callsign.c_str());
+			bz_startCountdown (20, NULL, "SERVER");
 		}
 		else if(playerData->team == eObservers)
 			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
@@ -178,7 +179,7 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 	
 	if(command == "gameover" || command == "superkill" || command == "shutdownserver")
 	{	
-		bz_debugMessagef(2,"Match Over Seer: Offical match canceled by %s",playerData->callsign.c_str());
+		bz_debugMessagef(2,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 		bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());
 		matchCanceled = true;
 	}

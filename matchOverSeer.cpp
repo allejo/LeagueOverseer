@@ -68,6 +68,7 @@ void matchOverSeer::Init ( const char* /*commandLine*/ )
 	Register(bz_eGameEndEvent);
 	Register(bz_eGameStartEvent);
 	Register(bz_eSlashCommandEvent);
+	Register(bz_ePlayerJoinEvent);
 
 	bz_registerCustomSlashCommand ("match", this);
 }
@@ -97,6 +98,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 					redScore++;
 			}
 		}
+		break;
 		
 		case bz_eGameEndEvent:
 		{
@@ -118,6 +120,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				
 			}
 		}
+		break;
 		
 		case bz_eGameStartEvent:
 		{
@@ -148,11 +151,22 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			
 			bz_deleteIntList(playerList);
 		}
+		break;
 		
 		case bz_eSlashCommandEvent:
 		{
 			bz_SlashCommandEventData_V1 *commandData = (bz_SlashCommandEventData_V1*)eventData;
 		}
+		break;
+		
+		case bz_ePlayerJoinEvent:
+		{
+			bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
+			
+			if(officialMatch)
+				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently an official match in progress, please be respectful.");
+		}
+		break;
 		
 		default:break;
 	}

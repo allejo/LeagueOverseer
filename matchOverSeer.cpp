@@ -67,7 +67,6 @@ void matchOverSeer::Init ( const char* /*commandLine*/ )
 	Register(bz_eCaptureEvent);
 	Register(bz_eGameEndEvent);
 	Register(bz_eGameStartEvent);
-	Register(bz_eSlashCommandEvent);
 	Register(bz_ePlayerJoinEvent);
 
 	bz_registerCustomSlashCommand ("match", this);
@@ -104,6 +103,10 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		{
 			officialMatch = false;
 			gameStarted = false;
+			greenScore=0;
+			redScore=0;
+			memset(redTeam, 0, 20);
+			memset(greenTeam, 0, 20);
 			
 			if(matchCanceled)
 			{
@@ -150,12 +153,6 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			}
 			
 			bz_deleteIntList(playerList);
-		}
-		break;
-		
-		case bz_eSlashCommandEvent:
-		{
-			bz_SlashCommandEventData_V1 *commandData = (bz_SlashCommandEventData_V1*)eventData;
 		}
 		break;
 		

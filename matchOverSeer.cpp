@@ -40,6 +40,7 @@ Version:
 0.0.1 [Codename: Baby Monkey]
 */
 
+#include <stdio.h>
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
 

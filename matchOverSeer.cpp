@@ -110,6 +110,10 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());
 				matchCanceled = true; //To prevent reporting a canceled match, let plugin know the match was canceled
 			}
+			else if(command.compare("/countdown pause") == 0)
+				bz_pauseCountdown(playerData->callsign.c_str());
+			else if(command.compare("/countdown resume") == 0)
+				bz_resumeCountdown(playerData->callsign.c_str());
 			
 			bz_freePlayerRecord(playerData);
 		}

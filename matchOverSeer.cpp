@@ -65,7 +65,7 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 1;
-const int BUILD = 30;
+const int BUILD = 31;
 
 const int DEBUG = 0;
 
@@ -159,6 +159,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				//End Debug information
 				*/
 				
+				//The URL job still needs to be tested since without a valid URL, the plugin segfaults
 				std::string matchToSend = "";
 				
 				matchToSend = std::string("redTeam=") + std::string(bz_urlEncode((const char*)bz_getTeamWins(eRedTeam))) + 

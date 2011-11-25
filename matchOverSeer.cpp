@@ -37,7 +37,7 @@ License:
 BSD
 
 Version:
-0.9.0 [Codename: Baby Monkey]
+0.9.1 [Codename: Baby Monkey]
 */
 
 #include <stdio.h>
@@ -46,7 +46,7 @@ Version:
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.0 (20)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.1 (25)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -54,7 +54,7 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 	
 	bool officialMatch, matchCanceled;
 	
-	struct matchPlayers { //Maintains the players that started and the team color
+	struct matchPlayers { //Maintains the players that started the match and their team color
 			bz_ApiString callsign;
 			bz_eTeamType team;
 	};
@@ -64,8 +64,8 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 //Define plugin version numbering
 const int MAJOR = 0;
 const int MINOR = 9;
-const int REV = 0;
-const int BUILD = 20;
+const int REV = 1;
+const int BUILD = 25;
 
 BZ_PLUGIN(matchOverSeer);
 

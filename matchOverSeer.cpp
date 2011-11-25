@@ -129,7 +129,9 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				bz_debugMessage(2,"Match Over Seer: Offical match was reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was reported.");
 				
-				//Start Debug information...
+				std::string URL = "http://localhost/auto_report.php";
+				
+				/*Start Debug information...
 				//To be removed once the URL job is added
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Red Team Score: %i",bz_getTeamWins(eRedTeam));
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Green Team Score: %i",bz_getTeamWins(eGreenTeam));
@@ -151,8 +153,41 @@ void matchOverSeer::Event(bz_EventData *eventData)
 						bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",matchParticipants.at(i).callsign.c_str());
 				}
 				//End Debug information
+				*/
 				
-				//TODO: report the match with a URL job
+				std::string matchToSend = "";
+				
+				matchToSend = std::string("redTeam=") + std::string(bz_urlEncode((const char*)bz_getTeamWins(eRedTeam))) + 
+				std::string("&greenTeam=") + std::string(bz_urlEncode((const char*)bz_getTeamWins(eGreenTeam))) + 
+				std::string("&matchTime=") + std::string(bz_urlEncode((const char*)int(bz_getTimeLimit()))) + 
+				std::string("&matchDate=") + std::string(bz_urlEncode(match_date)) +
+				std::string("&mapPlayed=") + std::string(bz_urlEncode(bz_getPublicDescription().c_str())) + 
+				std::string("&redPlayers=");
+				
+				for (unsigned int i = 0; i < matchParticipants.size(); i++)
+				{
+					if(matchParticipants.at(i).team == eRedTeam)
+					{
+						matchToSend += std::string(bz_urlEncode(matchParticipants.at(i).callsign.c_str()));
+						if(i+1 < matchParticipants.size())
+							matchToSend += ",";
+					}
+				}
+				
+				matchToSend += std::string("&greenPlayers=");
+				
+				for (unsigned int i = 0; i < matchParticipants.size(); i++)
+				{
+					if(matchParticipants.at(i).team == eGreenTeam)
+					{
+						matchToSend += std::string(bz_urlEncode(matchParticipants.at(i).callsign.c_str()));
+						if(i+1 < matchParticipants.size())
+							matchToSend += ",";
+					}
+				}
+				
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",matchToSend);
+				//bz_addURLJob(URL.c_str(), NULL, matchToSend.c_str());
 			}
 		}
 		break;

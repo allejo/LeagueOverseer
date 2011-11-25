@@ -46,7 +46,7 @@ Version:
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.1 (25)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.1 (32)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -65,9 +65,9 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 1;
-const int BUILD = 31;
+const int BUILD = 32;
 
-const int DEBUG = 0;
+const int DEBUG = 1;
 
 BZ_PLUGIN(matchOverSeer);
 
@@ -80,7 +80,7 @@ void matchOverSeer::Init ( const char* /*commandLine*/ )
 	Register(bz_eSlashCommandEvent);
 	Register(bz_ePlayerJoinEvent);
 
-	bz_registerCustomSlashCommand ("match", this);
+	bz_registerCustomSlashCommand ("official", this);
 }
 
 void matchOverSeer::Cleanup (void)
@@ -89,7 +89,7 @@ void matchOverSeer::Cleanup (void)
 	
 	Flush();
 	
-	bz_removeCustomSlashCommand ("match");
+	bz_removeCustomSlashCommand ("official");
 }
 
 void matchOverSeer::Event(bz_EventData *eventData)
@@ -223,6 +223,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			
 				bz_deleteIntList(playerList);
 			}
+			else
+				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,"This will be a fun match and will not be reported.");
 		}
 		break;
 
@@ -230,7 +232,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		{
 			bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
 			
-			if(bz_isCountDownActive()) //If there is a match in progress, notify others who join
+			if(bz_isCountDownActive() && officialMatch) //If there is a match in progress, notify others who join
 				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently an official match in progress, please be respectful.");
 		}
 		break;
@@ -243,7 +245,7 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 {
 	bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(playerID);
 	
-	if(command == "match") //Someone used the /match command
+	if(command == "official") //Someone used the /match command
 	{
 		if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn")) //Check the user is not an obs and is a league member
 		{

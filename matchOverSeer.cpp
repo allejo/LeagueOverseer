@@ -65,7 +65,6 @@ void matchOverSeer::Init ( const char* /*commandLine*/ )
 {
 	bz_debugMessage(2,"Match Over Seer: Plugin successfully loaded.");
 	
-	Register(bz_eCaptureEvent);
 	Register(bz_eGameEndEvent);
 	Register(bz_eGameStartEvent);
 	Register(bz_eSlashCommandEvent);
@@ -86,26 +85,10 @@ void matchOverSeer::Cleanup (void)
 void matchOverSeer::Event(bz_EventData *eventData)
 {
 	switch (eventData->eventType)
-	{
-		case bz_eCaptureEvent:
-    	{
-			bz_CTFCaptureEventData_V1 *captureData = (bz_CTFCaptureEventData_V1*)eventData;
-			
-			if(officialMatch && bz_isCountDownActive())
-			{
-				greenScore=bz_getTeamWins(eGreenTeam);
-				redScore=bz_getTeamWins(eRedTeam);
-			}
-		}
-		break;
-		
+	{	
 		case bz_eGameEndEvent:
 		{
 			officialMatch = false;
-			greenScore=0;
-			redScore=0;
-			memset(redTeam, 0, 20);
-			memset(greenTeam, 0, 20);
 			time_t t = time(NULL);
 			tm * now = gmtime(&t);
 			char match_date[20];
@@ -118,9 +101,9 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				bz_debugMessage(2,"Match Over Seer: Offical match was not reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was not reported.");
 				
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Red Team Score: %i",redScore);
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Green Team Score: %i",greenScore);
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Match Time Limit: %i", bz_getTimeLimit());
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Red Team Score: %i",bz_getTeamWins(eRedTeam));
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Green Team Score: %i",bz_getTeamWins(eGreenTeam));
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Match Time Limit: %f", bz_getTimeLimit());
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Red Team: %s",redTeam);
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Green Team: %s",greenTeam);
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Date: %s", match_date);
@@ -131,6 +114,9 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was reported.");
 				//TODO: report the match
 			}
+			
+			memset(redTeam, 0, 20);
+			memset(greenTeam, 0, 20);
 		}
 		break;
 		
@@ -170,9 +156,11 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
 			
 			if(commandData->message.c_str() == "gameover" || commandData->message.c_str() == "superkill")
+			{
 				bz_debugMessagef(2,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());
 				matchCanceled = true;
+			}
 		}
 		break;
 

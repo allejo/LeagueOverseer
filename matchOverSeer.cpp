@@ -65,7 +65,9 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 1;
-const int BUILD = 25;
+const int BUILD = 30;
+
+const int DEBUG = 0;
 
 BZ_PLUGIN(matchOverSeer);
 
@@ -102,10 +104,12 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			
 			if(command.compare("/gameover") == 0 || command.compare("/superkill") == 0) //Check if they did a /gameover or /superkill
 			{
-				bz_debugMessagef(2,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+				bz_debugMessagef(DEBUG,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());
 				matchCanceled = true; //To prevent reporting a canceled match, let plugin know the match was canceled
 			}
+			
+			bz_freePlayerRecord(playerData);
 		}
 		break;
 		
@@ -114,22 +118,19 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			if(matchCanceled) //The match was canceled via /gameover or /superkill
 			{
 				matchCanceled = false; //Reset the variable for next usage
-				bz_debugMessage(2,"Match Over Seer: Offical match was not reported.");
+				bz_debugMessage(DEBUG,"Match Over Seer: Offical match was not reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was not reported.");
 			}
-			else if(!officialMatch)
-			{
-				bz_debugMessage(2,"Match Over Seer: Fun match was not reported.");
-			}
-			else
+			else if (officialMatch)
 			{
 				officialMatch = false; //Match is over
 				time_t t = time(NULL); //Get the current time
 				tm * now = gmtime(&t);
 				char match_date[20];
-					sprintf(match_date, "%02d-%02d-%02d %02d:%02d:%02d", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
+				
+				sprintf(match_date, "%02d-%02d-%02d %02d:%02d:%02d", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
 					
-				bz_debugMessage(2,"Match Over Seer: Offical match was reported.");
+				bz_debugMessage(DEBUG,"Match Over Seer: Offical match was reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was reported.");
 				
 				std::string URL = "http://localhost/auto_report.php";
@@ -191,6 +192,10 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				
 				bz_addURLJob(URL.c_str(), NULL, matchToSend.c_str());
 			}
+			else
+			{
+				bz_debugMessage(DEBUG,"Match Over Seer: Fun match was not reported.");
+			}
 		}
 		break;
 		
@@ -217,8 +222,6 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			
 				bz_deleteIntList(playerList);
 			}
-			else
-				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,"Not an official match");
 		}
 		break;
 
@@ -244,9 +247,9 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 		if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn")) //Check the user is not an obs and is a league member
 		{
 			officialMatch = true; //Notify the plugin that the match is official
-			bz_debugMessagef(2,"Match Over Seer: Offical match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+			bz_debugMessagef(DEBUG,"Match Over Seer: Offical match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match started by %s.",playerData->callsign.c_str());
-			bz_startCountdown (10, bz_getTimeLimit(), "Open League Overlord"); //Start the countdown for the official match
+			bz_startCountdown (10, bz_getTimeLimit(), "League Admin"); //Start the countdown for the official match
 		}
 		else if(playerData->team == eObservers) //Observers can't start matches... Duh
 			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");

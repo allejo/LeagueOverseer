@@ -68,6 +68,7 @@ void matchOverSeer::Init ( const char* /*commandLine*/ )
 	Register(bz_eCaptureEvent);
 	Register(bz_eGameEndEvent);
 	Register(bz_eGameStartEvent);
+	Register(bz_eSlashCommandEvent);
 	Register(bz_ePlayerJoinEvent);
 
 	bz_registerCustomSlashCommand ("match", this);
@@ -92,10 +93,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			
 			if(officialMatch && bz_isCountDownActive())
 			{
-				if(captureData->teamCapped == ePurpleTeam)
-					greenScore++;
-				if(captureData->teamCapped == eRedTeam)
-					redScore++;
+				greenScore=bz_getTeamWins(eGreenTeam);
+				redScore=bz_getTeamWins(eRedTeam);
 			}
 		}
 		break;

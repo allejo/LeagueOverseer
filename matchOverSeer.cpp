@@ -85,7 +85,21 @@ void matchOverSeer::Cleanup (void)
 void matchOverSeer::Event(bz_EventData *eventData)
 {
 	switch (eventData->eventType)
-	{	
+	{
+		case bz_eSlashCommandEvent:
+		{
+			bz_SlashCommandEventData_V1 *commandData = (bz_SlashCommandEventData_V1*)eventData;
+			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
+			
+			if(commandData->message.c_str() == "gameover" || commandData->message.c_str() == "superkill")
+			{
+				bz_debugMessagef(2,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());
+				matchCanceled = true;
+			}
+		}
+		break;
+		
 		case bz_eGameEndEvent:
 		{
 			officialMatch = false;
@@ -147,20 +161,6 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			}
 			
 			bz_deleteIntList(playerList);
-		}
-		break;
-		
-		case bz_eSlashCommandEvent:
-		{
-			bz_SlashCommandEventData_V1 *commandData = (bz_SlashCommandEventData_V1*)eventData;
-			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
-			
-			if(commandData->message.c_str() == "gameover" || commandData->message.c_str() == "superkill")
-			{
-				bz_debugMessagef(2,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());
-				matchCanceled = true;
-			}
 		}
 		break;
 

@@ -90,9 +90,10 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		{
 			bz_SlashCommandEventData_V1 *commandData = (bz_SlashCommandEventData_V1*)eventData;
 			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
-			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",commandData->message.c_str());
+			std::string command = commandData->message.c_str();
 			
-			if(commandData->message.c_str() == "/gameover" || commandData->message.c_str() == "/superkill")
+			
+			if(command.compare("/gameover") == 0 || command.compare("/superkill") == 0)
 			{
 				bz_debugMessagef(2,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());

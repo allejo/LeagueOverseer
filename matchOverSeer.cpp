@@ -186,7 +186,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 					}
 				}
 				
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",matchToSend);
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",matchToSend.c_str());
 				//bz_addURLJob(URL.c_str(), NULL, matchToSend.c_str());
 			}
 		}

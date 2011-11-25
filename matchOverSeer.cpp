@@ -111,25 +111,24 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		
 		case bz_eGameEndEvent:
 		{
-			officialMatch = false; //Match is over
-			time_t t = time(NULL); //Get the current time
-			tm * now = gmtime(&t);
-			char match_date[20];
-			
-			sprintf(match_date, "%02d-%02d-%02d %02d:%02d:%02d", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
-			
 			if(matchCanceled) //The match was canceled via /gameover or /superkill
 			{
 				matchCanceled = false; //Reset the variable for next usage
 				bz_debugMessage(2,"Match Over Seer: Offical match was not reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was not reported.");
 			}
-			else if(officialMatch)
+			else if(!officialMatch)
 			{
 				bz_debugMessage(2,"Match Over Seer: Fun match was not reported.");
 			}
 			else
 			{
+				officialMatch = false; //Match is over
+				time_t t = time(NULL); //Get the current time
+				tm * now = gmtime(&t);
+				char match_date[20];
+					sprintf(match_date, "%02d-%02d-%02d %02d:%02d:%02d", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
+					
 				bz_debugMessage(2,"Match Over Seer: Offical match was reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was reported.");
 				

@@ -54,9 +54,6 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 	
 	bool officialMatch, matchCanceled;
 	
-	std::string redTeam[20];
-	std::string greenTeam[20];
-	
 	struct matchPlayers {
 			bz_ApiString callsign;
 			bz_eTeamType team;
@@ -123,10 +120,22 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Red Team Score: %i",bz_getTeamWins(eRedTeam));
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Green Team Score: %i",bz_getTeamWins(eGreenTeam));
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Match Time Limit: %f", bz_getTimeLimit());
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Red Team: %s",redTeam);
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Green Team: %s",greenTeam);
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Match Time Limit: %i", bz_getTimeLimit());
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Date: %s", match_date);
+				
+				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Red Team:");
+				for (unsigned int i = 0; i < matchParticipants.size(); i++)
+				{
+					if(matchParticipants.at(i).team == eRedTeam)
+						bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",matchParticipants.at(i).callsign.c_str());
+				}
+				
+				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Green Team:");
+				for (unsigned int i = 0; i < matchParticipants.size(); i++)
+				{
+					if(matchParticipants.at(i).team == eGreenTeam)
+						bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",matchParticipants.at(i).callsign.c_str());
+				}
 			}
 			else
 			{
@@ -134,9 +143,6 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was reported.");
 				//TODO: report the match
 			}
-			
-			memset(redTeam, 0, 20);
-			memset(greenTeam, 0, 20);
 		}
 		break;
 		
@@ -150,17 +156,14 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			for ( unsigned int i = 0; i < playerList->size(); i++ ){
 				bz_BasePlayerRecord *playerTeam = bz_getPlayerByIndex(playerList->get(i));
 				if (bz_getPlayerTeam(playerList->get(i)) == eRedTeam || bz_getPlayerTeam(playerList->get(i)) == eGreenTeam){
-					bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Red or Green Team: %s",playerTeam->callsign.c_str());
+					matchPlayers matchData;
+					matchData.callsign = playerTeam->callsign.c_str();
+					matchData.team = playerTeam->team;
+					
+					matchParticipants.push_back(matchData);
 				}
 			}
-			/*
-			kickData data;
-			data.ip = (myPlayerRecord->ipAddress);
-			data.lastKickReason = myKickReason;
-			data.strike = 1;
-			data.time = bz_getCurrentTime();
-			kicklist.push_back(data);
-			*/
+			
 			bz_deleteIntList(playerList);
 		}
 		break;

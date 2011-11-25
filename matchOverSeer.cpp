@@ -90,6 +90,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		{
 			bz_SlashCommandEventData_V1 *commandData = (bz_SlashCommandEventData_V1*)eventData;
 			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
+			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",commandData->message.c_str());
 			
 			if(commandData->message.c_str() == "/gameover" || commandData->message.c_str() == "/superkill")
 			{
@@ -188,7 +189,7 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			officialMatch = true;
 			bz_debugMessagef(2,"Match Over Seer: Offical match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match started by %s.",playerData->callsign.c_str());
-			bz_startCountdown (10, bz_getTimeLimit(), "SERVER");
+			bz_startCountdown (10, bz_getTimeLimit(), "Open League Overlord");
 		}
 		else if(playerData->team == eObservers)
 			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");

@@ -249,25 +249,32 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 	
 	if(command == "official") //Someone used the /match command
 	{
-		if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn")) //Check the user is not an obs and is a league member
+		if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !bz_isCountDownActive()) //Check the user is not an obs and is a league member
 		{
 			officialMatch = true; //Notify the plugin that the match is official
 			bz_debugMessagef(DEBUG,"Match Over Seer: Offical match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match started by %s.",playerData->callsign.c_str());
-			bz_startCountdown (10, bz_getTimeLimit(), "League Admin"); //Start the countdown for the official match
+			bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
 		}
 		else if(playerData->team == eObservers) //Observers can't start matches... Duh
 			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
 		else if(!playerData->verified || !bz_hasPerm(playerID,"spawn")) //People who can't spawn can't start matches either... Derp!
 			bz_sendTextMessage(BZ_SERVER,playerID,"Only registered OL players may start an official match.");
+		else if(bz_isCountDownActive())
+			bz_sendTextMessage(BZ_SERVER,playerID,"There is currently a countdown active, you may not start another.");
 	}
 	else if(command == "countdown")
 		bz_sendTextMessage(BZ_SERVER,playerID,"This command has been disabled. Please use /match or /fm");
 	else if(command == "fm")
 	{
-		bz_debugMessagef(DEBUG,"Match Over Seer: Fun match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
-		bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Fun match started by %s.",playerData->callsign.c_str());
-		bz_startCountdown (10, bz_getTimeLimit(), "League Admin"); //Start the countdown for the official match
+		if(!bz_isCountDownActive())
+		{
+			bz_debugMessagef(DEBUG,"Match Over Seer: Fun match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Fun match started by %s.",playerData->callsign.c_str());
+			bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
+		}
+		else if(bz_isCountDownActive())
+			bz_sendTextMessage(BZ_SERVER,playerID,"There is currently a countdown active, you may not start another.");
 	}
 	
 	bz_freePlayerRecord(playerData);	

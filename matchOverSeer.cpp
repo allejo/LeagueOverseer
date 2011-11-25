@@ -53,7 +53,7 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 	virtual void Cleanup ();
 	
 	int greenScore, redScore;
-	bool officialMatch, matchCanceled, gameStarted;
+	bool officialMatch, matchCanceled;
 	
 	std::string redTeam[20];
 	std::string greenTeam[20];
@@ -90,7 +90,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
     	{
 			bz_CTFCaptureEventData_V1 *captureData = (bz_CTFCaptureEventData_V1*)eventData;
 			
-			if(officialMatch && gameStarted)
+			if(officialMatch && bz_isCountDownActive())
 			{
 				if(captureData->teamCapped == ePurpleTeam)
 					greenScore++;
@@ -103,7 +103,6 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		case bz_eGameEndEvent:
 		{
 			officialMatch = false;
-			gameStarted = false;
 			greenScore=0;
 			redScore=0;
 			memset(redTeam, 0, 20);
@@ -140,8 +139,6 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		{
 			bz_GameStartEndEventData_V1 *startData = (bz_GameStartEndEventData_V1*)eventData;
 			
-			gameStarted = true;
-			
 			bz_APIIntList *playerList = bz_newIntList();
 			bz_getPlayerIndexList(playerList);
 			
@@ -171,7 +168,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		{
 			bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
 			
-			if(officialMatch)
+			if(bz_isCountDownActive())
 				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently an official match in progress, please be respectful.");
 		}
 		break;
@@ -191,7 +188,7 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			officialMatch = true;
 			bz_debugMessagef(2,"Match Over Seer: Offical match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match started by %s.",playerData->callsign.c_str());
-			bz_startCountdown (20, NULL, "SERVER");
+			bz_startCountdown (10, NULL, "SERVER");
 		}
 		else if(playerData->team == eObservers)
 			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");

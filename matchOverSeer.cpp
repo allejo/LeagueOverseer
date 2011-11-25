@@ -143,6 +143,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			bz_getPlayerIndexList(playerList);
 			
 			int rt,gt=0;
+			redScore, greenScore = 0;
 
 			for ( unsigned int i = 0; i < playerList->size(); i++ ){
 				bz_BasePlayerRecord *teamMember = bz_getPlayerByIndex(playerList->get(i));
@@ -164,6 +165,18 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		}
 		break;
 		
+		case bz_eSlashCommandEvent:
+		{
+			bz_SlashCommandEventData_V1 *commandData = (bz_SlashCommandEventData_V1*)eventData;
+			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
+			
+			if(commandData->message.c_str() == "gameover" || commandData->message.c_str() == "superkill")
+				bz_debugMessagef(2,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());
+				matchCanceled = true;
+		}
+		break;
+
 		case bz_ePlayerJoinEvent:
 		{
 			bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
@@ -188,19 +201,12 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			officialMatch = true;
 			bz_debugMessagef(2,"Match Over Seer: Offical match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match started by %s.",playerData->callsign.c_str());
-			bz_startCountdown (10, NULL, "SERVER");
+			bz_startCountdown (10, bz_getTimeLimit(), "SERVER");
 		}
 		else if(playerData->team == eObservers)
 			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
 		else if(!playerData->verified || !bz_hasPerm(playerID,"spawn"))
 			bz_sendTextMessage(BZ_SERVER,playerID,"Only registered OL players may start an official match.");
-	}
-	
-	if(command == "gameover" || command == "superkill" || command == "shutdownserver")
-	{	
-		bz_debugMessagef(2,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
-		bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());
-		matchCanceled = true;
 	}
 	
 	bz_freePlayerRecord(playerData);	

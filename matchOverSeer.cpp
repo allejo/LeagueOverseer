@@ -52,11 +52,16 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
 	virtual void Cleanup ();
 	
-	int greenScore, redScore;
 	bool officialMatch, matchCanceled;
 	
 	std::string redTeam[20];
 	std::string greenTeam[20];
+	
+	struct matchPlayers {
+			bz_ApiString callsign;
+			bz_eTeamType team;
+	};
+	std::vector<matchPlayers> matchParticipants;
 };
 
 BZ_PLUGIN(matchOverSeer)
@@ -91,7 +96,6 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			bz_SlashCommandEventData_V1 *commandData = (bz_SlashCommandEventData_V1*)eventData;
 			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
 			std::string command = commandData->message.c_str();
-			
 			
 			if(command.compare("/gameover") == 0 || command.compare("/superkill") == 0)
 			{
@@ -144,11 +148,10 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			bz_getPlayerIndexList(playerList);
 			
 			int rt,gt=0;
-			redScore, greenScore = 0;
 
 			for ( unsigned int i = 0; i < playerList->size(); i++ ){
 				bz_BasePlayerRecord *teamMember = bz_getPlayerByIndex(playerList->get(i));
-				if (teamMember->team == eObservers){
+				if (teamMember->team != eObservers){
 					if(teamMember->team == eRedTeam)
 					{
 						redTeam[rt]=teamMember->callsign.c_str();

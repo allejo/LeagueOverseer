@@ -147,24 +147,20 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			bz_APIIntList *playerList = bz_newIntList();
 			bz_getPlayerIndexList(playerList);
 			
-			int rt,gt=0;
-
 			for ( unsigned int i = 0; i < playerList->size(); i++ ){
-				bz_BasePlayerRecord *teamMember = bz_getPlayerByIndex(playerList->get(i));
-				if (teamMember->team != eObservers){
-					if(teamMember->team == eRedTeam)
-					{
-						redTeam[rt]=teamMember->callsign.c_str();
-						rt++;
-					}
-					else if(teamMember->team == eGreenTeam)
-					{
-						greenTeam[gt]=teamMember->callsign.c_str();
-						gt++;
-					}
+				bz_BasePlayerRecord *playerTeam = bz_getPlayerByIndex(playerList->get(i));
+				if (bz_getPlayerTeam(playerList->get(i)) == eRedTeam || bz_getPlayerTeam(playerList->get(i)) == eGreenTeam){
+					bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Red or Green Team: %s",playerTeam->callsign.c_str());
 				}
 			}
-			
+			/*
+			kickData data;
+			data.ip = (myPlayerRecord->ipAddress);
+			data.lastKickReason = myKickReason;
+			data.strike = 1;
+			data.time = bz_getCurrentTime();
+			kicklist.push_back(data);
+			*/
 			bz_deleteIntList(playerList);
 		}
 		break;

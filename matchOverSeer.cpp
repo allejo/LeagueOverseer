@@ -80,7 +80,9 @@ void matchOverSeer::Init ( const char* /*commandLine*/ )
 	Register(bz_eSlashCommandEvent);
 	Register(bz_ePlayerJoinEvent);
 
-	bz_registerCustomSlashCommand ("official", this);
+	bz_registerCustomSlashCommand("official", this);
+	bz_registerCustomSlashCommand("countdown",this);
+	bz_registerCustomSlashCommand("fm",this);
 }
 
 void matchOverSeer::Cleanup (void)
@@ -89,7 +91,9 @@ void matchOverSeer::Cleanup (void)
 	
 	Flush();
 	
-	bz_removeCustomSlashCommand ("official");
+	bz_removeCustomSlashCommand("official");
+	bz_removeCustomSlashCommand("countdown");
+	bz_removeCustomSlashCommand("fm");
 }
 
 void matchOverSeer::Event(bz_EventData *eventData)
@@ -223,8 +227,6 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			
 				bz_deleteIntList(playerList);
 			}
-			else
-				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,"This will be a fun match and will not be reported.");
 		}
 		break;
 
@@ -258,6 +260,14 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
 		else if(!playerData->verified || !bz_hasPerm(playerID,"spawn")) //People who can't spawn can't start matches either... Derp!
 			bz_sendTextMessage(BZ_SERVER,playerID,"Only registered OL players may start an official match.");
+	}
+	else if(command == "countdown")
+		bz_sendTextMessage(BZ_SERVER,playerID,"This command has been disabled. Please use /match or /fm");
+	else if(command == "fm")
+	{
+		bz_debugMessagef(DEBUG,"Match Over Seer: Fun match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+		bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Fun match started by %s.",playerData->callsign.c_str());
+		bz_startCountdown (10, bz_getTimeLimit(), "League Admin"); //Start the countdown for the official match
 	}
 	
 	bz_freePlayerRecord(playerData);	

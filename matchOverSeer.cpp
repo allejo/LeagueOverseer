@@ -124,6 +124,10 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				bz_debugMessage(2,"Match Over Seer: Offical match was not reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was not reported.");
 			}
+			else if(officialMatch)
+			{
+				bz_debugMessage(2,"Match Over Seer: Fun match was not reported.");
+			}
 			else
 			{
 				bz_debugMessage(2,"Match Over Seer: Offical match was reported.");
@@ -186,8 +190,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 					}
 				}
 				
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",matchToSend.c_str());
-				//bz_addURLJob(URL.c_str(), NULL, matchToSend.c_str());
+				bz_addURLJob(URL.c_str(), NULL, matchToSend.c_str());
 			}
 		}
 		break;
@@ -215,6 +218,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			
 				bz_deleteIntList(playerList);
 			}
+			else
+				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,"Not an official match");
 		}
 		break;
 

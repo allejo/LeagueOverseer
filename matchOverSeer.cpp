@@ -37,7 +37,7 @@ License:
 BSD
 
 Version:
-0.0.1 [Codename: Baby Monkey]
+0.9 [Codename: Baby Monkey]
 */
 
 #include <stdio.h>
@@ -46,7 +46,7 @@ Version:
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 {
-	virtual const char* Name (){return "Match Over Seer";}
+	virtual const char* Name (){return "Match Over Seer 0.9.0 (20)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -61,11 +61,17 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 	std::vector<matchPlayers> matchParticipants;
 };
 
+//Define plugin version numbering
+const int MAJOR = 0;
+const int MINOR = 9;
+const int REV = 0;
+const int BUILD = 20;
+
 BZ_PLUGIN(matchOverSeer)
 
 void matchOverSeer::Init ( const char* /*commandLine*/ )
 {
-	bz_debugMessage(2,"Match Over Seer: Plugin successfully loaded.");
+	bz_debugMessagef(0, "Match Over Seer %i.%i.%i (%i) loaded.", MAJOR, MINOR, REV, BUILD);
 	
 	Register(bz_eGameEndEvent);
 	Register(bz_eGameStartEvent);
@@ -77,7 +83,7 @@ void matchOverSeer::Init ( const char* /*commandLine*/ )
 
 void matchOverSeer::Cleanup (void)
 {
-	bz_debugMessage(2,"Match Over Seer: Plugin successfully unloaded.");
+	bz_debugMessagef(0, "Match Over Seer %i.%i.%i (%i) unloaded.", MAJOR, MINOR, REV, BUILD);
 	
 	Flush();
 	
@@ -117,6 +123,11 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				matchCanceled = false;
 				bz_debugMessage(2,"Match Over Seer: Offical match was not reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was not reported.");
+			}
+			else
+			{
+				bz_debugMessage(2,"Match Over Seer: Offical match was reported.");
+				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was reported.");
 				
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Red Team Score: %i",bz_getTeamWins(eRedTeam));
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Green Team Score: %i",bz_getTeamWins(eGreenTeam));
@@ -136,11 +147,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 					if(matchParticipants.at(i).team == eGreenTeam)
 						bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",matchParticipants.at(i).callsign.c_str());
 				}
-			}
-			else
-			{
-				bz_debugMessage(2,"Match Over Seer: Offical match was reported.");
-				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was reported.");
+				
 				//TODO: report the match
 			}
 		}

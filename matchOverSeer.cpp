@@ -133,7 +133,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Green Team Score: %i",bz_getTeamWins(eGreenTeam));
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Match Time Limit: %f", bz_getTimeLimit());
 				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Date: %s", match_date);
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Map Played: %s", bz_getPublicDescription());
+				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Map Played: %s", bz_getPublicDescription().c_str());
 				
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Red Team:");
 				for (unsigned int i = 0; i < matchParticipants.size(); i++)

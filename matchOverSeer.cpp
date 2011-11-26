@@ -120,6 +120,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		
 		case bz_eGameEndEvent:
 		{
+			countDownStarted = false;
+			
 			if(matchCanceled) //The match was canceled via /gameover or /superkill
 			{
 				matchCanceled = false; //Reset the variable for next usage

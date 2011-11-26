@@ -262,7 +262,7 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
 			countDownStarted = true;
 		}	
-		else if(!(bz_getCurrentTime()>matchStartTime+60))
+		else if(!(bz_getCurrentTime()>matchStartTime+60) && playerData->team == eObservers && bz_hasPerm(playerID,"spawn"))
 		{
 			officialMatch = true;
 			bz_debugMessagef(DEBUG,"Match Over Seer: Fun Match has turned into an official match by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());

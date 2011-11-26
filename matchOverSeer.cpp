@@ -109,8 +109,11 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			
 			if(command.compare("/gameover") == 0 || command.compare("/superkill") == 0) //Check if they did a /gameover or /superkill
 			{
-				bz_debugMessagef(DEBUG,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());
+				if(officialMatch)
+				{
+					bz_debugMessagef(DEBUG,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+					bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());
+				}
 				matchCanceled = true; //To prevent reporting a canceled match, let plugin know the match was canceled
 			}
 			

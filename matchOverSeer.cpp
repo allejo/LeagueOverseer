@@ -123,8 +123,9 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			countDownStarted = false;
 			funMatch = false;
 			
-			if(matchCanceled) //The match was canceled via /gameover or /superkill
+			if(matchCanceled && officialMatch) //The match was canceled via /gameover or /superkill
 			{
+				officialMatch = false; //Match is over
 				matchCanceled = false; //Reset the variable for next usage
 				bz_debugMessage(DEBUG,"Match Over Seer: Offical match was not reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was not reported.");

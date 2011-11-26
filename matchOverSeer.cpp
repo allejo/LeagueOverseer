@@ -46,13 +46,13 @@ Version:
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.1 (32)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.1 (42)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
 	virtual void Cleanup ();
 	
-	bool officialMatch, matchCanceled, countDownStarted;
+	bool officialMatch, matchCanceled, countDownStarted, funMatch;
 	double matchStartTime;
 	
 	struct matchPlayers { //Maintains the players that started the match and their team color
@@ -66,7 +66,7 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 1;
-const int BUILD = 32;
+const int BUILD = 42;
 
 const int DEBUG = 1;
 
@@ -121,6 +121,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		case bz_eGameEndEvent:
 		{
 			countDownStarted = false;
+			funMatch = false;
 			
 			if(matchCanceled) //The match was canceled via /gameover or /superkill
 			{
@@ -264,14 +265,16 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
 			countDownStarted = true;
 		}	
-		else if(!(bz_getCurrentTime()>matchStartTime+60) && playerData->team != eObservers && bz_hasPerm(playerID,"spawn"))
+		else if(!(bz_getCurrentTime()>matchStartTime+60) && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !funMatch)
 		{
 			officialMatch = true;
 			bz_debugMessagef(DEBUG,"Match Over Seer: Fun Match has turned into an official match by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "This is now an official match requested by %s.",playerData->callsign.c_str());
 		}
-		else if((bz_getCurrentTime()>matchStartTime+60) && playerData->team != eObservers && bz_hasPerm(playerID,"spawn"))
+		else if((bz_getCurrentTime()>matchStartTime+60) && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !funMatch)
 			bz_sendTextMessage(BZ_SERVER,playerID,"You may no longer request an official match.");
+		else if(funMatch)
+			bz_sendTextMessage(BZ_SERVER,playerID,"Fun matches cannot be turned into official matches.");
 		else if(playerData->team == eObservers) //Observers can't start matches... Duh
 			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
 		else if(!playerData->verified || !bz_hasPerm(playerID,"spawn")) //People who can't spawn can't start matches either... Derp!
@@ -287,6 +290,7 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Fun match started by %s.",playerData->callsign.c_str());
 			bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
 			countDownStarted = true;
+			funMatch = true;
 		}
 		else if(bz_isCountDownActive() || countDownStarted)
 			bz_sendTextMessage(BZ_SERVER,playerID,"There is currently a countdown active, you may not start another.");

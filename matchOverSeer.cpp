@@ -37,7 +37,7 @@ License:
 BSD
 
 Version:
-0.9.1 [Codename: Baby Monkey]
+0.9.2 [Codename: Pig Bit]
 */
 
 #include <stdio.h>
@@ -46,7 +46,7 @@ Version:
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.1 (42)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.1 (45)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -65,12 +65,12 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 //Define plugin version numbering
 const int MAJOR = 0;
 const int MINOR = 9;
-const int REV = 1;
-const int BUILD = 42;
+const int REV = 2;
+const int BUILD = 45;
 
-const int DEBUG = 1;
+const int DEBUG = 1; //The debug level that is going to be used for messages that the plugin sends
 
-const int gracePeriod = 60;
+const int gracePeriod = 60; //Amount of seconds that a player has to turn a /countdown match to an official match
 
 BZ_PLUGIN(matchOverSeer);
 
@@ -105,14 +105,14 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		{
 			bz_SlashCommandEventData_V1 *commandData = (bz_SlashCommandEventData_V1*)eventData;
 			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
-			std::string command = commandData->message.c_str();
+			std::string command = commandData->message.c_str(); //Use std::string for quick reference
 			
 			if(command.compare("/gameover") == 0 || command.compare("/superkill") == 0) //Check if they did a /gameover or /superkill
 			{
-				if(officialMatch)
+				if(officialMatch) //Only announce that the match was canceled if it's an official match
 				{
-					bz_debugMessagef(DEBUG,"Match Over Seer: Offical match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
-					bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical match canceled by %s",playerData->callsign.c_str());
+					bz_debugMessagef(DEBUG,"Match Over Seer: Official match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+					bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Official match canceled by %s",playerData->callsign.c_str());
 				}
 				matchCanceled = true; //To prevent reporting a canceled match, let plugin know the match was canceled
 			}
@@ -123,6 +123,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		
 		case bz_eGameEndEvent:
 		{
+			//Clear the bool variables
 			countDownStarted = false;
 			funMatch = false;
 			
@@ -130,8 +131,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			{
 				officialMatch = false; //Match is over
 				matchCanceled = false; //Reset the variable for next usage
-				bz_debugMessage(DEBUG,"Match Over Seer: Offical match was not reported.");
-				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was not reported.");
+				bz_debugMessage(DEBUG,"Match Over Seer: Official match was not reported.");
+				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Official match was not reported.");
 			}
 			else if (officialMatch)
 			{
@@ -142,8 +143,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				
 				sprintf(match_date, "%02d-%02d-%02d %02d:%02d:%02d", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
 					
-				bz_debugMessage(DEBUG,"Match Over Seer: Offical match was reported.");
-				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Offical match was reported.");
+				bz_debugMessage(DEBUG,"Match Over Seer: Official match was reported.");
+				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Official match was reported.");
 				
 				std::string URL = "http://localhost/auto_report.php";
 				
@@ -226,8 +227,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 					if (bz_getPlayerTeam(playerList->get(i)) == eRedTeam || bz_getPlayerTeam(playerList->get(i)) == eGreenTeam) //Check if the player is actually playing
 					{
 						matchPlayers matchData;
-						matchData.callsign = playerTeam->callsign.c_str();
-						matchData.team = playerTeam->team;
+						matchData.callsign = playerTeam->callsign.c_str(); //Add callsign to struct
+						matchData.team = playerTeam->team; //Add team color to struct
 					
 						matchParticipants.push_back(matchData);
 					}
@@ -246,8 +247,10 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		{
 			bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
 			
-			if(bz_isCountDownActive() && officialMatch) //If there is a match in progress, notify others who join
+			if((bz_isCountDownActive() || bz_isCountDownInProgress()) && officialMatch) //If there is a match in progress, notify others who join
 				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently an official match in progress, please be respectful.");
+			else if((bz_isCountDownActive() || bz_isCountDownInProgress()) && funMatch)
+				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently a fun match in progress, please be respectful.");
 		}
 		break;
 		

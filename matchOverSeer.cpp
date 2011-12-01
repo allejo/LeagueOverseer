@@ -32,21 +32,27 @@ Automatic match reports sent to the league website.
 
 Slash Commands:
 /match
+/fm
 
 License:
 BSD
 
 Version:
-0.9.2 [Codename: Pig Bit]
+0.9.3 [Codename: Chip and Dale]
 */
 
 #include <stdio.h>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <stdexcept>
+
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.1 (45)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.3 (45)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -116,6 +122,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				}
 				matchCanceled = true; //To prevent reporting a canceled match, let plugin know the match was canceled
 			}
+			else if(command.compare("/countdown") == 0)
+				bz_sendTextMessagef(BZ_SERVER,commandData->from,"You can't perform /superkill when a match is in progress" );
 			
 			bz_freePlayerRecord(playerData);
 		}
@@ -148,36 +156,23 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				
 				std::string URL = "http://localhost/auto_report.php";
 				
-				/*Start Debug information...*/
-				//To be removed once the URL job is added
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Red Team Score: %i",bz_getTeamWins(eRedTeam));
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Green Team Score: %i",bz_getTeamWins(eGreenTeam));
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Match Time Limit: %f", bz_getTimeLimit());
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Date: %s", match_date);
-				bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Map Played: %s", bz_getPublicDescription().c_str());
+				std::ostringstream RTW;
+				RTW << (bz_getTeamWins(eRedTeam));
+				std::ostringstream GTW;
+				GTW << (bz_getTeamWins(eGreenTeam));
+				std::ostringstream MT;
+				MT << (bz_getTimeLimit());
 				
-				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Red Team:");
-				for (unsigned int i = 0; i < matchParticipants.size(); i++)
-				{
-					if(matchParticipants.at(i).team == eRedTeam)
-						bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",matchParticipants.at(i).callsign.c_str());
-				}
-				
-				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Green Team:");
-				for (unsigned int i = 0; i < matchParticipants.size(); i++)
-				{
-					if(matchParticipants.at(i).team == eGreenTeam)
-						bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",matchParticipants.at(i).callsign.c_str());
-				}
-				//End Debug information
-				/**/
-				/*
-				//The URL job still needs to be tested since without a valid URL, the plugin segfaults
 				std::string matchToSend = "";
+				std::string redTeamWins = RTW.str();
+				std::string greenTeamWins = GTW.str();
+				std::string matchTime = MT.str();
+				std::string mapPlayed = bz_getPublicDescription().c_str();
+				std::string redPlayers;
 				
-				matchToSend = std::string("redTeam=") + std::string(bz_urlEncode((const char*)bz_getTeamWins(eRedTeam))) + 
-				std::string("&greenTeam=") + std::string(bz_urlEncode((const char*)bz_getTeamWins(eGreenTeam))) + 
-				std::string("&matchTime=") + std::string(bz_urlEncode((const char*)int(bz_getTimeLimit()))) + 
+				matchToSend = std::string("redTeamWins=") + std::string(bz_urlEncode(redTeamWins.c_str())) + 
+				std::string("&greenTeamWins=") + std::string(bz_urlEncode(greenTeamWins.c_str())) + 
+				std::string("&matchTime=") + std::string(bz_urlEncode(matchTime.c_str())) + 
 				std::string("&matchDate=") + std::string(bz_urlEncode(match_date)) +
 				std::string("&mapPlayed=") + std::string(bz_urlEncode(bz_getPublicDescription().c_str())) + 
 				std::string("&redPlayers=");
@@ -204,11 +199,16 @@ void matchOverSeer::Event(bz_EventData *eventData)
 					}
 				}
 				
-				bz_addURLJob(URL.c_str(), NULL, matchToSend.c_str());*/
+				bz_addURLJob(URL.c_str(), NULL, matchToSend.c_str());
 			}
 			else
 			{
 				bz_debugMessage(DEBUG,"Match Over Seer: Fun match was not reported.");
+			}
+			
+			for (unsigned int i = 0; i < matchParticipants.size(); i++)
+			{
+				matchParticipants.erase(matchParticipants.begin() + i, matchParticipants.begin() + i + 1);
 			}
 		}
 		break;
@@ -251,6 +251,9 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently an official match in progress, please be respectful.");
 			else if((bz_isCountDownActive() || bz_isCountDownInProgress()) && funMatch)
 				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently a fun match in progress, please be respectful.");
+				
+			if ( bz_hasPerm(joinData->playerID, "countdown"))
+		    	bz_revokePerm(joinData->playerID, "countdown");
 		}
 		break;
 		
@@ -272,7 +275,7 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
 			countDownStarted = true;
 		}	
-		else if(!(bz_getCurrentTime()>matchStartTime+60) && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !funMatch)
+		else if(!(bz_getCurrentTime()>matchStartTime+60) && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !funMatch && !officialMatch)
 		{
 			officialMatch = true;
 			bz_debugMessagef(DEBUG,"Match Over Seer: Fun Match has turned into an official match by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());

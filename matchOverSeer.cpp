@@ -46,26 +46,19 @@ Version:
 #include <sstream>
 #include <string>
 #include <stdexcept>
+#include <fstream>
 
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
 
-class MyURLHandler: public bz_BaseURLHandler {
-public:
-	virtual void URLDone( const char* /*URL*/, void * data, unsigned int size, bool complete ) {
-		bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
-	}
-};
-
-MyURLHandler myUrl;
-
-class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
+class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.3 (48)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.3 (49)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
 	virtual void Cleanup ();
+	virtual void URLDone( const char* /*URL*/, void * data, unsigned int size, bool complete ) {bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);}
 	
 	bool officialMatch, matchCanceled, countDownStarted, funMatch;
 	double matchStartTime;
@@ -81,16 +74,17 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 3;
-const int BUILD = 48;
+const int BUILD = 49;
 
 const int DEBUG = 1; //The debug level that is going to be used for messages that the plugin sends
 const int gracePeriod = 60; //Amount of seconds that a player has to turn a /countdown match to an official match
 
 std::string URL = "http://localhost/auto_report.php";
+std::string map;
 
 BZ_PLUGIN(matchOverSeer);
 
-void matchOverSeer::Init ( const char* /*commandLine*/ )
+void matchOverSeer::Init ( const char* commandLine )
 {
 	bz_debugMessagef(0, "Match Over Seer %i.%i.%i (%i) loaded.", MAJOR, MINOR, REV, BUILD);
 	
@@ -101,6 +95,16 @@ void matchOverSeer::Init ( const char* /*commandLine*/ )
 
 	bz_registerCustomSlashCommand("official", this);
 	bz_registerCustomSlashCommand("fm",this);
+	
+	officialMatch=false;
+	matchCanceled=false;
+	countDownStarted=false;
+	funMatch=false;
+	
+	std::ifstream infile;
+	infile.open (commandLine);
+    while(!infile.eof()) {getline(infile,map);}
+	infile.close();
 }
 
 void matchOverSeer::Cleanup (void)
@@ -162,9 +166,9 @@ void matchOverSeer::Event(bz_EventData *eventData)
 	
 				//Convert ints to std::string with std::ostringstream
 				std::ostringstream RTW;
-				RTW << (bz_getTeamWins(eRedTeam));
+				RTW << (bz_getTeamLosses(eRedTeam));
 				std::ostringstream GTW;
-				GTW << (bz_getTeamWins(eGreenTeam));
+				GTW << (bz_getTeamLosses(eGreenTeam));
 				std::ostringstream MT;
 				MT << (bz_getTimeLimit());
 				
@@ -173,14 +177,13 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				std::string redTeamWins = RTW.str();
 				std::string greenTeamWins = GTW.str();
 				std::string matchTime = MT.str();
-				std::string mapPlayed = bz_getPublicDescription().c_str();
 				
 				//Create the syntax of the parameters that is going to be sent via a URL
-				matchToSend = std::string("redTeamWins=") + std::string(bz_urlEncode(redTeamWins.c_str())) + 
-				std::string("&greenTeamWins=") + std::string(bz_urlEncode(greenTeamWins.c_str())) + 
+				matchToSend = std::string("redTeamWins=") + std::string(bz_urlEncode(greenTeamWins.c_str())) + 
+				std::string("&greenTeamWins=") + std::string(bz_urlEncode(redTeamWins.c_str())) + 
 				std::string("&matchTime=") + std::string(bz_urlEncode(matchTime.c_str())) + 
 				std::string("&matchDate=") + std::string(bz_urlEncode(match_date)) +
-				std::string("&mapPlayed=") + std::string(bz_urlEncode(bz_getPublicDescription().c_str())) + 
+				std::string("&mapPlayed=") + std::string(bz_urlEncode(map.c_str())) + 
 				std::string("&redPlayers=");
 				
 				for (unsigned int i = 0; i < matchParticipants.size(); i++) //Go through the player list and check for red team players
@@ -189,7 +192,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 					{
 						matchToSend += std::string(bz_urlEncode(matchParticipants.at(i).callsign.c_str()));
 						if(i+1 < matchParticipants.size() && matchParticipants.at(i+1).team == eRedTeam) //Only add a comma if the next player on the list is red
-							matchToSend += ",";
+							matchToSend += "\"";
 					}
 				}
 				
@@ -201,11 +204,11 @@ void matchOverSeer::Event(bz_EventData *eventData)
 					{
 						matchToSend += std::string(bz_urlEncode(matchParticipants.at(i).callsign.c_str()));
 						if(i+1 < matchParticipants.size() && matchParticipants.at(i+1).team == eGreenTeam) //Only add a comma if the next player on the list is green
-							matchToSend += ",";
+							matchToSend += "\"";
 					}
 				}
 				
-				bz_addURLJob(URL.c_str(), &myUrl, matchToSend.c_str()); //Send the match data to the league website
+				bz_addURLJob(URL.c_str(), this, matchToSend.c_str()); //Send the match data to the league website
 				
 				bz_debugMessage(DEBUG,"Match Over Seer: Official match was reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Official match was reported.");
@@ -252,6 +255,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		case bz_ePlayerJoinEvent:
 		{
 			bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
+			
+			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",map.c_str());
 			
 			if((bz_isCountDownActive() || bz_isCountDownInProgress()) && officialMatch) //If there is an official match in progress, notify others who join
 				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently an official match in progress, please be respectful.");

@@ -50,9 +50,18 @@ Version:
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
 
+class MyURLHandler: public bz_BaseURLHandler {
+public:
+	virtual void URLDone( const char* /*URL*/, void * data, unsigned int size, bool complete ) {
+		bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
+	}
+};
+
+MyURLHandler myUrl;
+
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.3 (47)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.3 (48)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -72,12 +81,12 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 3;
-const int BUILD = 47;
+const int BUILD = 48;
 
 const int DEBUG = 1; //The debug level that is going to be used for messages that the plugin sends
 const int gracePeriod = 60; //Amount of seconds that a player has to turn a /countdown match to an official match
 
-const std::string URL = "http://localhost/auto_report.php";
+std::string URL = "http://localhost/auto_report.php";
 
 BZ_PLUGIN(matchOverSeer);
 
@@ -196,19 +205,16 @@ void matchOverSeer::Event(bz_EventData *eventData)
 					}
 				}
 				
-				bz_addURLJob(URL.c_str(), NULL, matchToSend.c_str()); //Send the match data to the league website
+				bz_addURLJob(URL.c_str(), &myUrl, matchToSend.c_str()); //Send the match data to the league website
 				
 				bz_debugMessage(DEBUG,"Match Over Seer: Official match was reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Official match was reported.");
+
+				matchParticipants.clear();
 			}
 			else
 			{
 				bz_debugMessage(DEBUG,"Match Over Seer: Fun match was not reported.");
-			}
-			
-			for (unsigned int i = 0; i < matchParticipants.size(); i++) //Clear the array of players after each match
-			{
-				matchParticipants.erase(matchParticipants.begin() + i, matchParticipants.begin() + i + 1);
 			}
 		}
 		break;

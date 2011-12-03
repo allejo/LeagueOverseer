@@ -51,36 +51,44 @@ Version:
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
 
-class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
-{
-	virtual const char* Name (){return "Match Over Seer 0.9.3 (49)";}
-	virtual void Init ( const char* config);	
-	virtual void Event( bz_EventData *eventData );
-	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
-	virtual void Cleanup ();
-	virtual void URLDone( const char* /*URL*/, void * data, unsigned int size, bool complete ) {bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);}
-	
-	bool officialMatch, matchCanceled, countDownStarted, funMatch;
-	double matchStartTime;
-	
-	struct matchPlayers { //Maintains the players that started the match and their team color
-			bz_ApiString callsign;
-			bz_eTeamType team;
-	};
-	std::vector<matchPlayers> matchParticipants;
-};
 
 //Define plugin version numbering
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 3;
-const int BUILD = 49;
+const int BUILD = 50;
 
 const int DEBUG = 1; //The debug level that is going to be used for messages that the plugin sends
 const int gracePeriod = 60; //Amount of seconds that a player has to turn a /countdown match to an official match
 
 std::string URL = "http://localhost/auto_report.php";
 std::string map;
+	
+class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
+{
+	virtual const char* Name (){return "Match Over Seer 0.9.3 (50)";}
+	virtual void Init ( const char* config);	
+	virtual void Event( bz_EventData *eventData );
+	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
+	virtual void Cleanup ();
+	virtual void URLDone( const char* /*URL*/, void * data, unsigned int size, bool complete ) {
+		bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
+		bz_debugMessagef(DEBUG,"%s",data);
+	}
+	
+	bool officialMatch, matchCanceled, countDownStarted, funMatch;
+	double matchStartTime;
+	
+	struct matchRedPlayers { //Maintains the players that started the match and their team color
+			bz_ApiString callsign;
+	};
+	std::vector<matchRedPlayers> matchRedParticipants;
+	
+	struct matchGreenPlayers { //Maintains the players that started the match and their team color
+			bz_ApiString callsign;
+	};
+	std::vector<matchGreenPlayers> matchGreenParticipants;
+};
 
 BZ_PLUGIN(matchOverSeer);
 
@@ -103,8 +111,10 @@ void matchOverSeer::Init ( const char* commandLine )
 	
 	std::ifstream infile;
 	infile.open (commandLine);
-    while(!infile.eof()) {getline(infile,map);}
+	while(!infile.eof()) {getline(infile,map);}
 	infile.close();
+	
+	bz_debugMessagef(DEBUG, "Current configuration being used: %s", map.c_str());
 }
 
 void matchOverSeer::Cleanup (void)
@@ -186,34 +196,29 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				std::string("&mapPlayed=") + std::string(bz_urlEncode(map.c_str())) + 
 				std::string("&redPlayers=");
 				
-				for (unsigned int i = 0; i < matchParticipants.size(); i++) //Go through the player list and check for red team players
+				for (unsigned int i = 0; i < matchRedParticipants.size(); i++) //Go through the player list and check for red team players
 				{
-					if(matchParticipants.at(i).team == eRedTeam) //Check to see if the player is part of the red team
-					{
-						matchToSend += std::string(bz_urlEncode(matchParticipants.at(i).callsign.c_str()));
-						if(i+1 < matchParticipants.size() && matchParticipants.at(i+1).team == eRedTeam) //Only add a comma if the next player on the list is red
-							matchToSend += "\"";
-					}
+					matchToSend += std::string(bz_urlEncode(matchRedParticipants.at(i).callsign.c_str()));
+					if(i+1 < matchRedParticipants.size()) //Only add a comma if the next player on the list is red
+						matchToSend += "\"";
 				}
 				
 				matchToSend += std::string("&greenPlayers=");
 				
-				for (unsigned int i = 0; i < matchParticipants.size(); i++) //Now check for green team players...
+				for (unsigned int i = 0; i < matchGreenParticipants.size(); i++) //Now check for green team players...
 				{
-					if(matchParticipants.at(i).team == eGreenTeam) //Check to see if the player is part of the green team
-					{
-						matchToSend += std::string(bz_urlEncode(matchParticipants.at(i).callsign.c_str()));
-						if(i+1 < matchParticipants.size() && matchParticipants.at(i+1).team == eGreenTeam) //Only add a comma if the next player on the list is green
-							matchToSend += "\"";
-					}
+					matchToSend += std::string(bz_urlEncode(matchGreenParticipants.at(i).callsign.c_str()));
+					if(i+1 < matchGreenParticipants.size()) //Only add a comma if the next player on the list is green
+						matchToSend += "\"";
 				}
 				
 				bz_addURLJob(URL.c_str(), this, matchToSend.c_str()); //Send the match data to the league website
 				
-				bz_debugMessage(DEBUG,"Match Over Seer: Official match was reported.");
-				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Official match was reported.");
+				bz_debugMessage(DEBUG,"Match Over Seer: Reporting match...");
+				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Reporting match...");
 
-				matchParticipants.clear();
+				matchRedParticipants.clear();
+				matchGreenParticipants.clear();
 			}
 			else
 			{
@@ -233,13 +238,19 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				
 				for ( unsigned int i = 0; i < playerList->size(); i++ ){
 					bz_BasePlayerRecord *playerTeam = bz_getPlayerByIndex(playerList->get(i));
-					if (bz_getPlayerTeam(playerList->get(i)) == eRedTeam || bz_getPlayerTeam(playerList->get(i)) == eGreenTeam) //Check if the player is actually playing
+					if (bz_getPlayerTeam(playerList->get(i)) == eRedTeam) //Check if the player is actually playing
 					{
-						matchPlayers matchData;
-						matchData.callsign = playerTeam->callsign.c_str(); //Add callsign to struct
-						matchData.team = playerTeam->team; //Add team color to struct
+						matchRedPlayers matchRedData;
+						matchRedData.callsign = playerTeam->callsign.c_str(); //Add callsign to struct
 					
-						matchParticipants.push_back(matchData);
+						matchRedParticipants.push_back(matchRedData);
+					}
+					if (bz_getPlayerTeam(playerList->get(i)) == eGreenTeam)
+					{
+						matchGreenPlayers matchGreenData;
+						matchGreenData.callsign = playerTeam->callsign.c_str(); //Add callsign to struct
+					
+						matchGreenParticipants.push_back(matchGreenData);
 					}
 				}
 			
@@ -255,8 +266,6 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		case bz_ePlayerJoinEvent:
 		{
 			bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
-			
-			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",map.c_str());
 			
 			if((bz_isCountDownActive() || bz_isCountDownInProgress()) && officialMatch) //If there is an official match in progress, notify others who join
 				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently an official match in progress, please be respectful.");

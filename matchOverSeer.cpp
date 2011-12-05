@@ -28,17 +28,23 @@ Author:
 Vlad Jimenez (allejo)
 
 Description:
-Automatic match reports sent to the league website.
+Automatically reports official matches to league websites to make referee's
+jobs easier.
+	League Support: Open League
+	Future League Support: GU & Ducati
 
 Slash Commands:
-/match
+/official
 /fm
+
+Parameters:
+/path/to/matchOverSeer.so,/path/to/mapchange.out
 
 License:
 BSD
 
 Version:
-0.9.3 [Codename: Chip and Dale]
+0.9.4 [Codename: Peanuts]
 */
 
 #include <stdio.h>
@@ -47,26 +53,20 @@ Version:
 #include <string>
 #include <stdexcept>
 #include <fstream>
+#include <algorithm>
 
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
 
-
 //Define plugin version numbering
 const int MAJOR = 0;
 const int MINOR = 9;
-const int REV = 3;
-const int BUILD = 50;
+const int REV = 4;
+const int BUILD = 51;
 
-const int DEBUG = 1; //The debug level that is going to be used for messages that the plugin sends
-const int gracePeriod = 60; //Amount of seconds that a player has to turn a /countdown match to an official match
-
-std::string URL = "http://localhost/auto_report.php";
-std::string map;
-	
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.3 (50)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.4 (51)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -75,22 +75,70 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pub
 		bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
 		bz_debugMessagef(DEBUG,"%s",data);
 	}
+	int loadConfig(const char *cmdLine);
+	bool toBool(std::string var);
 	
-	bool officialMatch, matchCanceled, countDownStarted, funMatch;
+	bool officialMatch, matchCanceled, countDownStarted, funMatch, rotLeague;
 	double matchStartTime;
+	int DEBUG, gracePeriod;
+	std::string URL, map;
+	const char* mapchangePath; 
 	
-	struct matchRedPlayers { //Maintains the players that started the match and their team color
+	struct matchRedPlayers { //Maintains the players that started the match on the red team
 			bz_ApiString callsign;
 	};
 	std::vector<matchRedPlayers> matchRedParticipants;
 	
-	struct matchGreenPlayers { //Maintains the players that started the match and their team color
+	struct matchGreenPlayers { //Maintains the players that started the match on the green team
 			bz_ApiString callsign;
 	};
 	std::vector<matchGreenPlayers> matchGreenParticipants;
 };
 
 BZ_PLUGIN(matchOverSeer);
+
+bool matchOverSeer::toBool(std::string var)
+{
+   if(var == "true" || var == "TRUE" || var == "1")
+      return true;
+   else
+      return false;
+}
+
+int matchOverSeer::loadConfig(const char* cmdLine)
+{
+	PluginConfig config = PluginConfig(cmdLine);
+	std::string section = "matchOverSeer";
+	
+	if (config.errors) return -1; //Return error
+	
+	rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
+	mapchangePath = (config.item(section, "MAPCHANGE_PATH")).c_str();
+	URL = config.item(section, "WEBSITE_URL");
+	gracePeriod = atoi((config.item(section, "GRACE_PERIOD")).c_str());
+	DEBUG = atoi((config.item(section, "DEBUG_LEVE")).c_str());
+	
+	if (rotLeague && (mapchangePath == "/path/to/mapchange.out" || mapchangePath == ""))
+	{
+		bz_debugMessage(0, "Match Over Seer: The path to the mapchange.out file was not choosen.");
+		return -1;
+	}
+	if (URL == "")
+	{
+		bz_debugMessage(0, "Match Over Seer: No URL was choosen to report matches.");
+		return -1;
+	}
+	if (gracePeriod == -999)
+	{
+		bz_debugMessage(0, "Match Over Seer: No grace period was choosen.");
+		return -1;
+	}
+	if (DEBUG > 4 || DEBUG < 0)
+	{
+		bz_debugMessage(0, "Match Over Seer: You have selected an invalid debug level.");
+		return -1;
+	}
+}
 
 void matchOverSeer::Init ( const char* commandLine )
 {
@@ -104,17 +152,30 @@ void matchOverSeer::Init ( const char* commandLine )
 	bz_registerCustomSlashCommand("official", this);
 	bz_registerCustomSlashCommand("fm",this);
 	
+	//Set all boolean values for the plugin to false
 	officialMatch=false;
 	matchCanceled=false;
 	countDownStarted=false;
 	funMatch=false;
 	
-	std::ifstream infile;
-	infile.open (commandLine);
-	while(!infile.eof()) {getline(infile,map);}
-	infile.close();
+	if (loadConfig(commandLine) < 0)
+	{
+		bz_debugMessage(0, "*** WARNING: Match Over Seer failed to load, your configuration file has an error. ***");
+	    return; //Do not load the plugin if config has an error
+	}
 	
-	bz_debugMessagef(DEBUG, "Current configuration being used: %s", map.c_str());
+	if(mapchangePath != "")
+	{
+		//Open the mapchange.out file to see what map is being used
+		std::ifstream infile;
+		infile.open (mapchangePath);
+		getline(infile,map);
+		infile.close();
+	
+		map = map.substr(0, map.length()-5); //Remove the '.conf' from the mapchange.out file
+	}
+	
+	bz_debugMessagef(DEBUG, "Current map being played: %s", map.c_str());
 }
 
 void matchOverSeer::Cleanup (void)
@@ -192,9 +253,12 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				matchToSend = std::string("redTeamWins=") + std::string(bz_urlEncode(greenTeamWins.c_str())) + 
 				std::string("&greenTeamWins=") + std::string(bz_urlEncode(redTeamWins.c_str())) + 
 				std::string("&matchTime=") + std::string(bz_urlEncode(matchTime.c_str())) + 
-				std::string("&matchDate=") + std::string(bz_urlEncode(match_date)) +
-				std::string("&mapPlayed=") + std::string(bz_urlEncode(map.c_str())) + 
-				std::string("&redPlayers=");
+				std::string("&matchDate=") + std::string(bz_urlEncode(match_date));
+				
+				if(rotLeague)
+					matchToSend += std::string("&mapPlayed=") + std::string(bz_urlEncode(map.c_str()));
+				
+				matchToSend += std::string("&redPlayers=");
 				
 				for (unsigned int i = 0; i < matchRedParticipants.size(); i++) //Go through the player list and check for red team players
 				{
@@ -211,11 +275,11 @@ void matchOverSeer::Event(bz_EventData *eventData)
 					if(i+1 < matchGreenParticipants.size()) //Only add a comma if the next player on the list is green
 						matchToSend += "\"";
 				}
-				
-				bz_addURLJob(URL.c_str(), this, matchToSend.c_str()); //Send the match data to the league website
-				
+			
 				bz_debugMessage(DEBUG,"Match Over Seer: Reporting match...");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Reporting match...");
+				
+				bz_addURLJob(URL.c_str(), this, matchToSend.c_str()); //Send the match data to the league website
 
 				matchRedParticipants.clear();
 				matchGreenParticipants.clear();
@@ -238,25 +302,28 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				
 				for ( unsigned int i = 0; i < playerList->size(); i++ ){
 					bz_BasePlayerRecord *playerTeam = bz_getPlayerByIndex(playerList->get(i));
-					if (bz_getPlayerTeam(playerList->get(i)) == eRedTeam) //Check if the player is actually playing
+					
+					if (bz_getPlayerTeam(playerList->get(i)) == eRedTeam) //Check if the player is on the red team
 					{
 						matchRedPlayers matchRedData;
-						matchRedData.callsign = playerTeam->callsign.c_str(); //Add callsign to struct
+						matchRedData.callsign = playerTeam->callsign.c_str(); //Add callsign to structure
 					
 						matchRedParticipants.push_back(matchRedData);
 					}
-					if (bz_getPlayerTeam(playerList->get(i)) == eGreenTeam)
+					else if (bz_getPlayerTeam(playerList->get(i)) == eGreenTeam) //Check if the player is on the green team
 					{
 						matchGreenPlayers matchGreenData;
-						matchGreenData.callsign = playerTeam->callsign.c_str(); //Add callsign to struct
+						matchGreenData.callsign = playerTeam->callsign.c_str(); //Add callsign to structure
 					
 						matchGreenParticipants.push_back(matchGreenData);
 					}
+					
+					bz_freePlayerRecord(playerTeam);
 				}
 			
 				bz_deleteIntList(playerList);
 			}
-			else if(!countDownStarted) //Match was started with /countdown
+			else if(!countDownStarted && !funMatch) //Match was started with /countdown
 			{
 				matchStartTime = bz_getCurrentTime();
 			}

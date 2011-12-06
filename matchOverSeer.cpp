@@ -30,15 +30,14 @@ Vlad Jimenez (allejo)
 Description:
 Automatically reports official matches to league websites to make referee's
 jobs easier.
-	League Support: Open League
-	Future League Support: GU & Ducati
+	League Support: Ducati, GU, Open League
 
 Slash Commands:
 /official
 /fm
 
 Parameters:
-/path/to/matchOverSeer.so,/path/to/mapchange.out
+/path/to/matchOverSeer.so,/path/to/matchOverSeer.cfg
 
 License:
 BSD
@@ -62,11 +61,11 @@ Version:
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 4;
-const int BUILD = 51;
+const int BUILD = 52;
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.4 (51)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.4 (52)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -97,46 +96,48 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pub
 
 BZ_PLUGIN(matchOverSeer);
 
-bool matchOverSeer::toBool(std::string var)
+bool matchOverSeer::toBool(std::string var) //Turn std::string into a boolean value
 {
-   if(var == "true" || var == "TRUE" || var == "1")
+   if(var == "true" || var == "TRUE" || var == "1") //If the value is true then the boolean is true
       return true;
-   else
+   else //If it's not true, then it's false.
       return false;
 }
 
-int matchOverSeer::loadConfig(const char* cmdLine)
+int matchOverSeer::loadConfig(const char* cmdLine) //Load the plugin configuration file
 {
 	PluginConfig config = PluginConfig(cmdLine);
 	std::string section = "matchOverSeer";
 	
-	if (config.errors) return -1; //Return error
+	if (config.errors) bz_shutdown(); //Shutdown the server
 	
+	//Extract all the data in the configuration file and assign it to plugin variables
 	rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
 	mapchangePath = (config.item(section, "MAPCHANGE_PATH")).c_str();
 	URL = config.item(section, "WEBSITE_URL");
 	gracePeriod = atoi((config.item(section, "GRACE_PERIOD")).c_str());
-	DEBUG = atoi((config.item(section, "DEBUG_LEVE")).c_str());
+	DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
 	
+	//Check for errors in the configuration data. If there is an error, shut down the server
 	if (rotLeague && (mapchangePath == "/path/to/mapchange.out" || mapchangePath == ""))
 	{
-		bz_debugMessage(0, "Match Over Seer: The path to the mapchange.out file was not choosen.");
-		return -1;
+		bz_debugMessage(0, "*** Match Over Seer: The path to the mapchange.out file was not choosen. ***");
+		bz_shutdown();
 	}
 	if (URL == "")
 	{
-		bz_debugMessage(0, "Match Over Seer: No URL was choosen to report matches.");
-		return -1;
+		bz_debugMessage(0, "*** Match Over Seer: No URL was choosen to report matches. ***");
+		bz_shutdown();
 	}
 	if (gracePeriod == -999)
 	{
-		bz_debugMessage(0, "Match Over Seer: No grace period was choosen.");
-		return -1;
+		bz_debugMessage(0, "*** Match Over Seer: No grace period was choosen. ***");
+		bz_shutdown();
 	}
 	if (DEBUG > 4 || DEBUG < 0)
 	{
-		bz_debugMessage(0, "Match Over Seer: You have selected an invalid debug level.");
-		return -1;
+		bz_debugMessage(0, "*** Match Over Seer: You have selected an invalid debug level. ***");
+		bz_shutdown();
 	}
 }
 
@@ -157,14 +158,10 @@ void matchOverSeer::Init ( const char* commandLine )
 	matchCanceled=false;
 	countDownStarted=false;
 	funMatch=false;
+
+	loadConfig(commandLine); //Load the configuration data when the plugin is loaded
 	
-	if (loadConfig(commandLine) < 0)
-	{
-		bz_debugMessage(0, "*** WARNING: Match Over Seer failed to load, your configuration file has an error. ***");
-	    return; //Do not load the plugin if config has an error
-	}
-	
-	if(mapchangePath != "")
+	if(mapchangePath != "" && rotLeague) //Check to see if the plugin is for a rotational league
 	{
 		//Open the mapchange.out file to see what map is being used
 		std::ifstream infile;
@@ -173,9 +170,9 @@ void matchOverSeer::Init ( const char* commandLine )
 		infile.close();
 	
 		map = map.substr(0, map.length()-5); //Remove the '.conf' from the mapchange.out file
+
+		bz_debugMessagef(DEBUG, "Match Over Seer: Current map being played: %s", map.c_str());
 	}
-	
-	bz_debugMessagef(DEBUG, "Current map being played: %s", map.c_str());
 }
 
 void matchOverSeer::Cleanup (void)

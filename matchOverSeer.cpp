@@ -43,7 +43,7 @@ License:
 BSD
 
 Version:
-0.9.4 [Codename: Peanuts]
+0.9.5 [Codename: Why Me?]
 */
 
 #include <stdio.h>
@@ -60,19 +60,33 @@ Version:
 //Define plugin version numbering
 const int MAJOR = 0;
 const int MINOR = 9;
-const int REV = 4;
-const int BUILD = 52;
+const int REV = 5;
+const int BUILD = 53;
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.4 (52)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.5 (53)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
 	virtual void Cleanup ();
-	virtual void URLDone( const char* /*URL*/, void * data, unsigned int size, bool complete ) {
-		bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
-		bz_debugMessagef(DEBUG,"%s",data);
+	virtual void URLDone( const char* /*URL*/, void* data, unsigned int size, bool complete ) {
+		std::string siteData = (char*)(data); //Convert the data to a std::string
+		siteData = bz_tolower(siteData.c_str());
+		
+		if(std::string::npos != siteData.find("success")) //The plugin reported the match successfully
+		{
+			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
+			bz_debugMessagef(DEBUG,"%s",data);
+		}
+		else //Something went wrong
+		{
+			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"The following error has occured while reporting the match:");
+			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
+			bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,"Please contact a league admin or referee with the error and the match result.");
+			bz_debugMessage(DEBUG,"The following error has occured while reporting the match:");
+			bz_debugMessagef(DEBUG,"%s",data);
+		}
 	}
 	int loadConfig(const char *cmdLine);
 	bool toBool(std::string var);
@@ -149,6 +163,7 @@ void matchOverSeer::Init ( const char* commandLine )
 	Register(bz_eGameStartEvent);
 	Register(bz_eSlashCommandEvent);
 	Register(bz_ePlayerJoinEvent);
+	Register(bz_eTickEvent);
 
 	bz_registerCustomSlashCommand("official", this);
 	bz_registerCustomSlashCommand("fm",this);
@@ -195,7 +210,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
 			std::string command = commandData->message.c_str(); //Use std::string for quick reference
 			
-			if(command.compare("/gameover") == 0 || command.compare("/superkill") == 0) //Check if they did a /gameover or /superkill
+			if((command.compare("/gameover") == 0 || command.compare("/superkill") == 0) && (bz_hasPerm(commandData->from,"ENDGAME") || bz_hasPerm(commandData->from,"SUPERKILL"))) //Check if they did a /gameover or /superkill
 			{
 				if(officialMatch) //Only announce that the match was canceled if it's an official match
 				{
@@ -337,6 +352,24 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently a fun match in progress, please be respectful.");
 		}
 		break;
+		
+		case bz_eTickEvent:
+		{
+			int totaltanks = bz_getTeamCount(eRogueTeam) + bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
+			
+			if (totaltanks == 0 && (!officialMatch && !matchCanceled && !countDownStarted && !funMatch))
+			{
+				//Incase a boolean gets messed up in the plugin, reset all the plugin variables when there are no players (Observers excluded)
+				officialMatch=false;
+				matchCanceled=false;
+				countDownStarted=false;
+				funMatch=false;
+				
+				//This should never happen but just incase the countdown is going when there are no tanks 
+				if(bz_isCountDownActive)
+					bz_gameOver(253,eObservers);
+			}
+		}
 		
 		default:break; //I never really understand the point of this... -.-"
 	}

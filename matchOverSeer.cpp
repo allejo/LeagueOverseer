@@ -61,11 +61,11 @@ Version:
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 5;
-const int BUILD = 53;
+const int BUILD = 54;
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.5 (53)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.5 (54)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -377,6 +377,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 
 bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiString /*message*/, bz_APIStringList *params)
 {
+	int timeToStart = atoi(params->get(0).c_str());
 	bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(playerID);
 	
 	if(command == "official") //Someone used the /official command
@@ -386,7 +387,10 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			officialMatch = true; //Notify the plugin that the match is official
 			bz_debugMessagef(DEBUG,"Match Over Seer: Official match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Official match started by %s.",playerData->callsign.c_str());
-			bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
+			if(timeToStart <= 120)
+				bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
+			else
+				bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
 			countDownStarted = true;
 		}	
 		else if(!(bz_getCurrentTime()>matchStartTime+60) && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !funMatch && !officialMatch)
@@ -414,7 +418,10 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 		{
 			bz_debugMessagef(DEBUG,"Match Over Seer: Fun match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Fun match started by %s.",playerData->callsign.c_str());
-			bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
+			if(timeToStart <= 120)
+				bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
+			else
+				bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
 			countDownStarted = true;
 			funMatch = true;
 		}

@@ -61,11 +61,11 @@ Version:
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 5;
-const int BUILD = 54;
+const int BUILD = 55;
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.5 (54)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.5 (55)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -81,9 +81,10 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pub
 		}
 		else //Something went wrong
 		{
-			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"The following error has occured while reporting the match:");
+			bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,"*** WARNING ***");
+			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"*** The following error has occured while reporting the match: ***");
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
-			bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,"Please contact a league admin or referee with the error and the match result.");
+			bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,"*** Please contact a league admin or referee with the error and the match result. ***");
 			bz_debugMessage(DEBUG,"The following error has occured while reporting the match:");
 			bz_debugMessagef(DEBUG,"%s",data);
 		}
@@ -91,7 +92,7 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pub
 	int loadConfig(const char *cmdLine);
 	bool toBool(std::string var);
 	
-	bool officialMatch, matchCanceled, countDownStarted, funMatch, rotLeague;
+	bool officialMatch, matchCanceled, countDownStarted, funMatch, rotLeague, gameoverReport;
 	double matchStartTime;
 	int DEBUG, gracePeriod;
 	std::string URL, map;
@@ -128,6 +129,7 @@ int matchOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurati
 	//Extract all the data in the configuration file and assign it to plugin variables
 	rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
 	mapchangePath = (config.item(section, "MAPCHANGE_PATH")).c_str();
+	gameoverReport = toBool(config.item(section, "GAMEOVER_REPORT"));
 	URL = config.item(section, "WEBSITE_URL");
 	gracePeriod = atoi((config.item(section, "GRACE_PERIOD")).c_str());
 	DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
@@ -210,9 +212,9 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
 			std::string command = commandData->message.c_str(); //Use std::string for quick reference
 			
-			if((command.compare("/gameover") == 0 || command.compare("/superkill") == 0) && (bz_hasPerm(commandData->from,"ENDGAME") || bz_hasPerm(commandData->from,"SUPERKILL"))) //Check if they did a /gameover or /superkill
+			if((command.compare("/gameover") == 0 || command.compare("/superkill") == 0) && (bz_hasPerm(commandData->from,"ENDGAME") || bz_hasPerm(commandData->from,"SUPERKILL")) && !gameoverReport) //Check if they did a /gameover or /superkill
 			{
-				if(officialMatch) //Only announce that the match was canceled if it's an official match
+				if(officialMatch && bz_isCountDownActive) //Only announce that the match was canceled if it's an official match
 				{
 					bz_debugMessagef(DEBUG,"Match Over Seer: Official match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 					bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Official match canceled by %s",playerData->callsign.c_str());
@@ -231,14 +233,14 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			countDownStarted = false;
 			funMatch = false;
 			
-			if(matchCanceled && officialMatch) //The match was canceled via /gameover or /superkill
+			if(matchCanceled && officialMatch && !gameoverReport) //The match was canceled via /gameover or /superkill
 			{
 				officialMatch = false; //Match is over
 				matchCanceled = false; //Reset the variable for next usage
 				bz_debugMessage(DEBUG,"Match Over Seer: Official match was not reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Official match was not reported.");
 			}
-			else if (officialMatch)
+			else if (officialMatch && gameoverReport)
 			{
 				officialMatch = false; //Match is over
 				time_t t = time(NULL); //Get the current time
@@ -387,7 +389,7 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			officialMatch = true; //Notify the plugin that the match is official
 			bz_debugMessagef(DEBUG,"Match Over Seer: Official match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Official match started by %s.",playerData->callsign.c_str());
-			if(timeToStart <= 120)
+			if(timeToStart <= 120 && timeToStart > 5)
 				bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
 			else
 				bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
@@ -418,7 +420,7 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 		{
 			bz_debugMessagef(DEBUG,"Match Over Seer: Fun match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Fun match started by %s.",playerData->callsign.c_str());
-			if(timeToStart <= 120)
+			if(timeToStart <= 120 && timeToStart > 5)
 				bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
 			else
 				bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match

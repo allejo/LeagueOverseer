@@ -150,7 +150,7 @@ int matchOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurati
 		bz_debugMessage(0, "*** Match Over Seer: No grace period was choosen. ***");
 		bz_shutdown();
 	}
-	if (DEBUG > 4 || DEBUG < 0)
+	if (DEBUG >= 4 || DEBUG <= 0)
 	{
 		bz_debugMessage(0, "*** Match Over Seer: You have selected an invalid debug level. ***");
 		bz_shutdown();

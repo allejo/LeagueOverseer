@@ -61,11 +61,11 @@ Version:
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 5;
-const int BUILD = 55;
+const int BUILD = 56;
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.5 (55)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.5 (56)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -359,16 +359,16 @@ void matchOverSeer::Event(bz_EventData *eventData)
 		{
 			int totaltanks = bz_getTeamCount(eRogueTeam) + bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
 			
-			if (totaltanks == 0 && (!officialMatch && !matchCanceled && !countDownStarted && !funMatch))
+			if (totaltanks == 0)
 			{
 				//Incase a boolean gets messed up in the plugin, reset all the plugin variables when there are no players (Observers excluded)
-				officialMatch=false;
-				matchCanceled=false;
-				countDownStarted=false;
-				funMatch=false;
+				if (officialMatch) officialMatch=false;
+				if (matchCanceled) matchCanceled=false;
+				if (countDownStarted) countDownStarted=false;
+				if (funMatch) funMatch=false;
 				
 				//This should never happen but just incase the countdown is going when there are no tanks 
-				if(bz_isCountDownActive)
+				if(bz_isCountDownActive())
 					bz_gameOver(253,eObservers);
 			}
 		}
@@ -384,7 +384,9 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 	
 	if(command == "official") //Someone used the /official command
 	{
-		if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !bz_isCountDownActive() && !countDownStarted) //Check the user is not an obs and is a league member
+		if(bz_getTeamCount(eRedTeam) < 2 || bz_getTeamCount(eGreenTeam) < 2)
+			bz_sendTextMessage(BZ_SERVER,playerID,"You may not have an official match with less than 2 players per team.");
+		else if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !bz_isCountDownActive() && !countDownStarted) //Check the user is not an obs and is a league member
 		{
 			officialMatch = true; //Notify the plugin that the match is official
 			bz_debugMessagef(DEBUG,"Match Over Seer: Official match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());

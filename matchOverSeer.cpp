@@ -43,7 +43,7 @@ License:
 BSD
 
 Version:
-0.9.6 [Codename: XMAS Miracle]
+0.9.7 [Codename: Miracle on BZth street]
 */
 
 #include <stdio.h>
@@ -60,12 +60,12 @@ Version:
 //Define plugin version numbering
 const int MAJOR = 0;
 const int MINOR = 9;
-const int REV = 6;
-const int BUILD = 58;
+const int REV = 7;
+const int BUILD = 59;
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.6 (58)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.7 (59)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -74,7 +74,7 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pub
 		std::string siteData = (char*)(data); //Convert the data to a std::string
 		siteData = bz_tolower(siteData.c_str());
 		
-		if(std::string::npos != siteData.find("Match entered")) //The plugin reported the match successfully
+		if(siteData.find("entered") >= 0) //The plugin reported the match successfully
 		{
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
 			bz_debugMessagef(DEBUG,"%s",data);
@@ -135,11 +135,6 @@ int matchOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurati
 	DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
 	
 	//Check for errors in the configuration data. If there is an error, shut down the server
-	if (rotLeague && (mapchangePath == "/path/to/mapchange.out" || mapchangePath == ""))
-	{
-		bz_debugMessage(0, "*** Match Over Seer: The path to the mapchange.out file was not choosen. ***");
-		bz_shutdown();
-	}
 	if (URL == "")
 	{
 		bz_debugMessage(0, "*** Match Over Seer: No URL was choosen to report matches. ***");
@@ -269,8 +264,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				std::string matchTime = MT.str();
 				
 				//Create the syntax of the parameters that is going to be sent via a URL
-				matchToSend = std::string("redTeamWins=") + std::string(bz_urlEncode(greenTeamWins.c_str())) + 
-				std::string("&greenTeamWins=") + std::string(bz_urlEncode(redTeamWins.c_str())) + 
+				matchToSend = std::string("redTeamWins=") + std::string(bz_urlEncode(redTeamWins.c_str())) + 
+				std::string("&greenTeamWins=") + std::string(bz_urlEncode(greenTeamWins.c_str())) + 
 				std::string("&matchTime=") + std::string(bz_urlEncode(matchTime.c_str())) + 
 				std::string("&matchDate=") + std::string(bz_urlEncode(match_date));
 				

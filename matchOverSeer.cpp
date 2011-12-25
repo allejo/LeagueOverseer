@@ -43,7 +43,7 @@ License:
 BSD
 
 Version:
-0.9.5 [Codename: Why Me?]
+0.9.6 [Codename: XMAS Miracle]
 */
 
 #include <stdio.h>
@@ -60,12 +60,12 @@ Version:
 //Define plugin version numbering
 const int MAJOR = 0;
 const int MINOR = 9;
-const int REV = 5;
-const int BUILD = 56;
+const int REV = 6;
+const int BUILD = 58;
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 0.9.5 (56)";}
+	virtual const char* Name (){return "Match Over Seer 0.9.6 (58)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -74,7 +74,7 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pub
 		std::string siteData = (char*)(data); //Convert the data to a std::string
 		siteData = bz_tolower(siteData.c_str());
 		
-		if(std::string::npos != siteData.find("success")) //The plugin reported the match successfully
+		if(std::string::npos != siteData.find("Match entered")) //The plugin reported the match successfully
 		{
 			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
 			bz_debugMessagef(DEBUG,"%s",data);
@@ -94,7 +94,7 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pub
 	
 	bool officialMatch, matchCanceled, countDownStarted, funMatch, rotLeague, gameoverReport;
 	double matchStartTime;
-	int DEBUG, gracePeriod;
+	int DEBUG, gracePeriod, RTW, GTW;
 	std::string URL, map;
 	const char* mapchangePath; 
 	
@@ -166,6 +166,7 @@ void matchOverSeer::Init ( const char* commandLine )
 	Register(bz_eSlashCommandEvent);
 	Register(bz_ePlayerJoinEvent);
 	Register(bz_eTickEvent);
+	Register(bz_eCaptureEvent);
 
 	bz_registerCustomSlashCommand("official", this);
 	bz_registerCustomSlashCommand("fm",this);
@@ -175,6 +176,8 @@ void matchOverSeer::Init ( const char* commandLine )
 	matchCanceled=false;
 	countDownStarted=false;
 	funMatch=false;
+	RTW = 0;
+	GTW = 0;
 
 	loadConfig(commandLine); //Load the configuration data when the plugin is loaded
 	
@@ -212,7 +215,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
 			std::string command = commandData->message.c_str(); //Use std::string for quick reference
 			
-			if((command.compare("/gameover") == 0 || command.compare("/superkill") == 0) && (bz_hasPerm(commandData->from,"ENDGAME") || bz_hasPerm(commandData->from,"SUPERKILL")) && !gameoverReport) //Check if they did a /gameover or /superkill
+			if((command.compare("/gameover") == 0 || command.compare("/superkill") == 0) && (bz_hasPerm(commandData->from,"ENDGAME") || bz_hasPerm(commandData->from,"SUPERKILL")) && gameoverReport) //Check if they did a /gameover or /superkill
 			{
 				if(officialMatch && bz_isCountDownActive) //Only announce that the match was canceled if it's an official match
 				{
@@ -237,10 +240,12 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			{
 				officialMatch = false; //Match is over
 				matchCanceled = false; //Reset the variable for next usage
+				RTW = 0;
+				GTW = 0;
 				bz_debugMessage(DEBUG,"Match Over Seer: Official match was not reported.");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Official match was not reported.");
 			}
-			else if (officialMatch && gameoverReport)
+			else if (officialMatch)
 			{
 				officialMatch = false; //Match is over
 				time_t t = time(NULL); //Get the current time
@@ -250,17 +255,17 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				sprintf(match_date, "%02d-%02d-%02d %02d:%02d:%02d", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec); //Format the date to -> year-month-day hour:minute:second
 	
 				//Convert ints to std::string with std::ostringstream
-				std::ostringstream RTW;
-				RTW << (bz_getTeamLosses(eRedTeam));
-				std::ostringstream GTW;
-				GTW << (bz_getTeamLosses(eGreenTeam));
+				std::ostringstream myRTW;
+				myRTW << (RTW);
+				std::ostringstream myGTW;
+				myGTW << (GTW);
 				std::ostringstream MT;
 				MT << (bz_getTimeLimit());
 				
 				//Keep references to values for quick reference
 				std::string matchToSend = "";
-				std::string redTeamWins = RTW.str();
-				std::string greenTeamWins = GTW.str();
+				std::string redTeamWins = myRTW.str();
+				std::string greenTeamWins = myGTW.str();
 				std::string matchTime = MT.str();
 				
 				//Create the syntax of the parameters that is going to be sent via a URL
@@ -297,6 +302,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 
 				matchRedParticipants.clear();
 				matchGreenParticipants.clear();
+				RTW = 0;
+				GTW = 0;
 			}
 			else
 			{
@@ -313,6 +320,9 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			{
 				bz_APIIntList *playerList = bz_newIntList();
 				bz_getPlayerIndexList(playerList);
+				
+				RTW = 0;
+				GTW = 0;
 				
 				for ( unsigned int i = 0; i < playerList->size(); i++ ){
 					bz_BasePlayerRecord *playerTeam = bz_getPlayerByIndex(playerList->get(i));
@@ -349,9 +359,9 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
 			
 			if((bz_isCountDownActive() || bz_isCountDownInProgress()) && officialMatch) //If there is an official match in progress, notify others who join
-				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently an official match in progress, please be respectful.");
+				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");
 			else if((bz_isCountDownActive() || bz_isCountDownInProgress()) && (funMatch || !countDownStarted)) //If there is a fun match in progress, notify others who join
-				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "There is currently a fun match in progress, please be respectful.");
+				bz_sendTextMessage(BZ_SERVER,joinData->playerID, "*** There is currently a fun match in progress, please be respectful. ***");
 		}
 		break;
 		
@@ -362,16 +372,33 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			if (totaltanks == 0)
 			{
 				//Incase a boolean gets messed up in the plugin, reset all the plugin variables when there are no players (Observers excluded)
-				if (officialMatch) officialMatch=false;
-				if (matchCanceled) matchCanceled=false;
-				if (countDownStarted) countDownStarted=false;
-				if (funMatch) funMatch=false;
+				if (officialMatch) officialMatch = false;
+				if (matchCanceled) matchCanceled = false;
+				if (countDownStarted) countDownStarted = false;
+				if (funMatch) funMatch = false;
+				if (RTW > 0) RTW = 0;
+				if (GTW > 0) GTW = 0;
 				
 				//This should never happen but just incase the countdown is going when there are no tanks 
 				if(bz_isCountDownActive())
 					bz_gameOver(253,eObservers);
 			}
 		}
+		break;
+		
+		case bz_eCaptureEvent:
+		{
+			bz_CTFCaptureEventData_V1 *capData = (bz_CTFCaptureEventData_V1*)eventData;
+			
+			if(officialMatch)
+			{
+				if(capData->teamCapped == eRedTeam)
+					GTW++;
+				else if(capData->teamCapped == eGreenTeam)
+					RTW++;
+			}
+		}
+		break;
 		
 		default:break; //I never really understand the point of this... -.-"
 	}

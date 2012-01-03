@@ -56,6 +56,7 @@ Version:
 #include <algorithm>
 #include <stdlib.h>
 #include <ctype.h>
+#include <string.h>
 
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
@@ -64,47 +65,20 @@ Version:
 const int MAJOR = 1;
 const int MINOR = 0;
 const int REV = 0;
-const int BUILD = 60;
+const int BUILD = 61;
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 1.0.0 (60)";}
+	virtual const char* Name (){return "Match Over Seer 1.0.0 (61)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
 	virtual void Cleanup ();
-	virtual void URLDone( const char* URL, void* data, unsigned int size, bool complete )
-	{
-		std::string siteData = (char*)(data); //Convert the data to a std::string
-		siteData = bz_tolower(siteData.c_str());
-		
-		if(siteData.find("entered") >= 0 && URL == REPORT_URL) //The plugin reported the match successfully
-		{
-			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
-			bz_debugMessagef(DEBUG,"%s",data);
-		}
-		else if(URL == REPORT_URL) //Something went wrong while reporting the match
-		{
-			bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,"*** WARNING ***");
-			bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,"*** The following error has occured while reporting the match: ***");
-			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",data);
-			bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,"*** Please contact a league admin or referee with the error and the match result. ***");
-			bz_debugMessage(DEBUG,"DEBUG::Match Over Seer::The following error has occured while reporting the match:");
-			bz_debugMessagef(DEBUG,"%s",data);
-		}
-		else if(siteData.find("team") >= 0 && URL == QUERY_URL) //Someone queried for teams
-		{
-			bz_sendTextMessagef(BZ_SERVER,_playerIDs.at(0)._playerID,"%s",data);
-			_playerIDs.erase(_playerIDs.begin(),_playerIDs.begin()+1);
-		}
-		else if(URL == QUERY_URL) //Something went wrong with the team query
-		{
-			bz_sendTextMessage(BZ_SERVER,_playerIDs.at(0)._playerID, "There was error while contacting the server. Please try again later.");
-			_playerIDs.erase(_playerIDs.begin(),_playerIDs.begin()+1);
-		}
-	}
-	int loadConfig(const char *cmdLine);
-	bool toBool(std::string var);
+	virtual void URLDone( const char* URL, void* data, unsigned int size, bool complete );
+	virtual void URLTimeout(const char* URL, int errorCode);
+	virtual void URLError(const char* URL, int errorCode, const char *errorString);
+	virtual int loadConfig(const char *cmdLine);
+	virtual bool toBool(std::string var);
 	
 	//All the variables that will be used in the plugin
 	bool officialMatch, matchCanceled, countDownStarted, funMatch, rotLeague, gameoverReport;
@@ -117,6 +91,11 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pub
 		int _playerID;
 	};
 	std::vector<teamQueries> _playerIDs;
+	
+	struct urlQueries { //Stores the order of match reports and team queries
+		std::string _URL;
+	};
+	std::vector<urlQueries> _urlQuery;
 	
 	struct matchRedPlayers { //Maintains the players that started the match on the red team
 		bz_ApiString callsign;
@@ -132,6 +111,80 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pub
 BZ_PLUGIN(matchOverSeer);
 
 double lastQuery[256] = {0}; //Initialize the array with all 0s
+
+void matchOverSeer::URLDone( const char* URL, void* data, unsigned int size, bool complete ) //Everything went fine with the report
+{
+	std::string siteData = (char*)(data); //Convert the data to a std::string
+	
+	if(_urlQuery.at(0)._URL.compare("query") == 0 && URL == QUERY_URL) //Someone queried for teams
+	{	
+		char* token; //Store tokens
+		bz_sendTextMessage(BZ_SERVER,_playerIDs.at(0)._playerID," Team List");
+		bz_sendTextMessage(BZ_SERVER,_playerIDs.at(0)._playerID," ---------");
+		
+		token = strtok ((char*)data,"\n"); //Tokenize
+		while (token != NULL)
+		{
+			if(strchr(token,'*') != NULL)
+				bz_sendTextMessagef(BZ_SERVER,_playerIDs.at(0)._playerID," %s",token); //Print out team name
+			else
+				bz_sendTextMessagef(BZ_SERVER,_playerIDs.at(0)._playerID,"   %s",token); //Print out callsign
+			token = strtok (NULL, "\n");
+		}
+		
+		_urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+		_playerIDs.erase(_playerIDs.begin(),_playerIDs.begin()+1); //Tell the plugin that this player has received his/her information, move to the next player
+	}
+	else if(_urlQuery.at(0)._URL.compare("match") == 0 && URL == REPORT_URL) //The plugin reported the match successfully
+	{
+		bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",(char*)data);
+		bz_debugMessagef(DEBUG,"%s",(char*)data);
+		
+		_urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+	}
+}
+
+void matchOverSeer::URLTimeout(const char* URL, int errorCode) //The league website is down or is not responding, the request timed out
+{
+	if(_urlQuery.at(0)._URL.compare("match") == 0 && URL == REPORT_URL) //Something went wrong while reporting the match, it timed out
+	{
+		bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- WARNING --<");
+		bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- The request to report the match has timed out. --<");
+		bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- Please contact a league admin or referee with the match result. --<");
+		bz_debugMessage(DEBUG,"DEBUG::Match Over Seer::The request to report the match has timed out.");
+		
+		_urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+	}
+	else if(_urlQuery.at(0)._URL.compare("query") == 0 && URL == QUERY_URL) //Something went wrong with the team query, it timed out
+	{
+		bz_sendTextMessage(BZ_SERVER,_playerIDs.at(0)._playerID, "The request to query the league website has timed out. Please try again later.");
+		
+		_urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+		_playerIDs.erase(_playerIDs.begin(),_playerIDs.begin()+1); //Tell the plugin that this player has received his/her information, move to the next player
+	}
+}
+
+void matchOverSeer::URLError(const char* URL, int errorCode, const char *errorString) //The server owner must have set up the URLs wrong because this shouldn't happen
+{
+	if(_urlQuery.at(0)._URL.compare("match") == 0 && URL == REPORT_URL) //Something went wrong while reporting the match, no website found
+	{
+		bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- WARNING --<");
+		bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,">-- Match report failed with error code %i - %s --<",errorCode,errorString);
+		bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- Please contact a league admin or referee with this error and the match result. --<");
+		bz_debugMessage(DEBUG,"DEBUG::Match Over Seer::Match report failed with the following error:");
+		bz_debugMessagef(DEBUG,"DEBUG::Match Over Seer::Error code: %i - %s",errorCode,errorString);
+		
+		_urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+	}
+	else if(_urlQuery.at(0)._URL.compare("query") == 0 && URL == QUERY_URL) //Something went wrong with the team query, no website found
+	{
+		bz_sendTextMessagef(BZ_SERVER,_playerIDs.at(0)._playerID, "Your team query failed with error code %i - %s",errorCode,errorString);
+		bz_sendTextMessagef(BZ_SERVER,_playerIDs.at(0)._playerID, "Please contact a league admin with this error as this should not happen.");
+		
+		_urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+		_playerIDs.erase(_playerIDs.begin(),_playerIDs.begin()+1); //Tell the plugin that this player has received his/her information, move to the next player
+	}
+}
 
 bool matchOverSeer::toBool(std::string var) //Turn std::string into a boolean value
 {
@@ -333,6 +386,10 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				bz_debugMessagef(DEBUG,"DEBUG::Match Over Seer::Reporting match data...");
 				bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Reporting match...");
 				
+				urlQueries uq; //Make a reference to the url query list
+				uq._URL = "match"; //Tell the query list that we have a match to report on the todo list
+				_urlQuery.push_back(uq); //Push the information to the todo list
+				
 				bz_addURLJob(REPORT_URL.c_str(), this, matchToSend.c_str()); //Send the match data to the league website
 
 				//Clear all the structures and scores for next match
@@ -454,8 +511,10 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 	bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(playerID);
 	
 	if(command == "official") //Someone used the /official command
-	{
-		if(bz_getTeamCount(eRedTeam) < 2 || bz_getTeamCount(eGreenTeam) < 2) //An official match cannot be 1v1 or 2v1
+	{	
+		if(playerData->team == eObservers) //Observers can't start matches
+			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
+		else if(bz_getTeamCount(eRedTeam) < 2 || bz_getTeamCount(eGreenTeam) < 2) //An official match cannot be 1v1 or 2v1
 			bz_sendTextMessage(BZ_SERVER,playerID,"You may not have an official match with less than 2 players per team.");
 		else if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !bz_isCountDownActive() && !countDownStarted) //Check the user is not an obs and is a league member
 		{
@@ -478,8 +537,6 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			bz_sendTextMessage(BZ_SERVER,playerID,"You may no longer request an official match.");
 		else if(funMatch) //A fun match cannot be declared an official match
 			bz_sendTextMessage(BZ_SERVER,playerID,"Fun matches cannot be turned into official matches.");
-		else if(playerData->team == eObservers) //Observers can't start matches
-			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
 		else if(!playerData->verified || !bz_hasPerm(playerID,"spawn")) //If they can't spawn, they aren't a league player so they can't start a match
 			bz_sendTextMessage(BZ_SERVER,playerID,"Only registered league players may start an official match.");
 		else if((bz_isCountDownActive() || bz_isCountDownInProgress()) && countDownStarted) //A countdown is in progress already
@@ -518,8 +575,12 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			else
 			{
 				teamQueries tq; //Make a reference to the team query structure
-				tq._playerID = playerID;
+				tq._playerID = playerID; //Add the player to the list of players who have requested a query
 				_playerIDs.push_back(tq); //Push the player id into a structure
+				
+				urlQueries uq; //Make a reference to the url query structure
+				uq._URL = "query"; //Tell the plugin that we have a query in our todo list
+				_urlQuery.push_back(uq); //Tell the structure that a team query was requested
 				
 				lastQuery[playerID] = bz_getCurrentTime(); //Set the time of the query in order to avoid spam or attacking the server
 				std::string playersToSend = std::string("players="); //Create the string to send

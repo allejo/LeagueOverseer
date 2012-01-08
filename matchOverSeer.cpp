@@ -36,6 +36,7 @@ Slash Commands:
 /official
 /fm
 /teamlist
+/cancel
 
 Parameters:
 /path/to/matchOverSeer.so,/path/to/matchOverSeer.cfg
@@ -44,7 +45,7 @@ License:
 BSD
 
 Version:
-1.0.0 [Codename: I blame brad]
+1.0.1 [Codename: I blame brad yet again]
 */
 
 #include <stdio.h>
@@ -64,12 +65,12 @@ Version:
 //Define plugin version numbering
 const int MAJOR = 1;
 const int MINOR = 0;
-const int REV = 0;
-const int BUILD = 61;
+const int REV = 1;
+const int BUILD = 62;
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 1.0.0 (61)";}
+	virtual const char* Name (){return "Match Over Seer 1.0.1 (62)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -243,6 +244,7 @@ void matchOverSeer::Init ( const char* commandLine )
 	bz_registerCustomSlashCommand("official", this);
 	bz_registerCustomSlashCommand("fm",this);
 	bz_registerCustomSlashCommand("teamlist",this);
+	bz_registerCustomSlashCommand("cancel",this);
 	
 	//Set all boolean values for the plugin to false
 	officialMatch=false;
@@ -277,6 +279,7 @@ void matchOverSeer::Cleanup (void)
 	bz_removeCustomSlashCommand("official");
 	bz_removeCustomSlashCommand("fm");
 	bz_removeCustomSlashCommand("teamlist");
+	bz_removeCustomSlashCommand("cancel");
 }
 
 void matchOverSeer::Event(bz_EventData *eventData)
@@ -289,7 +292,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
 			std::string command = commandData->message.c_str(); //Use std::string for quick reference
 			
-			if((command.compare("/gameover") == 0 || command.compare("/superkill") == 0) && (bz_hasPerm(commandData->from,"ENDGAME") || bz_hasPerm(commandData->from,"SUPERKILL")) && gameoverReport) //Check if they did a /gameover or /superkill
+			if(command.compare("/gameover") == 0 && bz_hasPerm(commandData->from,"ENDGAME") && gameoverReport) //Check if they did a /gameover
 			{
 				if(officialMatch && bz_isCountDownActive) //Only announce that the match was canceled if it's an official match
 				{
@@ -606,6 +609,30 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 		}
 		else //Not a league player
 			bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to run the /teamlist command.");
+	}
+	else if(command == "cancel")
+	{
+		if(bz_hasPerm(playerID,"spawn") && (bz_isCountDownActive() || countDownStarted))
+		{
+			bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Match ended by %s",playerData->callsign.c_str());
+			bz_debugMessagef(DEBUG,"DEBUG::Match Over Seer::Match ended by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+			
+			//Reset the server. Cleanly ends a match
+			if (officialMatch) officialMatch = false;
+			if (matchCanceled) matchCanceled = false;
+			if (countDownStarted) countDownStarted = false;
+			if (funMatch) funMatch = false;
+			if (RTW > 0) RTW = 0;
+			if (GTW > 0) GTW = 0;
+		
+			//End the countdown
+			if(bz_isCountDownActive())
+				bz_gameOver(253,eObservers);
+		}
+		else if(!bz_isCountDownActive() || !countDownStarted)
+			bz_sendTextMessage(BZ_SERVER,playerID,"There is no match in progress to cancel.");
+		else //Not a league player
+			bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to run the /cancel command.");
 	}
 	
 	bz_freePlayerRecord(playerData);	

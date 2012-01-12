@@ -17,6 +17,8 @@ checking the server's IP.
 ### Slash Commands ###
 /official <number of seconds>
 /fm <number of seconds>
+/teamlist
+/cancel
 
 The number seconds following the slash command is the same as /countdown <seconds>
 If there is no number of seconds, 10 seconds is the default number of seconds

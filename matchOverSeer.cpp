@@ -45,7 +45,7 @@ License:
 BSD
 
 Version:
-1.0.1 [Codename: I blame brad yet again]
+1.0.2 [Codename: GU Release]
 */
 
 #include <stdio.h>
@@ -65,12 +65,12 @@ Version:
 //Define plugin version numbering
 const int MAJOR = 1;
 const int MINOR = 0;
-const int REV = 1;
-const int BUILD = 62;
+const int REV = 2;
+const int BUILD = 63;
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 1.0.1 (62)";}
+	virtual const char* Name (){return "Match Over Seer 1.0.2 (63)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -84,7 +84,7 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pub
 	//All the variables that will be used in the plugin
 	bool officialMatch, matchCanceled, countDownStarted, funMatch, rotLeague, gameoverReport;
 	double matchStartTime;
-	int DEBUG, gracePeriod, RTW, GTW;
+	int DEBUG, gracePeriod, RTW, GTW, BTW, PTW;
 	std::string REPORT_URL, QUERY_URL, map;
 	const char* mapchangePath;
 	
@@ -107,6 +107,16 @@ class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pub
 		bz_ApiString callsign;
 	};
 	std::vector<matchGreenPlayers> matchGreenParticipants;
+	
+	struct matchBluePlayers { //Maintains the players that started the match on the blue team
+		bz_ApiString callsign;
+	};
+	std::vector<matchBluePlayers> matchBlueParticipants;
+	
+	struct matchPurplePlayers { //Maintains the players that started the match on the purple team
+		bz_ApiString callsign;
+	};
+	std::vector<matchPurplePlayers> matchPurpleParticipants;
 };
 
 BZ_PLUGIN(matchOverSeer);
@@ -336,6 +346,10 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				myRTW << (RTW);
 				std::ostringstream myGTW;
 				myGTW << (GTW);
+				std::ostringstream myBTW;
+				myBTW << (BTW);
+				std::ostringstream myPTW;
+				myPTW << (PTW);
 				std::ostringstream MT;
 				MT << (bz_getTimeLimit());
 				
@@ -343,47 +357,108 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				std::string matchToSend = "";
 				std::string redTeamWins = myRTW.str();
 				std::string greenTeamWins = myGTW.str();
+				std::string blueTeamWins = myBTW.str();
+				std::string purpleTeamWins = myPTW.str();
 				std::string matchTime = MT.str();
 				
 				//Create the syntax of the parameters that is going to be sent via a URL
-				matchToSend = std::string("redTeamWins=") + std::string(bz_urlEncode(redTeamWins.c_str())) + 
-				std::string("&greenTeamWins=") + std::string(bz_urlEncode(greenTeamWins.c_str())) + 
-				std::string("&matchTime=") + std::string(bz_urlEncode(matchTime.c_str())) + 
+				if (bz_getTeamPlayerLimit(eRedTeam) > 0)
+					matchToSend += std::string("redTeamWins=") + std::string(bz_urlEncode(redTeamWins.c_str()));
+				if (bz_getTeamPlayerLimit(eGreenTeam) > 0)
+					matchToSend += std::string("&greenTeamWins=") + std::string(bz_urlEncode(greenTeamWins.c_str()));
+				if (bz_getTeamPlayerLimit(eBlueTeam) > 0)
+					matchToSend += std::string("&blueTeamWins=") + std::string(bz_urlEncode(blueTeamWins.c_str()));
+				if (bz_getTeamPlayerLimit(ePurpleTeam) > 0)
+					matchToSend += std::string("&purpleTeamWins=") + std::string(bz_urlEncode(purpleTeamWins.c_str()));
+				
+				matchToSend += std::string("&matchTime=") + std::string(bz_urlEncode(matchTime.c_str())) + 
 				std::string("&matchDate=") + std::string(bz_urlEncode(match_date));
 				
 				if(rotLeague) //Only add this parameter if it's a rotational league such as OpenLeague
 					matchToSend += std::string("&mapPlayed=") + std::string(bz_urlEncode(map.c_str()));
 				
-				matchToSend += std::string("&redPlayers=");
-				
-				for (unsigned int i = 0; i < matchRedParticipants.size(); i++) //Add all the red players to the match report
+				if (bz_getTeamPlayerLimit(eRedTeam) > 0)
 				{
-					matchToSend += std::string(bz_urlEncode(matchRedParticipants.at(i).callsign.c_str()));
-					if(i+1 < matchRedParticipants.size()) //Only add a quote if there is another player on the list
-						matchToSend += "\"";
+					matchToSend += std::string("&redPlayers=");
+					
+					for (unsigned int i = 0; i < matchRedParticipants.size(); i++) //Add all the red players to the match report
+					{
+						matchToSend += std::string(bz_urlEncode(matchRedParticipants.at(i).callsign.c_str()));
+						if (i+1 < matchRedParticipants.size()) //Only add a quote if there is another player on the list
+							matchToSend += "\"";
+					}
 				}
 				
-				matchToSend += std::string("&greenPlayers=");
-				
-				for (unsigned int i = 0; i < matchGreenParticipants.size(); i++) //Now add all the green players
+				if (bz_getTeamPlayerLimit(eGreenTeam) > 0)
 				{
-					matchToSend += std::string(bz_urlEncode(matchGreenParticipants.at(i).callsign.c_str()));
-					if(i+1 < matchGreenParticipants.size()) //Only add a quote if there is another player on the list
-						matchToSend += "\"";
+					matchToSend += std::string("&greenPlayers=");
+				
+					for (unsigned int i = 0; i < matchGreenParticipants.size(); i++) //Now add all the green players
+					{
+						matchToSend += std::string(bz_urlEncode(matchGreenParticipants.at(i).callsign.c_str()));
+						if (i+1 < matchGreenParticipants.size()) //Only add a quote if there is another player on the list
+							matchToSend += "\"";
+					}
+				}
+				
+				if (bz_getTeamPlayerLimit(eBlueTeam) > 0)
+				{
+					matchToSend += std::string("&bluePlayers=");
+				
+					for (unsigned int i = 0; i < matchBlueParticipants.size(); i++) //Now add all the green players
+					{
+						matchToSend += std::string(bz_urlEncode(matchBlueParticipants.at(i).callsign.c_str()));
+						if (i+1 < matchBlueParticipants.size()) //Only add a quote if there is another player on the list
+							matchToSend += "\"";
+					}
+				}
+				
+				if (bz_getTeamPlayerLimit(ePurpleTeam) > 0)
+				{
+					matchToSend += std::string("&purplePlayers=");
+				
+					for (unsigned int i = 0; i < matchPurpleParticipants.size(); i++) //Now add all the green players
+					{
+						matchToSend += std::string(bz_urlEncode(matchPurpleParticipants.at(i).callsign.c_str()));
+						if (i+1 < matchPurpleParticipants.size()) //Only add a quote if there is another player on the list
+							matchToSend += "\"";
+					}
 				}
 			
 				//Match data stored in server logs
 				bz_debugMessage(DEBUG,"*** Final Match Data ***");
-				bz_debugMessagef(DEBUG,"Match Time Limit: %s",matchTime.c_str());
+				bz_debugMessagef(DEBUG,"Match Time Limit: %s", matchTime.c_str());
 				bz_debugMessagef(DEBUG,"Match Date: %s", match_date);
 				if(rotLeague)
-					bz_debugMessagef(DEBUG,"Map Played: %s",map.c_str());
-				bz_debugMessagef(DEBUG, "Red Team (%s)",redTeamWins.c_str());
-				for (unsigned int i = 0; i < matchRedParticipants.size(); i++)
-					bz_debugMessagef(DEBUG, "  %s",matchRedParticipants.at(i).callsign.c_str());
-				bz_debugMessagef(DEBUG, "Green Team (%s)",greenTeamWins.c_str());
-				for (unsigned int i = 0; i < matchGreenParticipants.size(); i++)
-					bz_debugMessagef(DEBUG, "  %s",matchGreenParticipants.at(i).callsign.c_str());
+					bz_debugMessagef(DEBUG,"Map Played: %s", map.c_str());
+				if (bz_getTeamPlayerLimit(eRedTeam) > 0)
+				{
+					bz_debugMessagef(DEBUG, "Red Team (%s)", redTeamWins.c_str());
+					for (unsigned int i = 0; i < matchRedParticipants.size(); i++)
+						bz_debugMessagef(DEBUG, "  %s", matchRedParticipants.at(i).callsign.c_str());
+				}
+				
+				if (bz_getTeamPlayerLimit(eGreenTeam) > 0)
+				{
+					bz_debugMessagef(DEBUG, "Green Team (%s)", greenTeamWins.c_str());
+					for (unsigned int i = 0; i < matchGreenParticipants.size(); i++)
+						bz_debugMessagef(DEBUG, "  %s", matchGreenParticipants.at(i).callsign.c_str());
+				}
+				
+				if (bz_getTeamPlayerLimit(eBlueTeam) > 0)
+				{
+					bz_debugMessagef(DEBUG, "Blue Team (%s)", blueTeamWins.c_str());
+					for (unsigned int i = 0; i < matchBlueParticipants.size(); i++)
+						bz_debugMessagef(DEBUG, "  %s",matchBlueParticipants.at(i).callsign.c_str());
+				}
+				
+				if (bz_getTeamPlayerLimit(ePurpleTeam) > 0)
+				{
+					bz_debugMessagef(DEBUG, "Purple Team (%s)", purpleTeamWins.c_str());
+					for (unsigned int i = 0; i < matchPurpleParticipants.size(); i++)
+						bz_debugMessagef(DEBUG, "  %s", matchPurpleParticipants.at(i).callsign.c_str());
+				}
+				
 				bz_debugMessagef(DEBUG,"*** End of Match Data ***");
 				
 				bz_debugMessagef(DEBUG,"DEBUG::Match Over Seer::Reporting match data...");
@@ -398,8 +473,12 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				//Clear all the structures and scores for next match
 				matchRedParticipants.clear();
 				matchGreenParticipants.clear();
+				matchBlueParticipants.clear();
+				matchPurpleParticipants.clear();
 				RTW = 0;
 				GTW = 0;
+				BTW = 0;
+				PTW = 0;
 			}
 			else
 			{
@@ -420,6 +499,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				//Set the team scores to zero just in case
 				RTW = 0;
 				GTW = 0;
+				BTW = 0;
+				PTW = 0;
 				
 				for ( unsigned int i = 0; i < playerList->size(); i++ ){
 					bz_BasePlayerRecord *playerTeam = bz_getPlayerByIndex(playerList->get(i));
@@ -437,6 +518,20 @@ void matchOverSeer::Event(bz_EventData *eventData)
 						matchGreenData.callsign = playerTeam->callsign.c_str(); //Add callsign to structure
 					
 						matchGreenParticipants.push_back(matchGreenData);
+					}
+					else if (bz_getPlayerTeam(playerList->get(i)) == eBlueTeam) //Check if the player is on the green team
+					{
+						matchBluePlayers matchBlueData;
+						matchBlueData.callsign = playerTeam->callsign.c_str(); //Add callsign to structure
+
+						matchBlueParticipants.push_back(matchBlueData);
+					}
+					else if (bz_getPlayerTeam(playerList->get(i)) == ePurpleTeam) //Check if the player is on the green team
+					{
+						matchPurplePlayers matchPurpleData;
+						matchPurpleData.callsign = playerTeam->callsign.c_str(); //Add callsign to structure
+
+						matchPurpleParticipants.push_back(matchPurpleData);
 					}
 					
 					bz_freePlayerRecord(playerTeam);
@@ -482,6 +577,8 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				if (funMatch) funMatch = false;
 				if (RTW > 0) RTW = 0;
 				if (GTW > 0) GTW = 0;
+				if (BTW > 0) BTW = 0;
+				if (PTW > 0) PTW = 0;
 				
 				//This should never happen but just incase the countdown is going when there are no tanks 
 				if(bz_isCountDownActive())
@@ -497,9 +594,29 @@ void matchOverSeer::Event(bz_EventData *eventData)
 			if(officialMatch) //Only keep score if it's official
 			{
 				if(capData->teamCapped == eRedTeam) //Green team caps
+				{
 					GTW++;
+					BTW++;
+					PTW++;
+				}
 				else if(capData->teamCapped == eGreenTeam) //Red team caps
+				{
 					RTW++;
+					BTW++;
+					PTW++;
+				}
+				else if(capData->teamCapped == eBlueTeam) //Red team caps
+				{
+					RTW++;
+					GTW++;
+					PTW++;
+				}
+				else if(capData->teamCapped == ePurpleTeam) //Red team caps
+				{
+					RTW++;
+					GTW++;
+					BTW++;
+				}
 			}
 		}
 		break;
@@ -517,8 +634,8 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 	{	
 		if(playerData->team == eObservers) //Observers can't start matches
 			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
-		else if(bz_getTeamCount(eRedTeam) < 2 || bz_getTeamCount(eGreenTeam) < 2) //An official match cannot be 1v1 or 2v1
-			bz_sendTextMessage(BZ_SERVER,playerID,"You may not have an official match with less than 2 players per team.");
+		/*else if(bz_getTeamCount(eRedTeam) < 2 || bz_getTeamCount(eGreenTeam) < 2 || bz_getTeamCount(eBlueTeam) < 2 || bz_getTeamCount(ePurpleTeam) < 2) //An official match cannot be 1v1 or 2v1
+			bz_sendTextMessage(BZ_SERVER,playerID,"You may not have an official match with less than 2 players per team.");*/
 		else if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !bz_isCountDownActive() && !countDownStarted) //Check the user is not an obs and is a league member
 		{
 			officialMatch = true; //Notify the plugin that the match is official
@@ -624,6 +741,8 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 			if (funMatch) funMatch = false;
 			if (RTW > 0) RTW = 0;
 			if (GTW > 0) GTW = 0;
+			if (BTW > 0) BTW = 0;
+			if (PTW > 0) PTW = 0;
 		
 			//End the countdown
 			if(bz_isCountDownActive())

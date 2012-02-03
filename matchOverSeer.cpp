@@ -66,11 +66,11 @@ Version:
 const int MAJOR = 1;
 const int MINOR = 0;
 const int REV = 2;
-const int BUILD = 63;
+const int BUILD = 64;
 
 class matchOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-	virtual const char* Name (){return "Match Over Seer 1.0.2 (63)";}
+	virtual const char* Name (){return "Match Over Seer 1.0.2 (64)";}
 	virtual void Init ( const char* config);	
 	virtual void Event( bz_EventData *eventData );
 	virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -502,7 +502,7 @@ void matchOverSeer::Event(bz_EventData *eventData)
 				BTW = 0;
 				PTW = 0;
 				
-				for ( unsigned int i = 0; i < playerList->size(); i++ ){
+				for (unsigned int i = 0; i < playerList->size(); i++){
 					bz_BasePlayerRecord *playerTeam = bz_getPlayerByIndex(playerList->get(i));
 					
 					if (bz_getPlayerTeam(playerList->get(i)) == eRedTeam) //Check if the player is on the red team
@@ -519,14 +519,14 @@ void matchOverSeer::Event(bz_EventData *eventData)
 					
 						matchGreenParticipants.push_back(matchGreenData);
 					}
-					else if (bz_getPlayerTeam(playerList->get(i)) == eBlueTeam) //Check if the player is on the green team
+					else if (bz_getPlayerTeam(playerList->get(i)) == eBlueTeam) //Check if the player is on the blue team
 					{
 						matchBluePlayers matchBlueData;
 						matchBlueData.callsign = playerTeam->callsign.c_str(); //Add callsign to structure
 
 						matchBlueParticipants.push_back(matchBlueData);
 					}
-					else if (bz_getPlayerTeam(playerList->get(i)) == ePurpleTeam) //Check if the player is on the green team
+					else if (bz_getPlayerTeam(playerList->get(i)) == ePurpleTeam) //Check if the player is on the purple team
 					{
 						matchPurplePlayers matchPurpleData;
 						matchPurpleData.callsign = playerTeam->callsign.c_str(); //Add callsign to structure
@@ -634,8 +634,8 @@ bool matchOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStrin
 	{	
 		if(playerData->team == eObservers) //Observers can't start matches
 			bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
-		/*else if(bz_getTeamCount(eRedTeam) < 2 || bz_getTeamCount(eGreenTeam) < 2 || bz_getTeamCount(eBlueTeam) < 2 || bz_getTeamCount(ePurpleTeam) < 2) //An official match cannot be 1v1 or 2v1
-			bz_sendTextMessage(BZ_SERVER,playerID,"You may not have an official match with less than 2 players per team.");*/
+		else if(bz_getTeamCount(eRedTeam) < 2 || bz_getTeamCount(eGreenTeam) < 2 || bz_getTeamCount(eBlueTeam) < 2 || bz_getTeamCount(ePurpleTeam) < 2) //An official match cannot be 1v1 or 2v1
+			bz_sendTextMessage(BZ_SERVER,playerID,"You may not have an official match with less than 2 players per team.");
 		else if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !bz_isCountDownActive() && !countDownStarted) //Check the user is not an obs and is a league member
 		{
 			officialMatch = true; //Notify the plugin that the match is official

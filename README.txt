@@ -2,6 +2,8 @@
 
 ### Author ###
 Vlad Jimenez (allejo)
+email: allejo.bzflag@gmail.com
+irc:   allejo
 
 ### License ###
 BSD
@@ -26,5 +28,5 @@ If there is no number of seconds, 10 seconds is the default number of seconds
 ### How To Use ###
 -loadplugin /path/to/matchOverSeer.so,/path/to/matchOverSeer.cfg
 
-### FAQ ###
+### More Info ###
 For more information, please visit: https://github.com/allejo/matchOverSeer

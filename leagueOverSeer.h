@@ -26,8 +26,8 @@ League Over Seer Plug-in
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-
-#include "leagueOverSeer.h"
+#include "bzfsAPI.h"
+#include "plugin_utils.h"
 
 //Define plugin version numbering
 const int MAJOR = 0;
@@ -51,6 +51,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
   //All the variables that will be used in the plugin
   bool officialMatch, matchCanceled, countDownStarted, funMatch, rotLeague, gameoverReport;
   double matchStartTime;
+  double lastQuery[256];
   int DEBUG, gracePeriod, RTW, GTW, BTW, PTW;
   std::string REPORT_URL, QUERY_URL, map;
   const char* mapchangePath;
@@ -85,7 +86,3 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
   };
   std::vector<matchPurplePlayers> matchPurpleParticipants;
 };
-
-BZ_PLUGIN(leagueOverSeer);
-
-double lastQuery[256] = {0}; //Initialize the array with all 0s

@@ -16,10 +16,9 @@ League Over Seer Plug-in
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "bzfsAPI.h"
-#include "plugin_utils.h"
-
 #include "leagueOverSeer.h"
+
+BZ_PLUGIN(leagueOverSeer);
 
 void leagueOverSeer::Init ( const char* commandLine )
 {

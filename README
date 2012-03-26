@@ -4,7 +4,9 @@ Vlad Jimenez (allejo)
 
 Description:
 A plug-in used by leagues in order to communicate data between the servers
-and the league websites.
+and the league websites. The plug-in will handle players' mottos to be
+changed according to their team name and it will handle automatic match
+reports.
 
 Slash Commands:
 /cancel

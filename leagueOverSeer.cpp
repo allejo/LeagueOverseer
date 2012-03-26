@@ -17,7 +17,7 @@ League Over Seer Plug-in
 */
 
 #include "leagueOverSeer.h"
-//hi allejo
+//  // / 
 BZ_PLUGIN(leagueOverSeer);
 
 void leagueOverSeer::Init ( const char* commandLine )

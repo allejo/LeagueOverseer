@@ -16,7 +16,7 @@ Slash Commands:
 /spawn
 
 Parameters:
-/path/to/leagueOverSeer.so,/path/to/leagueOverSeer.cfg
+/path/to/leagueOverSeer.so, /path/to/leagueOverSeer.cfg
 
 License:
 GPL 3.0

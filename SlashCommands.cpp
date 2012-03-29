@@ -149,6 +149,27 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     else //Not a league player
       bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to run the /cancel command.");
   }
+  else if(command == "pause") 
+  {
+    if(bz_isCountDownActive() && countDownStarted && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified)
+    {
+      bz_pauseCountdown(playerData->callsign.c_str());
+      
+      bz_setBZDBDouble("_tankSpeed", 0, 0, false);
+      bz_setBZDBDouble("_shotSpeed", 0, 0, false);
+      
+      bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Countdown paused by ", playerData->callsign.c_str());
+    }
+	}
+  else if(command == "resume") 
+  {
+    bz_resumeCountdown(playerData->callsign.c_str());
+    
+    bz_setBZDBDouble("_tankSpeed", 0, 0, false);
+    bz_setBZDBDouble("_shotSpeed", 0, 0, false);
+    
+    bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Countdown Resumed by ", playerData->callsign.c_str());
+  }
   else if(command == "spawn") 
   {
     if(playerData->admin) {

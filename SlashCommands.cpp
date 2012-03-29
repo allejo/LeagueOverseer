@@ -17,11 +17,11 @@ League Over Seer Plug-in
 */
 
 #include "bzfsAPI.h"
-#include "plugin_utils.h"
-
+//#include "plugin_utils.h"
+#include "../../src/bzfs/GameKeeper.h"
 #include "leagueOverSeer.h"
 
-bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiString /*message*/, bz_APIStringList *params)
+bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiString message, bz_APIStringList *params)
 {
   int timeToStart = atoi(params->get(0).c_str());
   bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(playerID);
@@ -149,6 +149,33 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     else //Not a league player
       bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to run the /cancel command.");
   }
-  
+  else if(command == "spawn") 
+  {
+    if(playerData->admin) {
+      if(params->size() == 1) {
+        const char* msg = message.c_str() + 6;
+        while ((*msg != '\0') && isspace(*msg)) msg++;
+
+        if(isdigit(msg[0])) {
+          int grantee = (int) atoi(params->get(0).c_str());
+	  const char* granterCallsign = bz_getPlayerCallsign(playerID);
+	  const char* granteeCallsign = bz_getPlayerCallsign(grantee);
+                 
+          bz_grantPerm(grantee, "spawn");
+          bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s Gave spawn perms to %s", granterCallsign, granteeCallsign); 
+        } else if(!isdigit(msg[0])) {
+          int grantee = GameKeeper::Player::getPlayerIDByName(params->get(0).c_str());
+	  const char* granterCallsign = bz_getPlayerCallsign(playerID);
+	  const char* granteeCallsign = bz_getPlayerCallsign(grantee);
+
+          bz_grantPerm(grantee, "spawn");
+	  bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s Gave spawn perms to %s", granterCallsign, granteeCallsign); 
+        }
+      }
+    }
+    else if(!playerData->admin) {
+      bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to use that command.");
+    }
+  }
   bz_freePlayerRecord(playerData);  
 }

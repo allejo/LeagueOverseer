@@ -24,6 +24,7 @@ void leagueOverSeer::Init ( const char* commandLine )
 {
   bz_debugMessagef(0, "Match Over Seer %i.%i.%i (%i) loaded.", MAJOR, MINOR, REV, BUILD);
   
+  Register(bz_eAllowPlayer);
   Register(bz_eCaptureEvent);
   Register(bz_eGameEndEvent);
   Register(bz_eGameStartEvent);

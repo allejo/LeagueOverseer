@@ -17,8 +17,8 @@ League Over Seer Plug-in
 */
 
 #include "bzfsAPI.h"
-#include "plugin_utils.h"
-
+//#include "plugin_utils.h"
+#include "../../src/bzfs/GameKeeper.h"
 #include "leagueOverSeer.h"
 
 void leagueOverSeer::Event(bz_EventData *eventData)
@@ -349,7 +349,24 @@ void leagueOverSeer::Event(bz_EventData *eventData)
       }
     }
     break;
-    
+
+    case bz_eAllowPlayer:
+    {
+      bz_AllowPlayerEventData_V1 *allowData = (bz_AllowPlayerEventData_V1*)eventData; 
+      GameKeeper::Player *playerData = GameKeeper::Player::getPlayerByIndex(allowData->playerID);
+      bz_BasePlayerRecord *record = bz_getPlayerByIndex(allowData->playerID);
+
+      std::string mottoBefore = playerData->player.getMotto();
+      const char* newMotto = getGuTeamFromBzId(playerData->getBzIdentifier());
+      bz_debugMessagef(4, "Player Joined: MottoFilter: BzId value == %s", playerData->getBzIdentifier().c_str());
+
+      playerData->player.PlayerInfo::setMotto(newMotto);
+      std::string mottoAfter = playerData->player.getMotto();
+      bz_debugMessagef(4, "Player Joined: MottoFilter: Replaced Motto %s with %s", mottoBefore.c_str(), mottoAfter.c_str());
+
+      bz_freePlayerRecord(record);
+    }
     default:break; //I never really understand the point of this... -.-"
   }
 }
+

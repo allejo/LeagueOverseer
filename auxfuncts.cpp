@@ -55,6 +55,12 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
   }
 }
 
+const char* leagueOverSeer::getGuTeamFromBzId(std::string bzid)
+{
+  //get team name from GU website.
+  const char* playerTeam = "allejo needs to do this:p";
+  return playerTeam;
+}
 bool leagueOverSeer::toBool(std::string var) //Turn std::string into a boolean value
 {
    if(var == "true" || var == "TRUE" || var == "1") //If the value is true then the boolean is true

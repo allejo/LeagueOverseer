@@ -110,13 +110,7 @@ leagueOverSeer_la-leagueOverSeer.lo: leagueOverSeer.cpp leagueOverSeer.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/vector \
  /usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/stl_vector.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/stl_bvector.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/vector.tcc \
- ../../plugins/plugin_utils/plugin_utils.h \
- ../../plugins/plugin_utils/plugin_config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/map \
- /usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/stl_tree.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/stl_map.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/stl_multimap.h
+ /usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/vector.tcc
 
 leagueOverSeer.h:
 
@@ -393,15 +387,3 @@ leagueOverSeer.h:
 /usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/stl_bvector.h:
 
 /usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/vector.tcc:
-
-../../plugins/plugin_utils/plugin_utils.h:
-
-../../plugins/plugin_utils/plugin_config.h:
-
-/usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/map:
-
-/usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/stl_tree.h:
-
-/usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/stl_map.h:
-
-/usr/lib/gcc/x86_64-pc-linux-gnu/4.4.5/include/g++-v4/bits/stl_multimap.h:

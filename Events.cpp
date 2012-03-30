@@ -356,14 +356,16 @@ void leagueOverSeer::Event(bz_EventData *eventData)
       bz_AllowPlayerEventData_V1 *allowData = (bz_AllowPlayerEventData_V1*)eventData; 
       GameKeeper::Player *playerData = GameKeeper::Player::getPlayerByIndex(allowData->playerID);
       bz_BasePlayerRecord *record = bz_getPlayerByIndex(allowData->playerID);
+      
+      if(mottoReplacer) {
+         std::string mottoBefore = playerData->player.getMotto();
+         const char* newMotto = getGuTeamFromBzId(playerData->getBzIdentifier());
+         bz_debugMessagef(4, "Player Joined: MottoFilter: BzId value == %s", playerData->getBzIdentifier().c_str());
 
-      std::string mottoBefore = playerData->player.getMotto();
-      const char* newMotto = getGuTeamFromBzId(playerData->getBzIdentifier());
-      bz_debugMessagef(4, "Player Joined: MottoFilter: BzId value == %s", playerData->getBzIdentifier().c_str());
-
-      playerData->player.PlayerInfo::setMotto(newMotto);
-      std::string mottoAfter = playerData->player.getMotto();
-      bz_debugMessagef(4, "Player Joined: MottoFilter: Replaced Motto %s with %s", mottoBefore.c_str(), mottoAfter.c_str());
+         playerData->player.PlayerInfo::setMotto(newMotto);
+         std::string mottoAfter = playerData->player.getMotto();
+         bz_debugMessagef(4, "Player Joined: MottoFilter: Replaced Motto %s with %s", mottoBefore.c_str(), mottoAfter.c_str());
+      }
 
       struct RejoinDB rejoinDB;
 

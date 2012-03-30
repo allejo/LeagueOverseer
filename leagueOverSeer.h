@@ -49,7 +49,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
   virtual bool toBool(std::string var);
   
   //All the variables that will be used in the plugin
-  bool officialMatch, matchCanceled, countDownStarted, funMatch, rotLeague, gameoverReport;
+  bool officialMatch, matchCanceled, countDownStarted, funMatch, rotLeague, gameoverReport, mottoReplacer;
   double matchStartTime;
   double lastQuery[256];
   int DEBUG, gracePeriod, RTW, GTW, BTW, PTW;

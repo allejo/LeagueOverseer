@@ -36,6 +36,7 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
   QUERY_URL = config.item(section, "TEAM_QUERY_URL");
   gracePeriod = atoi((config.item(section, "GRACE_PERIOD")).c_str());
   DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
+  mottoReplacer = toBool(config.item(section, "MOTTOFILTER_REPLACER"));
   
   //Check for errors in the configuration data. If there is an error, shut down the server
   if (REPORT_URL == "" || QUERY_URL == "")

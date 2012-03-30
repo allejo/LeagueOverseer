@@ -79,7 +79,7 @@ leagueOverSeer_la_DEPENDENCIES =  \
 am_leagueOverSeer_la_OBJECTS = leagueOverSeer_la-leagueOverSeer.lo \
 	leagueOverSeer_la-Events.lo leagueOverSeer_la-SlashCommands.lo \
 	leagueOverSeer_la-URLJobs.lo leagueOverSeer_la-Cleanup.lo \
-	leagueOverSeer_la-auxfuncts.lo
+	leagueOverSeer_la-auxfuncts.lo leagueOverSeer_la-Rejoin.lo 
 leagueOverSeer_la_OBJECTS = $(am_leagueOverSeer_la_OBJECTS)
 leagueOverSeer_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
@@ -278,6 +278,8 @@ top_srcdir = @top_srcdir@
 lib_LTLIBRARIES = leagueOverSeer.la
 leagueOverSeer_la_SOURCES = \
 			    Events.cpp \
+			    Rejoin.h \
+			    Rejoin.cpp \
 			    SlashCommands.cpp \
 			    URLJobs.cpp \
 			    Cleanup.cpp \
@@ -376,6 +378,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/leagueOverSeer_la-Cleanup.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/leagueOverSeer_la-Events.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/leagueOverSeer_la-Rejoin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/leagueOverSeer_la-SlashCommands.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/leagueOverSeer_la-URLJobs.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/leagueOverSeer_la-auxfuncts.Plo@am__quote@
@@ -420,6 +423,14 @@ leagueOverSeer_la-SlashCommands.lo: SlashCommands.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(leagueOverSeer_la_CXXFLAGS) $(CXXFLAGS) -MT leagueOverSeer_la-SlashCommands.lo -MD -MP -MF $(DEPDIR)/leagueOverSeer_la-SlashCommands.Tpo -c -o leagueOverSeer_la-SlashCommands.lo `test -f 'SlashCommands.cpp' || echo '$(srcdir)/'`SlashCommands.cpp
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/leagueOverSeer_la-SlashCommands.Tpo $(DEPDIR)/leagueOverSeer_la-SlashCommands.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SlashCommands.cpp' object='leagueOverSeer_la-SlashCommands.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(leagueOverSeer_la_CXXFLAGS) $(CXXFLAGS) -c -o leagueOverSeer_la-SlashCommands.lo `test -f 'SlashCommands.cpp' || echo '$(srcdir)/'`SlashCommands.cpp
+
+
+leagueOverSeer_la-Rejoin.lo: Rejoin.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(leagueOverSeer_la_CXXFLAGS) $(CXXFLAGS) -MT leagueOverSeer_la-Rejoin.lo -MD -MP -MF $(DEPDIR)/leagueOverSeer_la-Rejoin.Tpo -c -o leagueOverSeer_la-Rejoin.lo `test -f 'Rejoin.cpp' || echo '$(srcdir)/'`Rejoin.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/leagueOverSeer_la-SlashCommands.Tpo $(DEPDIR)/leagueOverSeer_la-Rejoin.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SlashCommands.cpp' object='leagueOverSeer_la-Rejoin.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(leagueOverSeer_la_CXXFLAGS) $(CXXFLAGS) -c -o leagueOverSeer_la-SlashCommands.lo `test -f 'SlashCommands.cpp' || echo '$(srcdir)/'`SlashCommands.cpp
 

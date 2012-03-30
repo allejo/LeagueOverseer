@@ -19,7 +19,8 @@ League Over Seer Plug-in
 #include "bzfsAPI.h"
 //#include "plugin_utils.h"
 #include "../../src/bzfs/GameKeeper.h"
-#include "leagueOverSeer.h"
+//#include "leagueOverSeer.h"
+#include "Rejoin.h"
 
 void leagueOverSeer::Event(bz_EventData *eventData)
 {
@@ -364,6 +365,19 @@ void leagueOverSeer::Event(bz_EventData *eventData)
       std::string mottoAfter = playerData->player.getMotto();
       bz_debugMessagef(4, "Player Joined: MottoFilter: Replaced Motto %s with %s", mottoBefore.c_str(), mottoAfter.c_str());
 
+      struct RejoinDB rejoinDB;
+
+      if (!record->globalUser) {
+         if(!rejoinDB.inListAlready(record->ipAddress.c_str())) {
+            rejoinDB.add(allowData->playerID);
+         } else if(rejoinDB.inListAlready(record->ipAddress.c_str())) {
+	    if(rejoinDB.getCallsignByIP(record->ipAddress.c_str()) != record->callsign.c_str()) {
+	      bz_sendTextMessage(BZ_SERVER, allowData->playerID, "Player Refused: Do not talk by rejoining.");
+	      allowData->allow = false;
+	    }
+	 }
+	 rejoinDB.del();
+      }
       bz_freePlayerRecord(record);
     }
     default:break; //I never really understand the point of this... -.-"

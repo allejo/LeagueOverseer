@@ -2,6 +2,8 @@ lib_LTLIBRARIES = leagueOverSeer.la
 
 leagueOverSeer_la_SOURCES = \
 			    Events.cpp \
+			    Rejoin.h \
+			    Rejoin.cpp \
 			    SlashCommands.cpp \
 			    URLJobs.cpp \
 			    Cleanup.cpp \

@@ -80,6 +80,7 @@ am_leagueOverSeer_la_OBJECTS =  \
                             leagueOverSeer_la-leagueOverSeer.lo \
 			    leagueOverSeer_la-Cleanup.lo \
 			    leagueOverSeer_la-Events.lo \
+			    leagueOverSeer_la-Rejoin.lo \
 			    leagueOverSeer_la-SlashCommands.lo \
 			    leagueOverSeer_la-auxfuncts.lo \
 			    leagueOverSeer_la-URLJobs.lo
@@ -273,6 +274,8 @@ top_srcdir = ../..
 lib_LTLIBRARIES = leagueOverSeer.la
 leagueOverSeer_la_SOURCES = \
 			    Events.cpp \
+			    Rejoin.h \
+			    Rejoin.cpp \
 			    Cleanup.cpp \
 			    auxfuncts.cpp \
 			    URLJobs.cpp \
@@ -405,6 +408,10 @@ leagueOverSeer_la-Events.lo: Events.cpp
 	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(leagueOverSeer_la_CXXFLAGS) $(CXXFLAGS) -MT leagueOverSeer_la-Events.lo -MD -MP -MF $(DEPDIR)/leagueOverSeer_la-Events.Tpo -c -o leagueOverSeer_la-Events.lo `test -f 'Events.cpp' || echo '$(srcdir)/'`Events.cpp
 	$(am__mv) $(DEPDIR)/leagueOverSeer_la-Events.Tpo $(DEPDIR)/leagueOverSeer_la-Events.Plo
 
+
+leagueOverSeer_la-Rejoin.lo: Rejoin.cpp
+	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(leagueOverSeer_la_CXXFLAGS) $(CXXFLAGS) -MT leagueOverSeer_la-Rejoin.lo -MD -MP -MF $(DEPDIR)/leagueOverSeer_la-Rejoin.Tpo -c -o leagueOverSeer_la-Rejoin.lo `test -f 'Rejoin.cpp' || echo '$(srcdir)/'`Rejoin.cpp
+	$(am__mv) $(DEPDIR)/leagueOverSeer_la-Rejoin.Tpo $(DEPDIR)/leagueOverSeer_la-Rejoin.Plo
 
 leagueOverSeer_la-SlashCommands.lo: SlashCommands.cpp
 	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(leagueOverSeer_la_CXXFLAGS) $(CXXFLAGS) -MT leagueOverSeer_la-SlashCommands.lo -MD -MP -MF $(DEPDIR)/leagueOverSeer_la-SlashCommands.Tpo -c -o leagueOverSeer_la-SlashCommands.lo `test -f 'SlashCommands.cpp' || echo '$(srcdir)/'`SlashCommands.cpp

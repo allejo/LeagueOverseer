@@ -41,6 +41,10 @@ void leagueOverSeer::Event(bz_EventData *eventData)
           
           matchCanceled = true; //To prevent reporting a canceled match, let plugin know the match was canceled
         }
+      } else if(strncmp("/countdown pause", commandData->message.c_str(), 16) == 0) {
+        bz_sendTextMessagef(BZ_SERVER, commandData->from, "**'/countdown pause' is disabled, please use /pause instead**");
+      } else if(strncmp("/countdown resume", commandData->message.c_str(), 17 ) == 0) {
+        bz_sendTextMessagef(BZ_SERVER, commandData->from, "**'/countdown resume' is disabled, please use /resume instead**");
       }
       
       bz_freePlayerRecord(playerData);

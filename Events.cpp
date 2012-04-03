@@ -45,6 +45,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         bz_sendTextMessagef(BZ_SERVER, commandData->from, "**'/countdown pause' is disabled, please use /pause instead**");
       } else if(strncmp("/countdown resume", commandData->message.c_str(), 17 ) == 0) {
         bz_sendTextMessagef(BZ_SERVER, commandData->from, "**'/countdown resume' is disabled, please use /resume instead**");
+      } else if(isdigit(atoi(commandData->message.c_str()) + 12)) {
+        bz_sendTextMessage(BZ_SERVER, commandData->from, "**'/countdown TIME' is disabled, please use /official or /fm instead**");
       }
       
       bz_freePlayerRecord(playerData);

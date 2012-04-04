@@ -38,6 +38,9 @@ void leagueOverSeer::Init ( const char* commandLine )
   bz_registerCustomSlashCommand("teamlist",this);
   bz_registerCustomSlashCommand("cancel",this);
   bz_registerCustomSlashCommand("spawn",this);
+  bz_registerCustomSlashCommand("resume",this);
+  bz_registerCustomSlashCommand("pause",this);
+  
   
   //Set all boolean values for the plugin to false
   officialMatch=false;

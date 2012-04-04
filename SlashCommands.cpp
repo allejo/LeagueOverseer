@@ -172,7 +172,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
   }
   else if(command == "spawn") 
   {
-    if(playerData->admin) {
+    if(bz_hasPerm(playerID, "kick")) {
       if(params->size() == 1) {
         const char* msg = message.c_str() + 6;
         while ((*msg != '\0') && isspace(*msg)) msg++;

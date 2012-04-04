@@ -37,6 +37,7 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
   gracePeriod = atoi((config.item(section, "GRACE_PERIOD")).c_str());
   DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
   mottoReplacer = toBool(config.item(section, "MOTTOFILTER_REPLACER"));
+  rejoinPrevention = toBool(config.item(section, "REJOIN_PREVENTION"));
   
   //Check for errors in the configuration data. If there is an error, shut down the server
   if (REPORT_URL == "" || QUERY_URL == "")

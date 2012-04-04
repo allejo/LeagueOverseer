@@ -1,0 +1,41 @@
+These are the set of rules to be followed by the server adminstrators 
+so that all GU/DUC/OL servers will operate identically.
+This configuration document MUST be followed to the LETTER:
+
+1: For the /spawn <#SLOT/CALLSIGN> functionality:
+
+   Admin must remove this permission from their group definition file:
+     REQUIREIDENTIFY, or add !REQUIREIDENTIFY.
+
+2: For the motto replacing functionality, the value(located in the plugin config file)
+   must be set to either true or 1:
+     MOTTO_REPLACER
+
+   Note: if you do not wish to use the motto replacer, set the MOTTO_REPLACER value to false or 0.
+
+3: When loading the plugin you must specify the config file location, like:
+    bzfs -loadplugin leagueOverSeer.so,/home/mdskpr/server/leagueOverSeer.cfg
+
+4: For the autoreport functionality you must remove the following for the GU players from the
+   group definition file:
+
+   "countdown" "endGame" 
+
+   Also you must put the corresponding URL for the league your server uses into the config file:
+     For GU:
+
+       MATCH_REPORT_URL =  
+
+     For DUC:
+
+       MATCH_REPORT_URL =
+
+     For OL:
+
+       MATCH_REPORT_URL =   
+
+5: For the banned player observer rejoin prevention functionality, you must
+   set the config file option:
+     REJOIN_PREVENTION = true/1
+
+

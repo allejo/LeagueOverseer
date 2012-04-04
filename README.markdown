@@ -14,6 +14,8 @@ Slash Commands:
 /official
 /teamlist
 /spawn
+/pause
+/resume
 
 Parameters:
 /path/to/leagueOverSeer.so,/path/to/leagueOverSeer.cfg

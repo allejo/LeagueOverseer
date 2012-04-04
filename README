@@ -13,6 +13,8 @@ Slash Commands:
 /fm
 /official
 /teamlist
+/pause
+/resume
 /spawn
 
 Parameters:

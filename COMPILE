@@ -1,0 +1,13 @@
+This document outlines the compilation process for the plugin.
+
+Step 1: Get most recent SVN tree. svn co https://bzflag.svn.sourceforge.net/svnroot/bzflag/trunk/bzflag
+
+Step 2: Go into the plugins/ directory and edit the Makefile.am file. 
+        Add under the heading SUBDIRS: "leagueOverSeer \"
+
+Step 3: Download the latest tarball of this plugin and unwrap it into the plugins/ directory:
+        tar xvzf leagueOverSeer-VERSION.tar.gz 
+
+Step 4: Go into leagueOverSeer/ and  make, make install.
+
+And you are done! :)

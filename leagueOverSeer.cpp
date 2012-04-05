@@ -45,7 +45,6 @@ void leagueOverSeer::Init ( const char* commandLine )
   //Set all boolean values for the plugin to false
   officialMatch=false;
   matchCanceled=false;
-  countDownStarted=false;
   funMatch=false;
   RTW = 0;
   GTW = 0;

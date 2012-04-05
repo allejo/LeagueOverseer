@@ -17,7 +17,6 @@ League Over Seer Plug-in
 */
 
 #include "bzfsAPI.h"
-//#include "plugin_utils.h"
 #include "../../src/bzfs/GameKeeper.h"
 #include "leagueOverSeer.h"
 
@@ -32,7 +31,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
       bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
     else if(bz_getTeamCount(eRedTeam) < 2 || bz_getTeamCount(eGreenTeam) < 2 || bz_getTeamCount(eBlueTeam) < 2 || bz_getTeamCount(ePurpleTeam) < 2) //An official match cannot be 1v1 or 2v1
       bz_sendTextMessage(BZ_SERVER,playerID,"You may not have an official match with less than 2 players per team.");
-    else if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !bz_isCountDownActive() && !countDownStarted) //Check the user is not an obs and is a league member
+    else if(playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !bz_isCountDownActive()) //Check the user is not an obs and is a league member
     {
       officialMatch = true; //Notify the plugin that the match is official
       bz_debugMessagef(DEBUG,"DEBUG::Match Over Seer::Official match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
@@ -41,21 +40,12 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
       else
         bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
-      countDownStarted = true; //Variable used to notify the plugin that the match was not started with /countdown
     }  
-    else if(!(bz_getCurrentTime()>matchStartTime+60) && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !funMatch && !officialMatch) //A match started with /countdown has not been declared official
-    {
-      officialMatch = true; //Notify the plugin that the match is official
-      bz_debugMessagef(DEBUG,"DEBUG::Match Over Seer::/countdown Match has been turned into an official match by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
-      bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "This is now an official match requested by %s.",playerData->callsign.c_str());
-    }
-    else if((bz_getCurrentTime()>matchStartTime+60) && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !funMatch) //Grace period is over
-      bz_sendTextMessage(BZ_SERVER,playerID,"You may no longer request an official match.");
     else if(funMatch) //A fun match cannot be declared an official match
       bz_sendTextMessage(BZ_SERVER,playerID,"Fun matches cannot be turned into official matches.");
     else if(!playerData->verified || !bz_hasPerm(playerID,"spawn")) //If they can't spawn, they aren't a league player so they can't start a match
       bz_sendTextMessage(BZ_SERVER,playerID,"Only registered league players may start an official match.");
-    else if((bz_isCountDownActive() || bz_isCountDownInProgress()) && countDownStarted) //A countdown is in progress already
+    else if(bz_isCountDownActive() || bz_isCountDownInProgress()) //A countdown is in progress already
       bz_sendTextMessage(BZ_SERVER,playerID,"There is currently a countdown active, you may not start another.");
     else
       bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to run the /official command.");
@@ -70,10 +60,9 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
       else
         bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
-      countDownStarted = true; //Variable used to notify the plugin that the match was not started with /countdown
       funMatch = true; //It's a fun match
     }
-    else if(bz_isCountDownActive() || countDownStarted) //There is already a countdown
+    else if(bz_isCountDownActive()) //There is already a countdown
       bz_sendTextMessage(BZ_SERVER,playerID,"There is currently a countdown active, you may not start another.");
     else if(playerData->team == eObservers) //Observers can't start matches
       bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
@@ -133,7 +122,6 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
       //Reset the server. Cleanly ends a match
       if (officialMatch) officialMatch = false;
       if (matchCanceled) matchCanceled = false;
-      if (countDownStarted) countDownStarted = false;
       if (funMatch) funMatch = false;
       if (RTW > 0) RTW = 0;
       if (GTW > 0) GTW = 0;
@@ -144,7 +132,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
       if(bz_isCountDownActive())
         bz_gameOver(253,eObservers);
     }
-    else if(!bz_isCountDownActive() || !countDownStarted)
+    else if(!bz_isCountDownActive())
       bz_sendTextMessage(BZ_SERVER,playerID,"There is no match in progress to cancel.");
     else //Not a league player
       bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to run the /cancel command.");
@@ -179,23 +167,25 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
 
         if(isdigit(msg[0])) {
           int grantee = (int) atoi(params->get(0).c_str());
-	  const char* granterCallsign = bz_getPlayerCallsign(playerID);
-	  const char* granteeCallsign = bz_getPlayerCallsign(grantee);
+          const char* granterCallsign = bz_getPlayerCallsign(playerID);
+          const char* granteeCallsign = bz_getPlayerCallsign(grantee);
                  
           bz_grantPerm(grantee, "spawn");
-          bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s Gave spawn perms to %s", granterCallsign, granteeCallsign); 
-        } else if(!isdigit(msg[0])) {
+          bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", granterCallsign, granteeCallsign); 
+        }
+        else if(!isdigit(msg[0]))
+        {
           int grantee = GameKeeper::Player::getPlayerIDByName(params->get(0).c_str());
-	  const char* granterCallsign = bz_getPlayerCallsign(playerID);
-	  const char* granteeCallsign = bz_getPlayerCallsign(grantee);
+          const char* granterCallsign = bz_getPlayerCallsign(playerID);
+          const char* granteeCallsign = bz_getPlayerCallsign(grantee);
 
           bz_grantPerm(grantee, "spawn");
-	  bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s Gave spawn perms to %s", granterCallsign, granteeCallsign); 
+          bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", granterCallsign, granteeCallsign); 
         }
       }
     }
     else if(!playerData->admin) {
-      bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to use that command.");
+      bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to use the /spawn command.");
     }
   }
   bz_freePlayerRecord(playerData);  

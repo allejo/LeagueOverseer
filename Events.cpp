@@ -17,9 +17,7 @@ League Over Seer Plug-in
 */
 
 #include "bzfsAPI.h"
-//#include "plugin_utils.h"
 #include "../../src/bzfs/GameKeeper.h"
-//#include "leagueOverSeer.h"
 #include "Rejoin.h"
 
 void leagueOverSeer::Event(bz_EventData *eventData)
@@ -56,7 +54,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
     case bz_eGameEndEvent: //A /gameover or a match has ended
     {
       //Clear the bool variables
-      countDownStarted = false;
       funMatch = false;
       
       if(matchCanceled && officialMatch && !gameoverReport) //The match was canceled via /gameover or /superkill and we do not want to report these matches
@@ -275,10 +272,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
       
         bz_deleteIntList(playerList);
       }
-      else if(!countDownStarted && !funMatch) //Match was started with /countdown
-      {
-        matchStartTime = bz_getCurrentTime();
-      }
     }
     break;
 
@@ -288,7 +281,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
       
       if((bz_isCountDownActive() || bz_isCountDownInProgress()) && officialMatch) //If there is an official match in progress, notify others who join
         bz_sendTextMessage(BZ_SERVER,joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");
-      else if((bz_isCountDownActive() || bz_isCountDownInProgress()) && (funMatch || !countDownStarted)) //If there is a fun match in progress, notify others who join
+      else if((bz_isCountDownActive() || bz_isCountDownInProgress()) && (funMatch) //If there is a fun match in progress, notify others who join
         bz_sendTextMessage(BZ_SERVER,joinData->playerID, "*** There is currently a fun match in progress, please be respectful. ***");
     }
     break;
@@ -309,7 +302,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         //Incase a boolean gets messed up in the plugin, reset all the plugin variables when there are no players (Observers excluded)
         if (officialMatch) officialMatch = false;
         if (matchCanceled) matchCanceled = false;
-        if (countDownStarted) countDownStarted = false;
         if (funMatch) funMatch = false;
         if (RTW > 0) RTW = 0;
         if (GTW > 0) GTW = 0;

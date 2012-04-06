@@ -16,7 +16,7 @@ This configuration document MUST be followed to the LETTER:
 3: When loading the plugin you must specify the config file location, like:
     bzfs -loadplugin leagueOverSeer.so,/home/mdskpr/server/leagueOverSeer.cfg
 
-4: For the autoreport functionality you must remove the following for the GU players from the
+4: For the autoreport functionality you must remove the following for ALL GU players from the
    group definition file:
 
    "countdown" "endGame" 

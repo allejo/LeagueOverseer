@@ -281,7 +281,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
       
       if((bz_isCountDownActive() || bz_isCountDownInProgress()) && officialMatch) //If there is an official match in progress, notify others who join
         bz_sendTextMessage(BZ_SERVER,joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");
-      else if((bz_isCountDownActive() || bz_isCountDownInProgress()) && (funMatch) //If there is a fun match in progress, notify others who join
+      else if((bz_isCountDownActive() || bz_isCountDownInProgress()) && funMatch) //If there is a fun match in progress, notify others who join
         bz_sendTextMessage(BZ_SERVER,joinData->playerID, "*** There is currently a fun match in progress, please be respectful. ***");
     }
     break;

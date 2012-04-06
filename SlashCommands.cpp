@@ -114,7 +114,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
   }
   else if(command == "cancel")
   {
-    if(bz_hasPerm(playerID,"spawn") && (bz_isCountDownActive() || countDownStarted))
+    if(bz_hasPerm(playerID,"spawn") && bz_isCountDownActive())
     {
       bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Match ended by %s",playerData->callsign.c_str());
       bz_debugMessagef(DEBUG,"DEBUG::Match Over Seer::Match ended by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());

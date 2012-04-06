@@ -29,21 +29,26 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
   if (config.errors) bz_shutdown(); //Shutdown the server
   
   //Extract all the data in the configuration file and assign it to plugin variables
+  LEAGUE = config.item(section, "LEAGUE");
   rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
   mapchangePath = (config.item(section, "MAPCHANGE_PATH")).c_str();
   gameoverReport = toBool(config.item(section, "GAMEOVER_REPORT"));
-  REPORT_URL = config.item(section, "MATCH_REPORT_URL");
-  QUERY_URL = config.item(section, "TEAM_QUERY_URL");
+  LEAGUE_URL = config.item(section, "MATCH_REPORT_URL");
   gracePeriod = atoi((config.item(section, "GRACE_PERIOD")).c_str());
   DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
   mottoReplacer = toBool(config.item(section, "MOTTOFILTER_REPLACER"));
   rejoinPrevention = toBool(config.item(section, "REJOIN_PREVENTION"));
   
   //Check for errors in the configuration data. If there is an error, shut down the server
-  if (REPORT_URL == "" || QUERY_URL == "")
+  if (strcmp(LEAGUE, "") == 0)
   {
-    bz_debugMessage(0, "*** DEBUG::Match Over Seer::No URLs were choosen to report matches or query teams. ***");
+    bz_debugMessage(0, "*** DEBUG::Match Over Seer::No league was specified ***");
     bz_shutdown();
+  }
+  if (strcmp(LEAGUE_URL, "") == 0)
+  {
+      bz_debugMessage(0, "*** DEBUG::Match Over Seer::No URLs were choosen to report matches or query teams. ***");
+      bz_shutdown();
   }
   if (gracePeriod > bz_getTimeLimit())
   {

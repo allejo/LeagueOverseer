@@ -50,10 +50,9 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
   
   //All the variables that will be used in the plugin
   bool officialMatch, matchCanceled, funMatch, rotLeague, gameoverReport, mottoReplacer, rejoinPrevention;
-  double matchStartTime;
   double lastQuery[256];
   int DEBUG, gracePeriod, RTW, GTW, BTW, PTW;
-  std::string REPORT_URL, QUERY_URL, map;
+  std::string LEAGUE_URL, LEAGUE, map;
   const char* mapchangePath;
   
   struct teamQueries { //Stores all the queries that a player request

@@ -52,7 +52,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
   }
   else if(command == "fm") //Someone uses the /fm command
   {
-    if(!bz_isCountDownActive() && !countDownStarted && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified)
+    if(!bz_isCountDownActive() && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified)
     {
       bz_debugMessagef(DEBUG,"DEBUG::Match Over Seer::Fun match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
       bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Fun match started by %s.",playerData->callsign.c_str());
@@ -139,7 +139,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
   }
   else if(command == "pause") 
   {
-    if(bz_isCountDownActive() && countDownStarted && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified)
+    if(bz_isCountDownActive() && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified)
     {
       bz_pauseCountdown(playerData->callsign.c_str());
       

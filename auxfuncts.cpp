@@ -40,12 +40,12 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
   rejoinPrevention = toBool(config.item(section, "REJOIN_PREVENTION"));
   
   //Check for errors in the configuration data. If there is an error, shut down the server
-  if (strcmp(LEAGUE, "") == 0)
+  if (strcmp(LEAGUE.c_str(), "") == 0)
   {
     bz_debugMessage(0, "*** DEBUG::Match Over Seer::No league was specified ***");
     bz_shutdown();
   }
-  if (strcmp(LEAGUE_URL, "") == 0)
+  if (strcmp(LEAGUE_URL.c_str(), "") == 0)
   {
       bz_debugMessage(0, "*** DEBUG::Match Over Seer::No URLs were choosen to report matches or query teams. ***");
       bz_shutdown();

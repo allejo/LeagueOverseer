@@ -32,7 +32,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
       
       if(command.compare("/gameover") == 0 && bz_hasPerm(commandData->from,"ENDGAME") && gameoverReport) //Check if they did a /gameover
       {
-        if(officialMatch && bz_isCountDownActive) //Only announce that the match was canceled if it's an official match
+        if(officialMatch && bz_isCountDownActive()) //Only announce that the match was canceled if it's an official match
         {
           bz_debugMessagef(DEBUG,"DEBUG::Match Over Seer::Official match canceled by %s (%s)",playerData->callsign.c_str(),playerData->ipAddress.c_str());
           bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Official match canceled by %s",playerData->callsign.c_str());
@@ -201,7 +201,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         uq._URL = "match"; //Tell the query list that we have a match to report on the todo list
         _urlQuery.push_back(uq); //Push the information to the todo list
         
-        bz_addURLJob(REPORT_URL.c_str(), this, matchToSend.c_str()); //Send the match data to the league website
+        bz_addURLJob(LEAGUE_URL.c_str(), this, matchToSend.c_str()); //Send the match data to the league website
 
         //Clear all the structures and scores for next match
         matchRedParticipants.clear();

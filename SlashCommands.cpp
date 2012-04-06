@@ -104,7 +104,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
           bz_freePlayerRecord(playerTeam);
         }
         
-        bz_addURLJob(QUERY_URL.c_str(), this, playersToSend.c_str()); //Send a list of players to the team query script
+        bz_addURLJob(LEAGUE_URL.c_str(), this, playersToSend.c_str()); //Send a list of players to the team query script
         
         bz_deleteIntList(playerList);
       }

@@ -25,7 +25,7 @@ void leagueOverSeer::URLDone( const char* URL, void* data, unsigned int size, bo
 {
   std::string siteData = (char*)(data); //Convert the data to a std::string
 
-  if(_urlQuery.at(0)._URL.compare("query") == 0 && URL == QUERY_URL) //Someone queried for teams
+  if(_urlQuery.at(0)._URL.compare("query") == 0 && URL == LEAGUE_URL) //Someone queried for teams
   {  
     char* token; //Store tokens
     bz_sendTextMessage(BZ_SERVER,_playerIDs.at(0)._playerID," Team List");
@@ -44,7 +44,7 @@ void leagueOverSeer::URLDone( const char* URL, void* data, unsigned int size, bo
     _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
     _playerIDs.erase(_playerIDs.begin(),_playerIDs.begin()+1); //Tell the plugin that this player has received his/her information, move to the next player
   }
-  else if(_urlQuery.at(0)._URL.compare("match") == 0 && URL == REPORT_URL) //The plugin reported the match successfully
+  else if(_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //The plugin reported the match successfully
   {
     bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",(char*)data);
     bz_debugMessagef(DEBUG,"%s",(char*)data);
@@ -55,7 +55,7 @@ void leagueOverSeer::URLDone( const char* URL, void* data, unsigned int size, bo
 
 void leagueOverSeer::URLTimeout(const char* URL, int errorCode) //The league website is down or is not responding, the request timed out
 {
-  if(_urlQuery.at(0)._URL.compare("match") == 0 && URL == REPORT_URL) //Something went wrong while reporting the match, it timed out
+  if(_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //Something went wrong while reporting the match, it timed out
   {
     bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- WARNING --<");
     bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- The request to report the match has timed out. --<");
@@ -64,7 +64,7 @@ void leagueOverSeer::URLTimeout(const char* URL, int errorCode) //The league web
 
     _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
   }
-  else if(_urlQuery.at(0)._URL.compare("query") == 0 && URL == QUERY_URL) //Something went wrong with the team query, it timed out
+  else if(_urlQuery.at(0)._URL.compare("query") == 0 && URL == LEAGUE_URL) //Something went wrong with the team query, it timed out
   {
     bz_sendTextMessage(BZ_SERVER,_playerIDs.at(0)._playerID, "The request to query the league website has timed out. Please try again later.");
 
@@ -75,7 +75,7 @@ void leagueOverSeer::URLTimeout(const char* URL, int errorCode) //The league web
 
 void leagueOverSeer::URLError(const char* URL, int errorCode, const char *errorString) //The server owner must have set up the URLs wrong because this shouldn't happen
 {
-  if(_urlQuery.at(0)._URL.compare("match") == 0 && URL == REPORT_URL) //Something went wrong while reporting the match, no website found
+  if(_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //Something went wrong while reporting the match, no website found
   {
     bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- WARNING --<");
     bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,">-- Match report failed with error code %i - %s --<",errorCode,errorString);
@@ -85,7 +85,7 @@ void leagueOverSeer::URLError(const char* URL, int errorCode, const char *errorS
 
     _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
   }
-  else if(_urlQuery.at(0)._URL.compare("query") == 0 && URL == QUERY_URL) //Something went wrong with the team query, no website found
+  else if(_urlQuery.at(0)._URL.compare("query") == 0 && URL == LEAGUE_URL) //Something went wrong with the team query, no website found
   {
     bz_sendTextMessagef(BZ_SERVER,_playerIDs.at(0)._playerID, "Your team query failed with error code %i - %s",errorCode,errorString);
     bz_sendTextMessagef(BZ_SERVER,_playerIDs.at(0)._playerID, "Please contact a league admin with this error as this should not happen.");

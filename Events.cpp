@@ -352,41 +352,41 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
     case bz_eAllowPlayer:
     {
-      bz_AllowPlayerEventData_V1 *allowData = (bz_AllowPlayerEventData_V1*)eventData; 
+      bz_AllowPlayerEventData_V1 *allowData = (bz_AllowPlayerEventData_V1*)eventData;
       GameKeeper::Player *playerData = GameKeeper::Player::getPlayerByIndex(allowData->playerID);
       bz_BasePlayerRecord *record = bz_getPlayerByIndex(allowData->playerID);
       
       if (mottoReplacer)
-	  {
-        if (strcmp(LEAGUE, "OL") == 0)
-          setTeamNameAsMottoFromCallsign(joinData->record->callsign.c_str(), joinData->playerID);
+      {
+        if (strcmp(LEAGUE.c_str(), "OL") == 0)
+          setTeamNameAsMottoFromCallsign(allowData->record->callsign.c_str(), allowData->playerID);
         else
-          setTeamNameAsMottoFromBZId(joinData->record->bzID.c_str(), joinData->playerID);
+          setTeamNameAsMottoFromBZId(allowData->record->bzID.c_str(), allowData->playerID);
       }
 	  
       if (rejoinPrevention)
-	  {
+      {
         struct RejoinDB rejoinDB;
   
         if (!record->globalUser)
-		{
-           if(!rejoinDB.inListAlready(record->ipAddress.c_str()))
-              rejoinDB.add(allowData->playerID);
-           else if(rejoinDB.inListAlready(record->ipAddress.c_str()))
-		   {
-	         if(rejoinDB.getCallsignByIP(record->ipAddress.c_str()) != record->callsign.c_str())
-			 {
-	           bz_sendTextMessage(BZ_SERVER, allowData->playerID, "Player Refused: Do not talk by rejoining.");
-	          allowData->allow = false;
-	          }
-	       }
-	       rejoinDB.del();
+        {
+          if(!rejoinDB.inListAlready(record->ipAddress.c_str()))
+            rejoinDB.add(allowData->playerID);
+          else if(rejoinDB.inListAlready(record->ipAddress.c_str()))
+		      {
+		        if(rejoinDB.getCallsignByIP(record->ipAddress.c_str()) != record->callsign.c_str())
+			      {
+			        bz_sendTextMessage(BZ_SERVER, allowData->playerID, "Player Refused: Do not talk by rejoining.");
+			        allowData->allow = false;
+			      }
+	        }
+	        rejoinDB.del();
         }
       }
 	  
       bz_freePlayerRecord(record);
     }
-	break;
+    break;
 	
     default:break; //I never really understand the point of this... -.-"
   }

@@ -92,13 +92,10 @@ if (isset($_POST['league']))
 				}
 				else
 				{
-					$lastTeam = '';
 					while ($row = mysql_fetch_object($res))
 					{
 						if (empty($row->league_team)) $row->league_team = 'Teamless';
-						if (($lastTeam != $row->league_team) || (empty($lastTeam))) echo "*** $row->league_team ***\n";
-						echo "$row->callsign\n";
-						$lastTeam = $row->league_team;
+						if (($lastTeam != $row->league_team) || (empty($lastTeam))) echo "$row->league_team\n";
 					}
 				}
 			}
@@ -169,3 +166,4 @@ else
 	echo "Error: 404 - Not Found";
 }
 ?>
+

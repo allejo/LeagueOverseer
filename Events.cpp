@@ -359,9 +359,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
       if (mottoReplacer)
       {
         if (strcmp(LEAGUE.c_str(), "OL") == 0)
-          setTeamNameAsMottoFromCallsign(allowData->record->callsign.c_str(), allowData->playerID);
+          setTeamNameAsMottoFromCallsign(record->callsign.c_str(), allowData->playerID);
         else
-          setTeamNameAsMottoFromBZId(allowData->record->bzID.c_str(), allowData->playerID);
+          setTeamNameAsMottoFromBZId(record->bzID.c_str(), allowData->playerID);
       }
 	  
       if (rejoinPrevention)

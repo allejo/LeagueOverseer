@@ -17,7 +17,7 @@ League Over Seer Plug-in
 */
 
 #include "leagueOverSeer.h"
-//  // / 
+
 BZ_PLUGIN(leagueOverSeer);
 
 void leagueOverSeer::Init ( const char* commandLine )
@@ -35,7 +35,6 @@ void leagueOverSeer::Init ( const char* commandLine )
 
   bz_registerCustomSlashCommand("official", this);
   bz_registerCustomSlashCommand("fm",this);
-  bz_registerCustomSlashCommand("teamlist",this);
   bz_registerCustomSlashCommand("cancel",this);
   bz_registerCustomSlashCommand("spawn",this);
   bz_registerCustomSlashCommand("resume",this);
@@ -64,3 +63,4 @@ void leagueOverSeer::Init ( const char* commandLine )
     bz_debugMessagef(DEBUG, "DEBUG::Match Over Seer::Current map being played: %s", map.c_str());
   }
 }
+

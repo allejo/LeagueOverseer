@@ -44,7 +44,8 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
   virtual void URLDone( const char* URL, void* data, unsigned int size, bool complete );
   virtual void URLTimeout(const char* URL, int errorCode);
   virtual void URLError(const char* URL, int errorCode, const char *errorString);
-  virtual const char* getGuTeamFromBzId(std::string bzid);
+  virtual void const char* setTeamNameAsMottoFromBZId(std::string bzid, int playerID);
+  virtual void const char* setTeamNameAsMottoFromCallsign(std::string callsign, int playerID);
   virtual int loadConfig(const char *cmdLine);
   virtual bool toBool(std::string var);
   
@@ -85,3 +86,4 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
   };
   std::vector<matchPurplePlayers> matchPurpleParticipants;
 };
+

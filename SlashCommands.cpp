@@ -71,47 +71,6 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     else
       bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to run the /fm command.");
   }
-  else if(command == "teamlist") //Someone uses the /teamlist command
-  {
-    if(bz_hasPerm(playerID,"spawn")) //Check to make sure the player is a registered for the league
-    {
-      if(lastQuery[playerID] + 60 > bz_getCurrentTime() && lastQuery[playerID] != 0) //The player has alrady sent a query in the past 60 seconds so don't allow spam
-        bz_sendTextMessagef(BZ_SERVER,playerID,"Please wait %i seconds few you query the server again.",(int)((lastQuery[playerID] + 60) - bz_getCurrentTime()));
-      else
-      {
-        teamQueries tq; //Make a reference to the team query structure
-        tq._playerID = playerID; //Add the player to the list of players who have requested a query
-        _playerIDs.push_back(tq); //Push the player id into a structure
-        
-        urlQueries uq; //Make a reference to the url query structure
-        uq._URL = "query"; //Tell the plugin that we have a query in our todo list
-        _urlQuery.push_back(uq); //Tell the structure that a team query was requested
-        
-        lastQuery[playerID] = bz_getCurrentTime(); //Set the time of the query in order to avoid spam or attacking the server
-        std::string playersToSend = std::string("players="); //Create the string to send
-        
-        bz_APIIntList *playerList = bz_newIntList(); //Get the list of valid player ids
-        bz_getPlayerIndexList(playerList);
-        
-        for ( unsigned int i = 0; i < playerList->size(); i++ )
-        {
-          bz_BasePlayerRecord *playerTeam = bz_getPlayerByIndex(playerList->get(i)); //Get the player record for each player
-          
-          playersToSend += std::string(bz_urlEncode(playerTeam->callsign.c_str())); //Add the callsign to the string
-          if(i+1 < playerList->size()) //Only add a quote if there is another player on the list
-            playersToSend += "\"";
-            
-          bz_freePlayerRecord(playerTeam);
-        }
-        
-        bz_addURLJob(LEAGUE_URL.c_str(), this, playersToSend.c_str()); //Send a list of players to the team query script
-        
-        bz_deleteIntList(playerList);
-      }
-    }
-    else //Not a league player
-      bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to run the /teamlist command.");
-  }
   else if(command == "cancel")
   {
     if(bz_hasPerm(playerID,"spawn") && bz_isCountDownActive())
@@ -190,3 +149,4 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
   }
   bz_freePlayerRecord(playerData);  
 }
+

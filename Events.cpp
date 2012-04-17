@@ -87,7 +87,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         MT << (bz_getTimeLimit());
         
         //Keep references to values for quick reference
-        std::string matchToSend = "";
+        std::string matchToSend = "league=" + LEAGUE;
+		matchToSend += "&query=reportMatch";
         std::string redTeamWins = myRTW.str();
         std::string greenTeamWins = myGTW.str();
         std::string blueTeamWins = myBTW.str();
@@ -355,33 +356,40 @@ void leagueOverSeer::Event(bz_EventData *eventData)
       GameKeeper::Player *playerData = GameKeeper::Player::getPlayerByIndex(allowData->playerID);
       bz_BasePlayerRecord *record = bz_getPlayerByIndex(allowData->playerID);
       
-      if(mottoReplacer) {
-         std::string mottoBefore = playerData->player.getMotto();
-         const char* newMotto = getGuTeamFromBzId(playerData->getBzIdentifier());
-         bz_debugMessagef(4, "Player Joined: MottoFilter: BzId value == %s", playerData->getBzIdentifier().c_str());
-
-         playerData->player.PlayerInfo::setMotto(newMotto);
-         std::string mottoAfter = playerData->player.getMotto();
-         bz_debugMessagef(4, "Player Joined: MottoFilter: Replaced Motto %s with %s", mottoBefore.c_str(), mottoAfter.c_str());
+      if (mottoReplacer)
+	  {
+        if (strcmp(LEAGUE, "OL") == 0)
+          setTeamNameAsMottoFromCallsign(joinData->record->callsign.c_str(), joinData->playerID);
+        else
+          setTeamNameAsMottoFromBZId(joinData->record->bzID.c_str(), joinData->playerID);
       }
-      if (rejoinPrevention) {
+	  
+      if (rejoinPrevention)
+	  {
         struct RejoinDB rejoinDB;
   
-        if (!record->globalUser) {
-           if(!rejoinDB.inListAlready(record->ipAddress.c_str())) {
+        if (!record->globalUser)
+		{
+           if(!rejoinDB.inListAlready(record->ipAddress.c_str()))
               rejoinDB.add(allowData->playerID);
-           } else if(rejoinDB.inListAlready(record->ipAddress.c_str())) {
-	      if(rejoinDB.getCallsignByIP(record->ipAddress.c_str()) != record->callsign.c_str()) {
-	        bz_sendTextMessage(BZ_SERVER, allowData->playerID, "Player Refused: Do not talk by rejoining.");
-	        allowData->allow = false;
-	      }
-	   }
-	   rejoinDB.del();
+           else if(rejoinDB.inListAlready(record->ipAddress.c_str()))
+		   {
+	         if(rejoinDB.getCallsignByIP(record->ipAddress.c_str()) != record->callsign.c_str())
+			 {
+	           bz_sendTextMessage(BZ_SERVER, allowData->playerID, "Player Refused: Do not talk by rejoining.");
+	          allowData->allow = false;
+	          }
+	       }
+	       rejoinDB.del();
         }
       }
+	  
       bz_freePlayerRecord(record);
     }
+	break;
+	
     default:break; //I never really understand the point of this... -.-"
   }
 }
+
 

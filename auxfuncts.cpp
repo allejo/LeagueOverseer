@@ -62,7 +62,7 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
   }
 }
 
-void const char* leagueOverSeer::setTeamNameAsMottoFromBZId(std::string bzid, int playerID)
+void leagueOverSeer::setTeamNameAsMottoFromBZId(std::string bzid, int playerID)
 {
   teamQueries tq; //Make a reference to the team query structure
   tq._playerID = playerID; //Add the player to the list of players who have requested a query
@@ -72,10 +72,10 @@ void const char* leagueOverSeer::setTeamNameAsMottoFromBZId(std::string bzid, in
   uq._URL = "query"; //Tell the query list that we have a match to report on the todo list
   _urlQuery.push_back(uq); //Push the information to the todo list
 		
-  bz_addURLJob(LEAGUE_URL.c_str(), this, bz_urlEncode("league=" + LEAGUE + "&query=teamNameMotto" + "&player=" + bzid));
+  bz_addURLJob(LEAGUE_URL.c_str(), this, bz_urlEncode(("league=" + LEAGUE + "&query=teamNameMotto" + "&player=" + bzid).c_str()));
 }
 
-void const char* leagueOverSeer::setTeamNameAsMottoFromCallsign(std::string callsign, int playerID)
+void leagueOverSeer::setTeamNameAsMottoFromCallsign(std::string callsign, int playerID)
 {
   teamQueries tq; //Make a reference to the team query structure
   tq._playerID = playerID; //Add the player to the list of players who have requested a query
@@ -85,7 +85,7 @@ void const char* leagueOverSeer::setTeamNameAsMottoFromCallsign(std::string call
   uq._URL = "query"; //Tell the query list that we have a match to report on the todo list
   _urlQuery.push_back(uq); //Push the information to the todo list
 		
-  bz_addURLJob(LEAGUE_URL.c_str(), this, bz_urlEncode("league=" + LEAGUE + "&query=teamNameMotto" + "&player=" + callsign));
+  bz_addURLJob(LEAGUE_URL.c_str(), this, bz_urlEncode(("league=" + LEAGUE + "&query=teamNameMotto" + "&player=" + callsign).c_str()));
 }
 
 bool leagueOverSeer::toBool(std::string var) //Turn std::string into a boolean value

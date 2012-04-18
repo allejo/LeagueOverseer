@@ -17,9 +17,8 @@ League Over Seer Plug-in
 */
 
 #include "bzfsAPI.h"
-#include "plugin_utils.h"
+//#include "plugin_utils.h"
 #include "../../src/bzfs/GameKeeper.h"
-
 #include "leagueOverSeer.h"
 
 void leagueOverSeer::URLDone( const char* URL, void* data, unsigned int size, bool complete ) //Everything went fine with the report

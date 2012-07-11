@@ -78,12 +78,9 @@ if (isset($_POST['league']))
 			case 'teamNameMotto':
 			{
 				//TODO: Fix this section so it only looks for one team
-				$players = $_POST['player'];
-				$where = '';
-				foreach ($players AS $p)
-				{
-					$where .= "l_player.callsign = '".mysql_real_escape_string($p)."' OR ";
-				}
+				$player = $_POST['player'];
+				$where = "l_player.callsign = '".mysql_real_escape_string($player)."'";
+				
 				$where = substr($where, 0, -4);
 				$res = mysql_query("SELECT l_player.callsign,l_team.name league_team FROM l_player LEFT JOIN l_team ON l_player.team = l_team.id WHERE $where ORDER BY l_team.name");
 				if (mysql_num_rows($res) == 0)

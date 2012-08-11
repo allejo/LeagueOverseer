@@ -59,7 +59,23 @@ if (isset($_POST['league']))
 		{
 			case 'teamNameMotto':
 			{
-				//TODO
+			   $player = $_POST['player'];
+			   $where = "players.id = '".mysql_real_escape_string($player)."'";
+			   $where = substr($where, 0, -4);
+			   $res = mysql_query("SELECT players.id, teams.name league_team FROM players LEFT JOIN teams ON players.team = teams.id WHERE $where ORDER BY teams.name");
+			   if (mysql_num_rows($res) == 0)
+			   {
+			   	echo "Could not get data";
+			   }
+			   else
+			   {
+				while ($row = mysql_fetch_object($res))
+				{
+					if (empty($row->league_team)) $row->league_team = 'Teamless';
+					if (($lastTeam != $row->league_team) || (empty($lastTeam))) echo "$row->league_team\n";
+				}
+			   }
+
 			}
 			case 'reportMatch':
 			{

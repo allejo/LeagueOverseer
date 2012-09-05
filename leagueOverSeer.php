@@ -1,11 +1,9 @@
- q<?php
+<?php
 //List of IPs that are allowed to report matches
-$ips = array('78.129.242.95', '78.129.242.11', '207.192.70.176', '97.107.129.174', '85.210.203.221');
+$ips = array('78.129.242.95', '78.129.242.11', '207.192.70.176', '97.107.129.174', '85.210.203.221', '76.90.186.178');
 if (!in_array($_SERVER['REMOTE_ADDR'], $ips)) die('Error: 403 - Forbidden');
 
-ini_set('display_errors', 'off');
-
-if ($_POST['league'] == "OL") require('.config/cfg.php');
+//ini_set('display_errors', 'off');
 
 function section_entermatch_calculateRating ($scoreA, $scoreB, $oldA, $oldB, &$newRed, &$newGreen)
 {
@@ -33,52 +31,69 @@ function section_entermatch_calculateRating ($scoreA, $scoreB, $oldA, $oldB, &$n
     $newGreen = $oldB - $d;
 }
 
-if (isset($_POST['league']))
+if (isset($_GET['league']))
 {
-    if ($_POST['league'] == "DUC")
+    if ($_GET['league'] == "DUC")
     {
-        switch $_POST['query']
+        switch ($_GET['query'])
         {
             case 'teamNameMotto':
             {
-                //TODO
+            //TODO
             }
             case 'reportMatch':
             {
-                //TODO
+            //TODO
             }
             default:
             {
-                echo "Error: 404 - Not Found";
+            echo "Error: 404 - Not Found";
             }
         }
     }
-    else if ($_POST['league'] == "GU")
-    {
-		require_once (dirname(dirname(__FILE__)) . '/CMS/index.inc');
-        $site = new siteinfo();
-        $connection = $site->connect_to_db();
-
-        switch $_POST['query']
+    else if ($_GET['league'] == "GU")
+    {            
+        require_once("./CMS/siteoptions.php");
+        $dbc = new mysqli("localhost", pw_secret::mysqluser_secret(), pw_secret::mysqlpw_secret(), db_used_custom_name());
+        
+        switch ($_GET['query'])
         {
             case 'teamNameMotto':
             {
-               $player = $_POST['player']; //Get the player name
-               $player = mysql_real_escape_string($player); //Clean it up from MySQL injection
-               $getTeam = "SELECT `teamid` FROM `players` WHERE name = " . $player; //Get the teamid of the team the players belongs to
-               $result = mysql_query($getTeam); //Execute the query
-               
-               $getTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $result; //Get the name of the team with the teamid that we got before
-               $teamName = mysql_query($getTeamName);
-
-               echo $teamName; //Print it out
+                $player = $_GET['player']; //Get the player name
+                $player = mysqli_real_escape_string($dbc, $player); //Clean it up from MySQL injection
+                $getTeam = "SELECT `teamid` FROM `players` WHERE name = '" . $player . "'"; //Get the teamid of the team the players belongs to
+                $result = mysqli_query($dbc, $getTeam); //Execute the query
+                
+                if (mysqli_num_rows($result) == 0)
+                {
+                    echo "Teamless";
+                }
+                else
+                {
+                    $playerID = mysqli_fetch_array($result);
+                    
+                    if ($playerID[0] == 0)
+                    {
+                        echo "Teamless";
+                        die();
+                    }
+                    
+                    $getTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $playerID[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
+                    $teamName = mysqli_query($dbc, $getTeamName);
+                    $playerTeamName = mysqli_fetch_array($teamName);
+                    
+                    echo $playerTeamName[0]; //Print it out
+                }
             }
+            break;
+            
             case 'reportMatch':
             {
                 require_once(dirname(dirname(__FILE__)) . '/Matches/match.php');
                 //enter_match($team_id1, $team_id2, $team1_caps, $team2_caps, $timestamp, $duration)
                 
-                $redPlayers = explode('"', $_POST['redPlayers']);
+                $redPlayers = explode('"', $_GET['redPlayers']);
                 $getRedTeam = "SELECT `teamid` FROM `players` WHERE";
                 foreach ($redPlayers as $redPlayer)
                 {
@@ -88,7 +103,7 @@ if (isset($_POST['league']))
                 
                 $redTeamResult = mysql_query($getRedTeam);
                 
-                $greenPlayers = explode('"', $_POST['redPlayers']);
+                $greenPlayers = explode('"', $_GET['redPlayers']);
                 $getGreenTeam = "SELECT `teamid` FROM `players` WHERE";
                 foreach ($greenPlayers as $greenPlayer)
                 {
@@ -98,23 +113,33 @@ if (isset($_POST['league']))
                 
                 $greenTeamResult = mysql_query($getGreenTeam);
                 
+                $redTeamIDs = mysql_fetch_array($redTeamResult);
+                $greenTeamIDs = mysql_fetch_array($greenTeamResult);
+                
+                foreach ($redTeamIDs as $rID)
+                {
+                
+                }
                 
                 $where = '';
             }
+            break;
+            
             default:
             {
                 echo "Error: 404 - Not Found";
             }
         }
     }
-    else if ($_POST['league'] == "OL")
+    else if ($_GET['league'] == "OL")
     {
-        switch $_POST['query']
+        require('.config/cfg.php');
+        
+        switch ($_GET['query'])
         {
             case 'teamNameMotto':
             {
-                //TODO: Fix this section so it only looks for one team
-                $player = $_POST['player'];
+                $player = $_GET['player'];
                 $where = "l_player.callsign = '".mysql_real_escape_string($player)."'";
                 
                 $where = substr($where, 0, -4);
@@ -133,61 +158,61 @@ if (isset($_POST['league']))
                 }
             }
             case 'reportMatch':
-            {                die("{$_POST['redTeamWins']}|{$_POST['greenTeamWins']}|{$_POST['matchTime']}|{$_POST['matchDate']}|{$_POST['mapPlayed']}|{$_POST['redPlayers']}|{$_POST['greenPlayers']}|{$_POST['mapPlayed']}");
-
-                $_POST['redTeamWins'] = (int)$_POST['redTeamWins'];
-                $_POST['greenTeamWins'] = (int)$_POST['greenTeamWins'];
-                $_POST['matchTime'] = (int)$_POST['matchTime'] / 60;
-                $_POST['matchDate'] = mysql_real_escape_string($_POST['matchDate']);
-                $_POST['mapPlayed'] = mysql_real_escape_string($_POST['mapPlayed']);
-                $_POST['redPlayers'] = mysql_real_escape_string($_POST['redPlayers']);
-                $_POST['greenPlayers'] = mysql_real_escape_string($_POST['greenPlayers']);
-
-                $_POST['redPlayers'] = explode('"', stripslashes($_POST['redPlayers']));
-                $_POST['greenPlayers'] = explode('"', stripslashes($_POST['greenPlayers']));
-
-                $res = mysql_query("SELECT team,name,score FROM l_player LEFT JOIN l_team ON l_player.team = l_team.id WHERE callsign = '{$_POST['redPlayers'][0]}'") or die('Error: database error.'.mysql_error());
+            {                die("{$_GET['redTeamWins']}|{$_GET['greenTeamWins']}|{$_GET['matchTime']}|{$_GET['matchDate']}|{$_GET['mapPlayed']}|{$_GET['redPlayers']}|{$_GET['greenPlayers']}|{$_GET['mapPlayed']}");
+        
+                $_GET['redTeamWins'] = (int)$_GET['redTeamWins'];
+                $_GET['greenTeamWins'] = (int)$_GET['greenTeamWins'];
+                $_GET['matchTime'] = (int)$_GET['matchTime'] / 60;
+                $_GET['matchDate'] = mysql_real_escape_string($_GET['matchDate']);
+                $_GET['mapPlayed'] = mysql_real_escape_string($_GET['mapPlayed']);
+                $_GET['redPlayers'] = mysql_real_escape_string($_GET['redPlayers']);
+                $_GET['greenPlayers'] = mysql_real_escape_string($_GET['greenPlayers']);
+                
+                $_GET['redPlayers'] = explode('"', stripslashes($_GET['redPlayers']));
+                $_GET['greenPlayers'] = explode('"', stripslashes($_GET['greenPlayers']));
+                
+                $res = mysql_query("SELECT team,name,score FROM l_player LEFT JOIN l_team ON l_player.team = l_team.id WHERE callsign = '{$_GET['redPlayers'][0]}'") or die('Error: database error.'.mysql_error());
                 $row = mysql_fetch_assoc($res);
                 $redTeamID = $row['team'];
                 $redOldScore = $row['score'];
                 $redTeamName = $row['name'];
-
-                $res = mysql_query("SELECT team,name,score FROM l_player LEFT JOIN l_team ON l_player.team = l_team.id WHERE callsign = '{$_POST['greenPlayers'][0]}'") or die('Error: database error.');
+                
+                $res = mysql_query("SELECT team,name,score FROM l_player LEFT JOIN l_team ON l_player.team = l_team.id WHERE callsign = '{$_GET['greenPlayers'][0]}'") or die('Error: database error.');
                 $row = mysql_fetch_assoc($res);
                 $greenTeamID = $row['team'];
                 $greenOldScore = $row['score'];
                 $greenTeamName = $row['name'];
-
+                
                 if (($redTeamID < 1) || ($greenTeamID < 1) || ($redTeamID == $greenTeamID)) die('Error: teams could not be detected.');
-
+                
                 section_entermatch_calculateRating($redScore, $greenScore, $redOldScore, $greenOldScore, &$newRed, &$newGreen);
-
+                
                 $diff = abs($newGreen - $greenOldScore);
-
+                
                 $now = gmdate("Y-m-d H:i:s");
-
-                $log = "Red: {$_POST['redTeamWins']} - Green: {$_POST['greenTeamWins']} - Map: {$_POST['mapPlayed']} - Time: $now - Red Team: $redTeamID [$redOldScore => $newRed] - Green Team: $greenTeamID [$greenOldScore => $newGreen]\n";
-
-                if ($_POST['redTeamWins'] > $_POST['greenTeamWins'])
-                    $sql = "INSERT INTO bzl_match (team1,score1,team2,score2,tsactual,identer,tsenter,oldrankt1,oldrankt2,newrankt1,newrankt2,length,map) VALUES($redTeamID,{$_POST['redTeamWins']},$greenTeamID,{$_POST['greenTeamWins']},'$now',337,'$now',$redOldScore,$greenOldScore,$newRed,$newGreen,{$_POST['matchTime']},'{$_POST['mapPlayed']}')";
+                
+                $log = "Red: {$_GET['redTeamWins']} - Green: {$_GET['greenTeamWins']} - Map: {$_GET['mapPlayed']} - Time: $now - Red Team: $redTeamID [$redOldScore => $newRed] - Green Team: $greenTeamID [$greenOldScore => $newGreen]\n";
+                
+                if ($_GET['redTeamWins'] > $_GET['greenTeamWins'])
+                    $sql = "INSERT INTO bzl_match (team1,score1,team2,score2,tsactual,identer,tsenter,oldrankt1,oldrankt2,newrankt1,newrankt2,length,map) VALUES($redTeamID,{$_GET['redTeamWins']},$greenTeamID,{$_GET['greenTeamWins']},'$now',337,'$now',$redOldScore,$greenOldScore,$newRed,$newGreen,{$_GET['matchTime']},'{$_GET['mapPlayed']}')";
                 else
-                    $sql = "INSERT INTO bzl_match (team1,score1,team2,score2,tsactual,identer,tsenter,oldrankt1,oldrankt2,newrankt1,newrankt2,length,map) VALUES($greenTeamID,{$_POST['greenTeamWins']},$redTeamID,{$_POST['redTeamWins']},'$now',337,'$now',$greenOldScore,$redOldScore,$newGreen,$newRed,{$_POST['matchTime']},'{$_POST['mapPlayed']}')";
-
+                    $sql = "INSERT INTO bzl_match (team1,score1,team2,score2,tsactual,identer,tsenter,oldrankt1,oldrankt2,newrankt1,newrankt2,length,map) VALUES($greenTeamID,{$_GET['greenTeamWins']},$redTeamID,{$_GET['redTeamWins']},'$now',337,'$now',$greenOldScore,$redOldScore,$newGreen,$newRed,{$_GET['matchTime']},'{$_GET['mapPlayed']}')";
+                
                 mysql_query($sql) or die('Error: database error.');
-
+                
                 mysql_query("UPDATE l_team SET score = $newRed, active = 'yes' WHERE id = $redTeamID");
                 mysql_query("UPDATE l_team SET score = $newGreen, active = 'yes' WHERE id = $greenTeamID");
-
-                if ($_POST['redTeamWins'] > $_POST['greenTeamWins'])
-                    echo "Match entered: (+/- $diff) $redTeamName [{$_POST['redTeamWins']}] vs [{$_POST['greenTeamWins']}] $greenTeamName";
+                
+                if ($_GET['redTeamWins'] > $_GET['greenTeamWins'])
+                    echo "Match entered: (+/- $diff) $redTeamName [{$_GET['redTeamWins']}] vs [{$_GET['greenTeamWins']}] $greenTeamName";
                 else
-                    echo "Match entered: (+/- $diff) $greenTeamName [{$_POST['greenTeamWins']}] vs [{$_POST['redTeamWins']}] $redTeamName";
-
+                    echo "Match entered: (+/- $diff) $greenTeamName [{$_GET['greenTeamWins']}] vs [{$_GET['redTeamWins']}] $redTeamName";
+                
                 file_put_contents('autoreport39103.txt', $log, FILE_APPEND);
             }
             default:
             {
-                echo "Error: 404 - Not Found";
+            echo "Error: 404 - Not Found";
             }
         }
     }

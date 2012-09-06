@@ -1,4 +1,2 @@
--> Port PHP script to DUC and GU
--> Change leagueOverSeer to handle BZIDs for DUC and GU
 -> Finish PHP script
--> Update the URL jobs on the plugin to handle the new format of parameters with the PHP script
+-> Support time limits in GU and DUC

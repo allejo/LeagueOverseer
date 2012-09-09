@@ -1,6 +1,6 @@
 <?php
 //List of IPs that are allowed to report matches
-$ips = array('78.129.242.95', '78.129.242.11', '207.192.70.176', '97.107.129.174', '85.210.203.221', '76.90.186.178');
+$ips = array('78.129.242.95', '78.129.242.11', '207.192.70.176', '97.107.129.174', '85.210.203.221', '76.90.186.178', '96.242.120.91');
 if (!in_array($_SERVER['REMOTE_ADDR'], $ips)) die('Error: 403 - Forbidden');
 
 //ini_set('display_errors', 'off');
@@ -62,7 +62,7 @@ if (isset($_GET['league']))
             {
                 $player = $_GET['player']; //Get the player name
                 $player = mysqli_real_escape_string($dbc, $player); //Clean it up from MySQL injection
-                $getTeam = "SELECT `teamid` FROM `players` WHERE name = '" . $player . "'"; //Get the teamid of the team the players belongs to
+                $getTeam = "SELECT `teamid` FROM `players` WHERE external_id = '" . $player . "'"; //Get the teamid of the team the players belongs to
                 $result = @mysqli_query($dbc, $getTeam); //Execute the query
                 
                 if (mysqli_num_rows($result) == 0)

@@ -33,10 +33,9 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
   rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
   mapchangePath = (config.item(section, "MAPCHANGE_PATH")).c_str();
   gameoverReport = toBool(config.item(section, "GAMEOVER_REPORT"));
-  LEAGUE_URL = config.item(section, "MATCH_REPORT_URL");
-  gracePeriod = atoi((config.item(section, "GRACE_PERIOD")).c_str());
+  LEAGUE_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
   DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
-  mottoReplacer = toBool(config.item(section, "MOTTOFILTER_REPLACER"));
+  mottoReplacer = toBool(config.item(section, "MOTTO_REPLACER"));
   rejoinPrevention = toBool(config.item(section, "REJOIN_PREVENTION"));
   
   //Check for errors in the configuration data. If there is an error, shut down the server
@@ -62,7 +61,7 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
   }
 }
 
-void leagueOverSeer::setTeamNameAsMottoFromBZId(std::string bzid, int playerID)
+void leagueOverSeer::setTeamNameAsMottoFromBZID(std::string bzid, int playerID)
 {
   teamQueries tq; //Make a reference to the team query structure
   tq._playerID = playerID; //Add the player to the list of players who have requested a query

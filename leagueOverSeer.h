@@ -30,13 +30,13 @@ League Over Seer Plug-in
 
 //Define plugin version numbering
 const int MAJOR = 0;
-const int MINOR = 0;
+const int MINOR = 7;
 const int REV = 1;
-const int BUILD = 1;
+const int BUILD = 55;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-  virtual const char* Name (){return "League Over Seer 0.0.1 (1)";}
+  virtual const char* Name (){return "League Over Seer 0.7.1 (55)";}
   virtual void Init ( const char* config);  
   virtual void Event( bz_EventData *eventData );
   virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -44,7 +44,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
   virtual void URLDone( const char* URL, void* data, unsigned int size, bool complete );
   virtual void URLTimeout(const char* URL, int errorCode);
   virtual void URLError(const char* URL, int errorCode, const char *errorString);
-  virtual void setTeamNameAsMottoFromBZId(std::string bzid, int playerID);
+  virtual void setTeamNameAsMottoFromBZID(std::string bzid, int playerID);
   virtual void setTeamNameAsMottoFromCallsign(std::string callsign, int playerID);
   virtual int loadConfig(const char *cmdLine);
   virtual bool toBool(std::string var);
@@ -52,7 +52,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
   //All the variables that will be used in the plugin
   bool officialMatch, matchCanceled, funMatch, rotLeague, gameoverReport, mottoReplacer, rejoinPrevention;
   double lastQuery[256];
-  int DEBUG, gracePeriod, RTW, GTW, BTW, PTW;
+  int DEBUG, RTW, GTW, BTW, PTW;
   std::string LEAGUE_URL, LEAGUE, map;
   const char* mapchangePath;
   
@@ -68,21 +68,25 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
   
   struct matchRedPlayers { //Maintains the players that started the match on the red team
     bz_ApiString callsign;
+    bz_ApiString bzid;
   };
   std::vector<matchRedPlayers> matchRedParticipants;
   
   struct matchGreenPlayers { //Maintains the players that started the match on the green team
     bz_ApiString callsign;
+    bz_ApiString bzid;
   };
   std::vector<matchGreenPlayers> matchGreenParticipants;
   
   struct matchBluePlayers { //Maintains the players that started the match on the blue team
     bz_ApiString callsign;
+    bz_ApiString bzid;
   };
   std::vector<matchBluePlayers> matchBlueParticipants;
   
   struct matchPurplePlayers { //Maintains the players that started the match on the purple team
     bz_ApiString callsign;
+    bz_ApiString bzid;
   };
   std::vector<matchPurplePlayers> matchPurpleParticipants;
 };

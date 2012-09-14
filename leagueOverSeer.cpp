@@ -22,7 +22,7 @@ BZ_PLUGIN(leagueOverSeer);
 
 void leagueOverSeer::Init ( const char* commandLine )
 {
-  bz_debugMessagef(0, "Match Over Seer %i.%i.%i (%i) loaded.", MAJOR, MINOR, REV, BUILD);
+  bz_debugMessagef(0, "League Over Seer %i.%i.%i (%i) loaded.", MAJOR, MINOR, REV, BUILD);
   
   Register(bz_eAllowPlayer);
   Register(bz_eCaptureEvent);
@@ -47,6 +47,8 @@ void leagueOverSeer::Init ( const char* commandLine )
   funMatch=false;
   RTW = 0;
   GTW = 0;
+  BTW = 0;
+  PTW = 0;
 
   loadConfig(commandLine); //Load the configuration data when the plugin is loaded
   
@@ -60,7 +62,7 @@ void leagueOverSeer::Init ( const char* commandLine )
   
     map = map.substr(0, map.length()-5); //Remove the '.conf' from the mapchange.out file
 
-    bz_debugMessagef(DEBUG, "DEBUG::Match Over Seer::Current map being played: %s", map.c_str());
+    bz_debugMessagef(DEBUG, "DEBUG::League Over Seer::Current map being played: %s", map.c_str());
   }
 }
 

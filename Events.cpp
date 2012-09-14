@@ -39,11 +39,17 @@ void leagueOverSeer::Event(bz_EventData *eventData)
           
           matchCanceled = true; //To prevent reporting a canceled match, let plugin know the match was canceled
         }
-      } else if(strncmp("/countdown pause", commandData->message.c_str(), 16) == 0) {
+      }
+      else if(strncmp("/countdown pause", commandData->message.c_str(), 16) == 0)
+      {
         bz_sendTextMessagef(BZ_SERVER, commandData->from, "**'/countdown pause' is disabled, please use /pause instead**");
-      } else if(strncmp("/countdown resume", commandData->message.c_str(), 17 ) == 0) {
+      }
+      else if(strncmp("/countdown resume", commandData->message.c_str(), 17 ) == 0)
+      {
         bz_sendTextMessagef(BZ_SERVER, commandData->from, "**'/countdown resume' is disabled, please use /resume instead**");
-      } else if(isdigit(atoi(commandData->message.c_str()) + 12)) {
+      }
+      else if(isdigit(atoi(commandData->message.c_str()) + 12))
+      {
         bz_sendTextMessage(BZ_SERVER, commandData->from, "**'/countdown TIME' is disabled, please use /official or /fm instead**");
       }
       
@@ -117,9 +123,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
           
           for (unsigned int i = 0; i < matchRedParticipants.size(); i++) //Add all the red players to the match report
           {
-            matchToSend += std::string(bz_urlEncode(matchRedParticipants.at(i).callsign.c_str()));
+            matchToSend += std::string(bz_urlEncode(matchRedParticipants.at(i).bzid.c_str()));
             if (i+1 < matchRedParticipants.size()) //Only add a quote if there is another player on the list
-              matchToSend += "\"";
+              matchToSend += ",";
           }
         }
         
@@ -129,9 +135,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         
           for (unsigned int i = 0; i < matchGreenParticipants.size(); i++) //Now add all the green players
           {
-            matchToSend += std::string(bz_urlEncode(matchGreenParticipants.at(i).callsign.c_str()));
+            matchToSend += std::string(bz_urlEncode(matchGreenParticipants.at(i).bzid.c_str()));
             if (i+1 < matchGreenParticipants.size()) //Only add a quote if there is another player on the list
-              matchToSend += "\"";
+              matchToSend += ",";
           }
         }
         
@@ -141,9 +147,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         
           for (unsigned int i = 0; i < matchBlueParticipants.size(); i++) //Now add all the green players
           {
-            matchToSend += std::string(bz_urlEncode(matchBlueParticipants.at(i).callsign.c_str()));
+            matchToSend += std::string(bz_urlEncode(matchBlueParticipants.at(i).bzid.c_str()));
             if (i+1 < matchBlueParticipants.size()) //Only add a quote if there is another player on the list
-              matchToSend += "\"";
+              matchToSend += ",";
           }
         }
         
@@ -153,9 +159,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         
           for (unsigned int i = 0; i < matchPurpleParticipants.size(); i++) //Now add all the green players
           {
-            matchToSend += std::string(bz_urlEncode(matchPurpleParticipants.at(i).callsign.c_str()));
+            matchToSend += std::string(bz_urlEncode(matchPurpleParticipants.at(i).bzid.c_str()));
             if (i+1 < matchPurpleParticipants.size()) //Only add a quote if there is another player on the list
-              matchToSend += "\"";
+              matchToSend += ",";
           }
         }
       
@@ -236,13 +242,15 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         BTW = 0;
         PTW = 0;
         
-        for (unsigned int i = 0; i < playerList->size(); i++){
+        for (unsigned int i = 0; i < playerList->size(); i++)
+        {
           bz_BasePlayerRecord *playerTeam = bz_getPlayerByIndex(playerList->get(i));
           
           if (bz_getPlayerTeam(playerList->get(i)) == eRedTeam) //Check if the player is on the red team
           {
             matchRedPlayers matchRedData;
             matchRedData.callsign = playerTeam->callsign.c_str(); //Add callsign to structure
+            matchRedData.bzid = playerTeam->bzID.c_str(); //Add bzid to structure
           
             matchRedParticipants.push_back(matchRedData);
           }
@@ -250,6 +258,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
           {
             matchGreenPlayers matchGreenData;
             matchGreenData.callsign = playerTeam->callsign.c_str(); //Add callsign to structure
+            matchGreenData.bzid = playerTeam->bzID.c_str(); //Add callsign to structure
           
             matchGreenParticipants.push_back(matchGreenData);
           }
@@ -257,6 +266,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
           {
             matchBluePlayers matchBlueData;
             matchBlueData.callsign = playerTeam->callsign.c_str(); //Add callsign to structure
+            matchBlueData.bzid = playerTeam->bzID.c_str(); //Add callsign to structure
 
             matchBlueParticipants.push_back(matchBlueData);
           }
@@ -264,6 +274,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
           {
             matchPurplePlayers matchPurpleData;
             matchPurpleData.callsign = playerTeam->callsign.c_str(); //Add callsign to structure
+            matchPurpleData.bzid = playerTeam->bzID.c_str(); //Add callsign to structure
 
             matchPurpleParticipants.push_back(matchPurpleData);
           }
@@ -361,7 +372,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         if (strcmp(LEAGUE.c_str(), "OL") == 0)
           setTeamNameAsMottoFromCallsign(record->callsign.c_str(), allowData->playerID);
         else
-          setTeamNameAsMottoFromBZId(record->bzID.c_str(), allowData->playerID);
+          setTeamNameAsMottoFromBZID(record->bzID.c_str(), allowData->playerID);
       }
 	  
       if (rejoinPrevention)
@@ -373,14 +384,14 @@ void leagueOverSeer::Event(bz_EventData *eventData)
           if(!rejoinDB.inListAlready(record->ipAddress.c_str()))
             rejoinDB.add(allowData->playerID);
           else if(rejoinDB.inListAlready(record->ipAddress.c_str()))
-		      {
-		        if(rejoinDB.getCallsignByIP(record->ipAddress.c_str()) != record->callsign.c_str())
-			      {
-			        bz_sendTextMessage(BZ_SERVER, allowData->playerID, "Player Refused: Do not talk by rejoining.");
-			        allowData->allow = false;
-			      }
-	        }
-	        rejoinDB.del();
+		  {
+		      if(rejoinDB.getCallsignByIP(record->ipAddress.c_str()) != record->callsign.c_str())
+			  {
+			    bz_sendTextMessage(BZ_SERVER, allowData->playerID, "Player Refused: Do not talk by rejoining.");
+			    allowData->allow = false;
+			  }
+	      }
+	      rejoinDB.del();
         }
       }
 	  

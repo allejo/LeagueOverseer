@@ -178,10 +178,9 @@ if (isset($_GET['league']))
                 require("./Matches/match.php");
                 $viewerid = 2156;
                 
-                //ob_start();
-                //$tmp = enter_match($redTeamID, $purpleTeamID, $redTeamWins, $purpleTeamWins, $timestamp, $duration);
-                //ob_end_clean();
-                
+                ob_start();
+                $tmp = enter_match($redTeamID, $purpleTeamID, $redTeamWins, $purpleTeamWins, $timestamp, $duration);
+                ob_end_clean();
                 
                 $getRedTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $redTeamIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
                 $redTeamNameQuery = @mysqli_query($dbc, $getRedTeamName);

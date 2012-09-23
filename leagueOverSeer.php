@@ -179,10 +179,23 @@ if (isset($_GET['league']))
                 $viewerid = 2156;
                 
                 ob_start();
-                enter_match($redTeamID, $purpleTeamID, $redTeamWins, $purpleTeamWins, $timestamp, $duration);
-                ob_get_clean();
+                $tmp = enter_match($redTeamID, $purpleTeamID, $redTeamWins, $purpleTeamWins, $timestamp, $duration);
+                ob_end_clean();
                 
-                echo "Match entered: (+/- $diff) $greenTeamName [{$_GET['greenTeamWins']}] vs [{$_GET['redTeamWins']}] $redTeamName";
+                
+                $getRedTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $redTeamIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
+                $redTeamNameQuery = @mysqli_query($dbc, $getRedTeamName);
+                $redTeamName = mysqli_fetch_array($redTeamNameQuery);
+                
+                $getPurpleTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $purpleTeamIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
+                $purpleTeamNameQuery = @mysqli_query($dbc, $getPurpleTeamName);
+                $purpleTeamName = mysqli_fetch_array($purpleTeamNameQuery);
+                
+                $getDiff = "SELECT `team1_new_score` AND `team2_new_score` FROM `matches` WHERE `timestamp` = " . $timestamp . " DESC LIMIT 1"; //Get the name of the team with the teamid that we got before
+                $getDiffQuery = @mysqli_query($dbc, $getDiff);
+                $diffs = mysqli_fetch_array($getDiffQuery);
+                
+                echo "(+/- " . abs($diffs[0] - $diffs[1])/2 . ") " . $purpleTeamName[0] . "[" . $purpleTeamWins . "] vs [" . $redTeamWins . "] " . $redTeamName[0];
             }
             break;
             

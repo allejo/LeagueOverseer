@@ -32,11 +32,11 @@ League Over Seer Plug-in
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 1;
-const int BUILD = 63;
+const int BUILD = 64;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-  virtual const char* Name (){return "League Over Seer 0.7.1 (55)";}
+  virtual const char* Name (){return "League Over Seer 0.9.1 (64)";}
   virtual void Init ( const char* config);  
   virtual void Event( bz_EventData *eventData );
   virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -51,15 +51,9 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
   
   //All the variables that will be used in the plugin
   bool officialMatch, matchCanceled, funMatch, rotLeague, gameoverReport, mottoReplacer, rejoinPrevention;
-  double lastQuery[256];
   int DEBUG, RTW, GTW, BTW, PTW;
   std::string LEAGUE_URL, LEAGUE, map;
   const char* mapchangePath;
-  
-  struct teamQueries { //Stores all the queries that a player request
-    int _playerID;
-  };
-  std::vector<teamQueries> _playerIDs;
   
   struct urlQueries { //Stores the order of match reports and team queries
     std::string _URL;

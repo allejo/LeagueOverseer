@@ -58,6 +58,10 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
 
 void leagueOverSeer::setTeamNameAsMottoFromBZID(std::string bzid, int playerID)
 {
+  teamQueries tq; //Make a reference to the team query structure
+  tq._playerID = playerID; //Add the player to the list of players who have requested a query
+  _playerIDs.push_back(tq); //Push the player id into a structure
+  
   urlQueries uq; //Make a reference to the url query list
   uq._URL = "query"; //Tell the query list that we have a match to report on the todo list
   _urlQuery.push_back(uq); //Push the information to the todo list
@@ -67,6 +71,10 @@ void leagueOverSeer::setTeamNameAsMottoFromBZID(std::string bzid, int playerID)
 
 void leagueOverSeer::setTeamNameAsMottoFromCallsign(std::string callsign, int playerID)
 {
+  teamQueries tq; //Make a reference to the team query structure
+  tq._playerID = playerID; //Add the player to the list of players who have requested a query
+  _playerIDs.push_back(tq); //Push the player id into a structure
+  
   urlQueries uq; //Make a reference to the url query list
   uq._URL = "query"; //Tell the query list that we have a match to report on the todo list
   _urlQuery.push_back(uq); //Push the information to the todo list

@@ -33,7 +33,6 @@ void leagueOverSeer::URLDone( const char* URL, void* data, unsigned int size, bo
     playerData->player.PlayerInfo::setMotto(token);
 
     _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
-	 _playerIDs.erase(_playerIDs.begin(),_playerIDs.begin()+1); //Tell the plugin that this player has received his/her information, move to the next player
   }
   else if(_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //The plugin reported the match successfully
   {
@@ -60,7 +59,6 @@ void leagueOverSeer::URLTimeout(const char* URL, int errorCode) //The league web
     bz_sendTextMessage(BZ_SERVER,_playerIDs.at(0)._playerID, "The request to query the league website has timed out. Please try again later.");
 
     _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
-    _playerIDs.erase(_playerIDs.begin(),_playerIDs.begin()+1); //Tell the plugin that this player has received his/her information, move to the next player
   }
 }
 
@@ -82,6 +80,5 @@ void leagueOverSeer::URLError(const char* URL, int errorCode, const char *errorS
     bz_sendTextMessagef(BZ_SERVER,_playerIDs.at(0)._playerID, "Please contact a league admin with this error as this should not happen.");
 
     _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
-    _playerIDs.erase(_playerIDs.begin(),_playerIDs.begin()+1); //Tell the plugin that this player has received his/her information, move to the next player
   }
 }

@@ -11,3 +11,11 @@ Step 3: Download the latest tarball of this plugin and unwrap it into the plugin
 Step 4: Go into leagueOverSeer/ and  make, make install.
 
 And you are done! :)
+
+#####
+
+If you are a website host
+
+Step 1. Upload leagueOverSeer.php to the root of the league website and add the IPs of the servers that are allowed to report matches.
+
+Step 2. Upload the match.php file to the 'Matches' folder and make sure you back up the old version just incase you decide to drop leagueOverSeer support.

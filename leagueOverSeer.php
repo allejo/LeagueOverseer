@@ -1,6 +1,6 @@
 <?php
 //List of IPs that are allowed to report matches
-$ips = array('78.129.242.95', '78.129.242.11', '207.192.70.176', '97.107.129.174', '85.210.203.221', '76.90.186.178', '96.242.120.91');
+$ips = array('127.0.0.1', '127.0.0.2');
 if (!in_array($_SERVER['REMOTE_ADDR'], $ips)) die('Error: 403 - Forbidden');
 
 //ini_set('display_errors', 'off');

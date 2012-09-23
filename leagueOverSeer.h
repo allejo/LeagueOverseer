@@ -55,6 +55,11 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
   std::string LEAGUE_URL, LEAGUE, map;
   const char* mapchangePath;
   
+  struct teamQueries { //Stores all the queries that a player request
+    int _playerID;
+  };
+  std::vector<teamQueries> _playerIDs;
+  
   struct urlQueries { //Stores the order of match reports and team queries
     std::string _URL;
   };

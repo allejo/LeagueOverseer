@@ -30,9 +30,9 @@ League Over Seer Plug-in
 
 //Define plugin version numbering
 const int MAJOR = 0;
-const int MINOR = 7;
+const int MINOR = 9;
 const int REV = 1;
-const int BUILD = 55;
+const int BUILD = 63;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {

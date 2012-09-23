@@ -90,7 +90,6 @@ if (isset($_GET['league']))
             
             case 'reportMatch':
             {
-                $site = "null"; //Because I need to be able to include the match.php file, $site has to be set
                 $redTeamWins = $_GET['redTeamWins'];
                 $redTeamWins = mysqli_real_escape_string($dbc, $redTeamWins);
                 $purpleTeamWins = $_GET['purpleTeamWins'];
@@ -172,14 +171,18 @@ if (isset($_GET['league']))
                     }
                 }
                 
-                echo "no errors.. about to report...";
+                require_once './CMS/siteinfo.php';
+                $site = new siteinfo();
+                $connection = $site->connect_to_db();
                 
                 require("./Matches/match.php");
-                //ob_start();
-                /*$tmp =*/ enter_match($redTeamID, $purpleTeamID, $redTeamWins, $purpleTeamWins, $timestamp, $duration);
-                //ob_end_clean();
+                $viewerid = 2156;
                 
-                echo "No errors entirely!!";
+                ob_start();
+                enter_match($redTeamID, $purpleTeamID, $redTeamWins, $purpleTeamWins, $timestamp, $duration);
+                ob_get_clean();
+                
+                echo "Match entered: (+/- $diff) $greenTeamName [{$_GET['greenTeamWins']}] vs [{$_GET['redTeamWins']}] $redTeamName";
             }
             break;
             

@@ -178,9 +178,9 @@ if (isset($_GET['league']))
                 require("./Matches/match.php");
                 $viewerid = 2156;
                 
-                ob_start();
-                $tmp = enter_match($redTeamID, $purpleTeamID, $redTeamWins, $purpleTeamWins, $timestamp, $duration);
-                ob_end_clean();
+                //ob_start();
+                //$tmp = enter_match($redTeamID, $purpleTeamID, $redTeamWins, $purpleTeamWins, $timestamp, $duration);
+                //ob_end_clean();
                 
                 
                 $getRedTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $redTeamIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
@@ -191,7 +191,7 @@ if (isset($_GET['league']))
                 $purpleTeamNameQuery = @mysqli_query($dbc, $getPurpleTeamName);
                 $purpleTeamName = mysqli_fetch_array($purpleTeamNameQuery);
                 
-                $getDiff = "SELECT `team1_new_score` AND `team2_new_score` FROM `matches` WHERE `timestamp` = " . $timestamp . " DESC LIMIT 1"; //Get the name of the team with the teamid that we got before
+                $getDiff = "SELECT `team1_new_score`, `team2_new_score` FROM `matches` WHERE `timestamp` = \"" . $timestamp . "\" ORDER BY `timestamp` DESC LIMIT 1"; //Get the name of the team with the teamid that we got before
                 $getDiffQuery = @mysqli_query($dbc, $getDiff);
                 $diffs = mysqli_fetch_array($getDiffQuery);
                 

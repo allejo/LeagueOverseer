@@ -33,25 +33,7 @@ function section_entermatch_calculateRating ($scoreA, $scoreB, $oldA, $oldB, &$n
 
 if (isset($_GET['league']))
 {
-    if ($_GET['league'] == "DUC")
-    {
-        switch ($_GET['query'])
-        {
-            case 'teamNameMotto':
-            {
-            //TODO
-            }
-            case 'reportMatch':
-            {
-            //TODO
-            }
-            default:
-            {
-            echo "Error: 404 - Not Found";
-            }
-        }
-    }
-    else if ($_GET['league'] == "GU")
+    if ($_GET['league'] == "GU" || $_GET['league'] == "DUC")
     {            
         require_once("./CMS/siteoptions.php");
         $dbc = new mysqli("localhost", pw_secret::mysqluser_secret(), pw_secret::mysqlpw_secret(), db_used_custom_name());
@@ -178,9 +160,7 @@ if (isset($_GET['league']))
                 require("./Matches/match.php");
                 $viewerid = 2156;
                 
-                ob_start();
-                $tmp = enter_match($redTeamID, $purpleTeamID, $redTeamWins, $purpleTeamWins, $timestamp, $duration);
-                ob_end_clean();
+                los_enter_match($redTeamID, $purpleTeamID, $redTeamWins, $purpleTeamWins, $timestamp, $duration);
                 
                 $getRedTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $redTeamIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
                 $redTeamNameQuery = @mysqli_query($dbc, $getRedTeamName);

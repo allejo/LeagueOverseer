@@ -30,7 +30,6 @@ void leagueOverSeer::Init ( const char* commandLine )
   Register(bz_eGameStartEvent);
   Register(bz_eSlashCommandEvent);
   Register(bz_ePlayerJoinEvent);
-  Register(bz_ePlayerPartEvent);
   Register(bz_eTickEvent);
 
   bz_registerCustomSlashCommand("official", this);

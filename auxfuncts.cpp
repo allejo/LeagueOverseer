@@ -49,11 +49,6 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
       bz_debugMessage(0, "*** DEBUG::Match Over Seer::No URLs were choosen to report matches or query teams. ***");
       bz_shutdown();
   }
-  if (gracePeriod > bz_getTimeLimit())
-  {
-    bz_debugMessage(0, "*** DEBUG::Match Over Seer::Invalid grace period in the configuration file. ***");
-    bz_shutdown();
-  }
   if (DEBUG > 4 || DEBUG < 0)
   {
     bz_debugMessage(0, "*** DEBUG::Match Over Seer::Invalid debug level in the configuration file. ***");

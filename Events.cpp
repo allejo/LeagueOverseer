@@ -298,13 +298,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
     }
     break;
     
-    case bz_ePlayerPartEvent: //A player leaves
-    {
-      bz_PlayerJoinPartEventData_V1 *partData = (bz_PlayerJoinPartEventData_V1*)eventData;
-      lastQuery[partData->playerID] = 0; //Reset the last query time for the player slot
-    }
-    break;
-    
     case bz_eTickEvent: //Tick tock tick tock...
     {
       int totaltanks = bz_getTeamCount(eRogueTeam) + bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);

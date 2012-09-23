@@ -32,11 +32,11 @@ League Over Seer Plug-in
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 1;
-const int BUILD = 64;
+const int BUILD = 68;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-  virtual const char* Name (){return "League Over Seer 0.9.1 (64)";}
+  virtual const char* Name (){return "League Over Seer 0.9.1 (68)";}
   virtual void Init ( const char* config);  
   virtual void Event( bz_EventData *eventData );
   virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);

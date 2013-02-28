@@ -98,10 +98,10 @@ void leagueOverSeer::Init ( const char* commandLine )
 {
     bz_debugMessagef(0, "League Over Seer %i.%i.%i (%i) loaded.", MAJOR, MINOR, REV, BUILD);
 
-    Register(bz_eAllowPlayer);
     Register(bz_eCaptureEvent);
     Register(bz_eGameEndEvent);
     Register(bz_eGameStartEvent);
+    Register(bz_eGetPlayerMotto);
     Register(bz_eSlashCommandEvent);
     Register(bz_ePlayerJoinEvent);
     Register(bz_eTickEvent);
@@ -482,43 +482,13 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         }
         break;
 
-        case bz_eAllowPlayer:
+        case bz_eGetPlayerMotto:
         {
-          /*bz_AllowPlayerEventData_V1 *allowData = (bz_AllowPlayerEventData_V1*)eventData;
-          GameKeeper::Player *playerData = GameKeeper::Player::getPlayerByIndex(allowData->playerID);
-          bz_BasePlayerRecord *record = bz_getPlayerByIndex(allowData->playerID);
+            bz_GetPlayerMottoData_V1* motto = (bz_GetPlayerMottoData_V1*)eventData;
 
-          if (mottoReplacer)
-          {
-            if (strcmp(LEAGUE.c_str(), "OL") == 0)
-              setTeamNameAsMottoFromCallsign(record->callsign.c_str(), allowData->playerID);
-            else
-              setTeamNameAsMottoFromBZID(record->bzID.c_str(), allowData->playerID);
-          }
-
-          if (rejoinPrevention)
-          {
-            struct RejoinDB rejoinDB;
-
-            if (!record->globalUser)
-            {
-              if (!rejoinDB.inListAlready(record->ipAddress.c_str()))
-                rejoinDB.add(allowData->playerID);
-              else if (rejoinDB.inListAlready(record->ipAddress.c_str()))
-              {
-                  if (rejoinDB.getCallsignByIP(record->ipAddress.c_str()) != record->callsign.c_str())
-                  {
-                    bz_sendTextMessage(BZ_SERVER, allowData->playerID, "Player Refused: Do not talk by rejoining.");
-                    allowData->allow = false;
-                  }
-              }
-              rejoinDB.del();
-            }
-          }
-
-          bz_freePlayerRecord(record);*/
+            // motto->motto (bz_ApiString)
+            //still to do
         }
-        break;
 
         default:break; //I never really understand the point of this... -.-"
     }
@@ -668,17 +638,7 @@ void leagueOverSeer::URLDone( const char* URL, void* data, unsigned int size, bo
 {
     std::string siteData = (char*)(data); //Convert the data to a std::string
 
-    if (_urlQuery.at(0)._URL.compare("query") == 0 && URL == LEAGUE_URL) //Someone queried for teams
-    {
-        /*char* token; //Store tokens
-
-        GameKeeper::Player *playerData = GameKeeper::Player::getPlayerByIndex(_playerIDs.at(0)._playerID);
-        playerData->player.PlayerInfo::setMotto(token);
-
-        _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
-        */
-    }
-    else if (_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //The plugin reported the match successfully
+    if (_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //The plugin reported the match successfully
     {
         bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",(char*)data);
         bz_debugMessagef(DEBUG, "%s",(char*)data);
@@ -698,12 +658,6 @@ void leagueOverSeer::URLTimeout(const char* URL, int errorCode) //The league web
 
         _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
     }
-    else if (_urlQuery.at(0)._URL.compare("query") == 0 && URL == LEAGUE_URL) //Something went wrong with the team query, it timed out
-    {
-        bz_sendTextMessage(BZ_SERVER,_playerIDs.at(0)._playerID, "The request to query the league website has timed out. Please try again later.");
-
-        _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
-    }
 }
 
 void leagueOverSeer::URLError(const char* URL, int errorCode, const char *errorString) //The server owner must have set up the URLs wrong because this shouldn't happen
@@ -715,13 +669,6 @@ void leagueOverSeer::URLError(const char* URL, int errorCode, const char *errorS
         bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- Please contact a league admin or referee with this error and the match result. --<");
         bz_debugMessage(DEBUG, "DEBUG :: Match Over Seer :: Match report failed with the following error:");
         bz_debugMessagef(DEBUG, "DEBUG :: Match Over Seer :: Error code: %i - %s",errorCode,errorString);
-
-        _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
-    }
-    else if (_urlQuery.at(0)._URL.compare("query") == 0 && URL == LEAGUE_URL) //Something went wrong with the team query, no website found
-    {
-        bz_sendTextMessagef(BZ_SERVER,_playerIDs.at(0)._playerID, "Your team query failed with error code %i - %s",errorCode,errorString);
-        bz_sendTextMessagef(BZ_SERVER,_playerIDs.at(0)._playerID, "Please contact a league admin with this error as this should not happen.");
 
         _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
     }

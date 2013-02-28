@@ -45,7 +45,9 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     virtual void URLDone( const char* URL, void* data, unsigned int size, bool complete );
     virtual void URLTimeout(const char* URL, int errorCode);
     virtual void URLError(const char* URL, int errorCode, const char *errorString);
-    virtual void setTeamNameAsMottoFromBZID(std::string bzid, int playerID);
+    virtual bool isDigit(std::string myString);
+    virtual int isValidCallsign(std::string callsign);
+    virtual bool isValidPlayerID(int playerID);
     virtual int loadConfig(const char *cmdLine);
     virtual bool toBool(std::string var);
 
@@ -418,9 +420,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
 
             if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && officialMatch) //If there is an official match in progress, notify others who join
-                bz_sendTextMessage(BZ_SERVER,joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");
+                bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");
             else if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && funMatch) //If there is a fun match in progress, notify others who join
-                bz_sendTextMessage(BZ_SERVER,joinData->playerID, "*** There is currently a fun match in progress, please be respectful. ***");
+                bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently a fun match in progress, please be respectful. ***");
         }
         break;
 
@@ -441,7 +443,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
                 //This should never happen but just incase the countdown is going when there are no tanks
                 if (bz_isCountDownActive())
-                    bz_gameOver(253,eObservers);
+                    bz_gameOver(253, eObservers);
             }
         }
         break;
@@ -591,7 +593,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
 
             //End the countdown
             if (bz_isCountDownActive())
-                bz_gameOver(253,eObservers);
+                bz_gameOver(253, eObservers);
         }
         else if (!bz_isCountDownActive())
             bz_sendTextMessage(BZ_SERVER,playerID,"There is no match in progress to cancel.");
@@ -621,34 +623,44 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     }
     else if (command == "spawn")
     {
-        /*if (bz_hasPerm(playerID, "kick")) {
-            if (params->size() == 1) {
-                const char* msg = message.c_str() + 6;
-                while ((*msg != '\0') && isspace(*msg)) msg++;
+        if (bz_hasPerm(playerID, "kick"))
+        {
+            if (params->size() > 0)
+            {
+                std::string callsignToLookup; //store the callsign we're going to search for
 
-                if (isdigit(msg[0])) {
-                    int grantee = (int) atoi(params->get(0).c_str());
-                    const char* granterCallsign = bz_getPlayerCallsign(playerID);
-                    const char* granteeCallsign = bz_getPlayerCallsign(grantee);
-
-                    bz_grantPerm(grantee, "spawn");
-                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", granterCallsign, granteeCallsign);
-                }
-                else if (!isdigit(msg[0]))
+                for (unsigned int i = 0; i < params->size(); i++) //piece together the callsign from the slash command parameters
                 {
-                    int grantee = GameKeeper::Player::getPlayerIDByName(params->get(0).c_str());
-                    const char* granterCallsign = bz_getPlayerCallsign(playerID);
-                    const char* granteeCallsign = bz_getPlayerCallsign(grantee);
+                    callsignToLookup += params->get(i).c_str();
+                    if (i != params->size() - 1) // so we don't stick a whitespace on the end
+                        callsignToLookup += " "; // add a whitespace between each chat text parameter
+                }
 
-                    bz_grantPerm(grantee, "spawn");
-                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", granterCallsign, granteeCallsign);
+                if (std::string::npos != std::string(params->get(0).c_str()).find("#"))
+                {
+                    bz_grantPerm(atoi(std::string(params->get(0).c_str()).substr(0, 1).c_str()), "spawn");
+                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", bz_getPlayerByIndex(playerID)->callsign.c_str(), bz_getPlayerByIndex(atoi(std::string(params->get(0).c_str()).substr(0, 1).c_str()))->callsign.c_str());
+                }
+                else if (isDigit(params->get(0).c_str()))
+                {
+                    bz_grantPerm(atoi(params->get(0).c_str()), "spawn");
+                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", bz_getPlayerByIndex(playerID)->callsign.c_str(), bz_getPlayerByIndex(atoi(params->get(0).c_str()))->callsign.c_str());
+                }
+                else if (isValidCallsign(callsignToLookup) >= 0)
+                {
+                    bz_grantPerm(isValidCallsign(callsignToLookup), "spawn");
+                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", bz_getPlayerByIndex(playerID)->callsign.c_str(), bz_getPlayerByIndex(isValidCallsign(callsignToLookup))->callsign.c_str());
                 }
             }
+            else
+                bz_sendTextMessage(BZ_SERVER, playerID, "/spawn <player id or callsign>");
         }
-        else if (!playerData->admin) {
+        else if (!playerData->admin)
+        {
             bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to use the /spawn command.");
-        }*/
+        }
     }
+
     bz_freePlayerRecord(playerData);
 }
 
@@ -715,6 +727,48 @@ void leagueOverSeer::URLError(const char* URL, int errorCode, const char *errorS
     }
 }
 
+bool leagueOverSeer::isDigit(std::string myString)
+{
+    for (int i = 0; i < myString.size(); i++) //Go through entire string
+    {
+        if (!isdigit(myString[i])) //If one character is not a digit, then the string is not a digit
+            return false;
+    }
+    return true; //All characters are digits
+}
+
+int leagueOverSeer::isValidCallsign(std::string callsign)
+{
+    bz_APIIntList *playerList = bz_newIntList();
+    bz_getPlayerIndexList(playerList);
+
+    for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
+    {
+        if (strcmp(bz_getPlayerByIndex(playerList->get(i))->callsign.c_str(), callsign.c_str()) == 0)
+            return playerList->get(i);
+    }
+
+    bz_deleteIntList(playerList);
+
+    return -1;
+}
+
+bool leagueOverSeer::isValidPlayerID(int playerID)
+{
+    bz_APIIntList *playerList = bz_newIntList();
+    bz_getPlayerIndexList(playerList);
+
+    for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
+    {
+        if (playerList->get(i) == playerID)
+            return true;
+    }
+
+    bz_deleteIntList(playerList);
+
+    return false;
+}
+
 int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configuration file
 {
     PluginConfig config = PluginConfig(cmdLine);
@@ -748,19 +802,6 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
         bz_debugMessage(0, "*** DEBUG :: Match Over Seer :: Invalid debug level in the configuration file. ***");
         bz_shutdown();
     }
-}
-
-void leagueOverSeer::setTeamNameAsMottoFromBZID(std::string bzid, int playerID)
-{
-    teamQueries tq; //Make a reference to the team query structure
-    tq._playerID = playerID; //Add the player to the list of players who have requested a query
-    _playerIDs.push_back(tq); //Push the player id into a structure
-
-    urlQueries uq; //Make a reference to the url query list
-    uq._URL = "query"; //Tell the query list that we have a match to report on the todo list
-    _urlQuery.push_back(uq); //Push the information to the todo list
-
-    bz_addURLJob(LEAGUE_URL.c_str(), this, bz_urlEncode(("league=" + LEAGUE + "&query=teamNameMotto" + "&player=" + bzid).c_str()));
 }
 
 bool leagueOverSeer::toBool(std::string var) //Turn std::string into a boolean value

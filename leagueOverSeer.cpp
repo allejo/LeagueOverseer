@@ -18,6 +18,7 @@ League Over Seer Plug-in
 
 #include <stdio.h>
 #include <iostream>
+#include <sqlite3.h>
 #include <sstream>
 #include <string>
 #include <stdexcept>
@@ -37,6 +38,8 @@ const int BUILD = 70;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
+    sqlite3* db; //sqlite database we'll be using
+
     virtual const char* Name (){return "League Over Seer 0.9.2 (70)";}
     virtual void Init ( const char* config);
     virtual void Event( bz_EventData *eventData );
@@ -45,6 +48,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     virtual void URLDone( const char* URL, void* data, unsigned int size, bool complete );
     virtual void URLTimeout(const char* URL, int errorCode);
     virtual void URLError(const char* URL, int errorCode, const char *errorString);
+    virtual void doQuery(std::string query);
     virtual bool isDigit(std::string myString);
     virtual int isValidCallsign(std::string callsign);
     virtual bool isValidPlayerID(int playerID);
@@ -52,9 +56,9 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     virtual bool toBool(std::string var);
 
     //All the variables that will be used in the plugin
-    bool officialMatch, matchCanceled, funMatch, rotLeague, gameoverReport, mottoReplacer, rejoinPrevention;
+    bool officialMatch, matchCanceled, funMatch, rotLeague, gameoverReport;
     int DEBUG, RTW, GTW, BTW, PTW;
-    std::string LEAGUE_URL, LEAGUE, map;
+    std::string LEAGUE_URL, LEAGUE, map, SQLiteDB;
     const char* mapchangePath;
 
     struct teamQueries { //Stores all the queries that a player request
@@ -94,7 +98,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 
 BZ_PLUGIN(leagueOverSeer);
 
-void leagueOverSeer::Init ( const char* commandLine )
+void leagueOverSeer::Init (const char* commandLine)
 {
     bz_debugMessagef(0, "League Over Seer %i.%i.%i (%i) loaded.", MAJOR, MINOR, REV, BUILD);
 
@@ -112,7 +116,6 @@ void leagueOverSeer::Init ( const char* commandLine )
     bz_registerCustomSlashCommand("spawn",this);
     bz_registerCustomSlashCommand("resume",this);
     bz_registerCustomSlashCommand("pause",this);
-
 
     //Set all boolean values for the plugin to false
     officialMatch = false;
@@ -135,13 +138,28 @@ void leagueOverSeer::Init ( const char* commandLine )
 
         map = map.substr(0, map.length() - 5); //Remove the '.conf' from the mapchange.out file
 
-        bz_debugMessagef(DEBUG, "DEBUG::League Over Seer::Current map being played: %s", map.c_str());
+        bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Current map being played: %s", map.c_str());
+    }
+
+    bz_debugMessagef(0, "DEBUG :: League Over Seer :: Using the following database: %s", SQLiteDB.c_str());
+    sqlite3_open(SQLiteDB.c_str(),&db);
+
+    if (db == 0) //we couldn't read the database provided
+    {
+        bz_debugMessagef(0, "DEBUG :: League Over Seer :: Error! Could not connect to: %s", SQLiteDB.c_str());
+        bz_debugMessage(0, "DEBUG :: League Over Seer :: Unloading MoFoCup plugin...");
+        bz_unloadPlugin(Name());
+    }
+
+    if (db != 0) //if the database connection succeed and the database is empty, let's create the tables needed
+    {
+        doQuery("CREATE TABLE IF NOT EXISTS \"Players\" (\"BZID\" INTEGER NOT NULL UNIQUE DEFAULT (0), \"Callsign\" TEXT NOT NULL DEFAULT ('Anonymous'), \"CupID\" INTEGER NOT NULL DEFAULT (0), \"PlayingTime\" INTEGER NOT NULL DEFAULT (0));");
     }
 }
 
 void leagueOverSeer::Cleanup (void)
 {
-    bz_debugMessagef(0, "Match Over Seer %i.%i.%i (%i) unloaded.", MAJOR, MINOR, REV, BUILD);
+    bz_debugMessagef(0, "League Over Seer %i.%i.%i (%i) unloaded.", MAJOR, MINOR, REV, BUILD);
 
     Flush();
 
@@ -166,7 +184,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             {
                 if (officialMatch && bz_isCountDownActive()) //Only announce that the match was canceled if it's an official match
                 {
-                    bz_debugMessagef(DEBUG, "DEBUG :: Match Over Seer :: Official match canceled by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
+                    bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Official match canceled by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
                     bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match canceled by %s", playerData->callsign.c_str());
 
                     matchCanceled = true; //To prevent reporting a canceled match, let plugin know the match was canceled
@@ -196,7 +214,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 GTW = 0;
                 BTW = 0;
                 PTW = 0;
-                bz_debugMessage(DEBUG, "DEBUG :: Match Over Seer :: Official match was not reported.");
+                bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: Official match was not reported.");
                 bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Official match was not reported.");
             }
             else if (officialMatch)
@@ -331,7 +349,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
                 bz_debugMessagef(DEBUG, "*** End of Match Data ***");
 
-                bz_debugMessagef(DEBUG, "DEBUG :: Match Over Seer :: Reporting match data...");
+                bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Reporting match data...");
                 bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS, "Reporting match...");
 
                 urlQueries uq; //Make a reference to the url query list
@@ -351,7 +369,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 PTW = 0;
             }
             else
-                bz_debugMessage(DEBUG, "DEBUG :: Match Over Seer :: Fun match was not reported.");
+                bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: Fun match was not reported.");
         }
         break;
 
@@ -484,13 +502,29 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
         case bz_eGetPlayerMotto:
         {
-            bz_GetPlayerMottoData_V1* motto = (bz_GetPlayerMottoData_V1*)eventData;
+            bz_GetPlayerMottoData_V2* mottoEvent = (bz_GetPlayerMottoData_V2*)eventData;
+            sqlite3_stmt *getPlayerMotto;
 
-            // motto->motto (bz_ApiString)
-            //still to do
+            if (sqlite3_prepare_v2(db, "SELECT `TeamName` FROM `Players` WHERE `BZID` = ?", -1, &getPlayerMotto, 0) == SQLITE_OK)
+            {
+                //prepare the query
+                sqlite3_bind_text(getPlayerMotto, 1, mottoEvent->record->bzID.c_str(), -1, SQLITE_TRANSIENT);
+
+                if (sqlite3_step(getPlayerMotto) == SQLITE_DONE)
+                    mottoEvent->motto = (char*)sqlite3_column_text(getPlayerMotto, 0);
+                else
+                    mottoEvent->motto = "";
+
+                sqlite3_finalize(getPlayerMotto);
+            }
+            else
+            {
+                bz_debugMessagef(2, "DEBUG :: League Over Seer :: SQLite :: bz_eGetPlayerMotto :: Error #%i: %s", sqlite3_errcode(db), sqlite3_errmsg(db));
+            }
         }
 
-        default:break; //I never really understand the point of this... -.-"
+        default:
+        break;
     }
 }
 
@@ -508,7 +542,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         else if (playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !bz_isCountDownActive()) //Check the user is not an obs and is a league member
         {
             officialMatch = true; //Notify the plugin that the match is official
-            bz_debugMessagef(DEBUG, "DEBUG :: Match Over Seer :: Official match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+            bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Official match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Official match started by %s.",playerData->callsign.c_str());
             if (timeToStart <= 120 && timeToStart > 5)
                 bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
@@ -528,7 +562,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     {
         if (!bz_isCountDownActive() && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified)
         {
-            bz_debugMessagef(DEBUG, "DEBUG :: Match Over Seer :: Fun match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+            bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Fun match started by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Fun match started by %s.",playerData->callsign.c_str());
             if (timeToStart <= 120 && timeToStart > 5)
                 bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
@@ -550,7 +584,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         if (bz_hasPerm(playerID,"spawn") && bz_isCountDownActive())
         {
             bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Match ended by %s",playerData->callsign.c_str());
-            bz_debugMessagef(DEBUG, "DEBUG :: Match Over Seer :: Match ended by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
+            bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Match ended by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 
             //Reset the server. Cleanly ends a match
             if (officialMatch) officialMatch = false;
@@ -654,7 +688,7 @@ void leagueOverSeer::URLTimeout(const char* URL, int errorCode) //The league web
         bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- WARNING --<");
         bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- The request to report the match has timed out. --<");
         bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- Please contact a league admin or referee with the match result. --<");
-        bz_debugMessage(DEBUG, "DEBUG :: Match Over Seer :: The request to report the match has timed out.");
+        bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: The request to report the match has timed out.");
 
         _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
     }
@@ -667,10 +701,29 @@ void leagueOverSeer::URLError(const char* URL, int errorCode, const char *errorS
         bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- WARNING --<");
         bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,">-- Match report failed with error code %i - %s --<",errorCode,errorString);
         bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- Please contact a league admin or referee with this error and the match result. --<");
-        bz_debugMessage(DEBUG, "DEBUG :: Match Over Seer :: Match report failed with the following error:");
-        bz_debugMessagef(DEBUG, "DEBUG :: Match Over Seer :: Error code: %i - %s",errorCode,errorString);
+        bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: Match report failed with the following error:");
+        bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Error code: %i - %s",errorCode,errorString);
 
         _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+    }
+}
+
+void leagueOverSeer::doQuery(std::string query)
+{
+    /*
+        Execute a SQL query without the need of any return values
+    */
+
+    bz_debugMessage(2, "DEBUG :: MoFo Cup :: Executing following SQL query...");
+    bz_debugMessagef(2, "DEBUG :: MoFo Cup :: %s", query.c_str());
+
+    char* db_err = 0; //a place to store the error
+    int ret = sqlite3_exec(db, query.c_str(), NULL, 0, &db_err); //execute
+
+    if (db_err != 0) //print out any errors
+    {
+        bz_debugMessage(2, "DEBUG :: MoFo Cup :: SQL ERROR!");
+        bz_debugMessagef(2, "DEBUG :: MoFo Cup :: %s", db_err);
     }
 }
 
@@ -726,27 +779,26 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
     //Extract all the data in the configuration file and assign it to plugin variables
     LEAGUE = config.item(section, "LEAGUE");
     rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
+    SQLiteDB = config.item(section, "SQLITE_DB");
     mapchangePath = (config.item(section, "MAPCHANGE_PATH")).c_str();
     gameoverReport = toBool(config.item(section, "GAMEOVER_REPORT"));
     LEAGUE_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
     DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
-    mottoReplacer = toBool(config.item(section, "MOTTO_REPLACER"));
-    rejoinPrevention = toBool(config.item(section, "REJOIN_PREVENTION"));
 
     //Check for errors in the configuration data. If there is an error, shut down the server
     if (strcmp(LEAGUE.c_str(), "") == 0)
     {
-        bz_debugMessage(0, "*** DEBUG :: Match Over Seer :: No league was specified ***");
+        bz_debugMessage(0, "*** DEBUG :: League Over Seer :: No league was specified ***");
         bz_shutdown();
     }
     if (strcmp(LEAGUE_URL.c_str(), "") == 0)
     {
-            bz_debugMessage(0, "*** DEBUG :: Match Over Seer :: No URLs were choosen to report matches or query teams. ***");
+            bz_debugMessage(0, "*** DEBUG :: League Over Seer :: No URLs were choosen to report matches or query teams. ***");
             bz_shutdown();
     }
     if (DEBUG > 4 || DEBUG < 0)
     {
-        bz_debugMessage(0, "*** DEBUG :: Match Over Seer :: Invalid debug level in the configuration file. ***");
+        bz_debugMessage(0, "*** DEBUG :: League Over Seer :: Invalid debug level in the configuration file. ***");
         bz_shutdown();
     }
 }

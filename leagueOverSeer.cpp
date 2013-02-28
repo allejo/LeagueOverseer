@@ -33,14 +33,14 @@ League Over Seer Plug-in
 //Define plugin version numbering
 const int MAJOR = 0;
 const int MINOR = 9;
-const int REV = 2;
-const int BUILD = 70;
+const int REV = 3;
+const int BUILD = 72;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 0.9.2 (70)";}
+    virtual const char* Name (){return "League Over Seer 0.9.3 (72)";}
     virtual void Init ( const char* config);
     virtual void Event( bz_EventData *eventData );
     virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -779,8 +779,8 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
     //Extract all the data in the configuration file and assign it to plugin variables
     LEAGUE = config.item(section, "LEAGUE");
     rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
-    SQLiteDB = config.item(section, "SQLITE_DB");
     mapchangePath = (config.item(section, "MAPCHANGE_PATH")).c_str();
+    SQLiteDB = config.item(section, "SQLITE_DB");
     gameoverReport = toBool(config.item(section, "GAMEOVER_REPORT"));
     LEAGUE_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
     DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());

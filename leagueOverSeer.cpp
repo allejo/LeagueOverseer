@@ -34,13 +34,13 @@ League Over Seer Plug-in
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 3;
-const int BUILD = 72;
+const int BUILD = 78;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 0.9.3 (72)";}
+    virtual const char* Name (){return "League Over Seer 0.9.3 (78)";}
     virtual void Init ( const char* config);
     virtual void Event( bz_EventData *eventData );
     virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -153,7 +153,7 @@ void leagueOverSeer::Init (const char* commandLine)
 
     if (db != 0) //if the database connection succeed and the database is empty, let's create the tables needed
     {
-        doQuery("CREATE TABLE IF NOT EXISTS \"Players\" (\"BZID\" INTEGER NOT NULL UNIQUE DEFAULT (0), \"Callsign\" TEXT NOT NULL DEFAULT ('Anonymous'), \"CupID\" INTEGER NOT NULL DEFAULT (0), \"PlayingTime\" INTEGER NOT NULL DEFAULT (0));");
+        doQuery("CREATE TABLE IF NOT EXISTS [Players] (BZID INTEGER NOT NULL PRIMARY KEY DEFAULT 0, TEAM TEXT NOT NULL DEFAULT Teamless, SQUAD TEXT);");
     }
 }
 
@@ -505,7 +505,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             bz_GetPlayerMottoData_V2* mottoEvent = (bz_GetPlayerMottoData_V2*)eventData;
             sqlite3_stmt *getPlayerMotto;
 
-            if (sqlite3_prepare_v2(db, "SELECT `TeamName` FROM `Players` WHERE `BZID` = ?", -1, &getPlayerMotto, 0) == SQLITE_OK)
+            if (sqlite3_prepare_v2(db, "SELECT `TEAM` FROM `Players` WHERE `BZID` = ?", -1, &getPlayerMotto, 0) == SQLITE_OK)
             {
                 //prepare the query
                 sqlite3_bind_text(getPlayerMotto, 1, mottoEvent->record->bzID.c_str(), -1, SQLITE_TRANSIENT);

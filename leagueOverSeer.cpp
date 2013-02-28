@@ -23,7 +23,7 @@ BZ_PLUGIN(leagueOverSeer);
 void leagueOverSeer::Init ( const char* commandLine )
 {
   bz_debugMessagef(0, "League Over Seer %i.%i.%i (%i) loaded.", MAJOR, MINOR, REV, BUILD);
-  
+
   Register(bz_eAllowPlayer);
   Register(bz_eCaptureEvent);
   Register(bz_eGameEndEvent);
@@ -38,19 +38,19 @@ void leagueOverSeer::Init ( const char* commandLine )
   bz_registerCustomSlashCommand("spawn",this);
   bz_registerCustomSlashCommand("resume",this);
   bz_registerCustomSlashCommand("pause",this);
-  
-  
+
+
   //Set all boolean values for the plugin to false
-  officialMatch=false;
-  matchCanceled=false;
-  funMatch=false;
+  officialMatch = false;
+  matchCanceled = false;
+  funMatch = false;
   RTW = 0;
   GTW = 0;
   BTW = 0;
   PTW = 0;
 
   loadConfig(commandLine); //Load the configuration data when the plugin is loaded
-  
+
   if(mapchangePath != "" && rotLeague) //Check to see if the plugin is for a rotational league
   {
     //Open the mapchange.out file to see what map is being used
@@ -58,7 +58,7 @@ void leagueOverSeer::Init ( const char* commandLine )
     infile.open (mapchangePath);
     getline(infile,map);
     infile.close();
-  
+
     map = map.substr(0, map.length()-5); //Remove the '.conf' from the mapchange.out file
 
     bz_debugMessagef(DEBUG, "DEBUG::League Over Seer::Current map being played: %s", map.c_str());

@@ -586,8 +586,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     {
         bz_resumeCountdown(playerData->callsign.c_str());
 
-        bz_setBZDBDouble("_tankSpeed", 0, 0, false);
-        bz_setBZDBDouble("_shotSpeed", 0, 0, false);
+        bz_resetBZDBVar("_tankSpeed");
+        bz_resetBZDBVar("_shotSpeed");
 
         bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Countdown Resumed by ", playerData->callsign.c_str());
     }

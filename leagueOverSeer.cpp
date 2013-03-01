@@ -510,7 +510,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 //prepare the query
                 sqlite3_bind_text(getPlayerMotto, 1, mottoEvent->record->bzID.c_str(), -1, SQLITE_TRANSIENT);
 
-                if (sqlite3_step(getPlayerMotto) == SQLITE_DONE)
+                if (sqlite3_step(getPlayerMotto) == SQLITE_ROW)
                     mottoEvent->motto = (char*)sqlite3_column_text(getPlayerMotto, 0);
                 else
                     mottoEvent->motto = "";
@@ -668,7 +668,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     bz_freePlayerRecord(playerData);
 }
 
-void leagueOverSeer::URLDone( const char* URL, void* data, unsigned int size, bool complete ) //Everything went fine with the report
+void leagueOverSeer::URLDone(const char* URL, void* data, unsigned int size, bool complete) //Everything went fine with the report
 {
     std::string siteData = (char*)(data); //Convert the data to a std::string
 

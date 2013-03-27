@@ -62,12 +62,8 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     const char* mapchangePath;
     bz_eTeamType teamOne, teamTwo;
 
-    struct teamQueries { //Stores all the queries that a player request
-        int _playerID;
-    };
-    std::vector<teamQueries> _playerIDs;
-
-    struct urlQueries { //Stores the order of match reports and team queries
+    struct urlQueries //Stores the order of match reports and team queries
+    {
         std::string _URL;
     };
     std::vector<urlQueries> _urlQuery;
@@ -289,6 +285,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 matchPlayers.clear();
                 teamOnePoints = 0;
                 teamTwoPoints = 0;
+                teamOneName = "";
+                teamTwoName = "";
             }
             else
                 bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: Fun match was not reported.");
@@ -307,6 +305,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 //Set the team scores to zero just in case
                 teamOnePoints = 0;
                 teamTwoPoints = 0;
+                teamOneName = "";
+                teamTwoName = "";
 
                 for (unsigned int i = 0; i < playerList->size(); i++)
                 {
@@ -325,6 +325,48 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 }
 
                 bz_deleteIntList(playerList);
+
+                std::string teamOneNameQuery = "query=matchTeamQuery";
+                teamOneNameQuery += std::string("&teamPlayers=");
+
+                for (unsigned int i = 0; i < matchPlayers.size(); i++) //Add all the red players to the match report
+                {
+                    if (matchPlayers.at(i).team == teamOne)
+                    {
+                        teamOneNameQuery += std::string(bz_urlEncode(matchPlayers.at(i).bzid.c_str()));
+                        if (i+1 < matchPlayers.size()) //Only add a quote if there is another player on the list
+                            teamOneNameQuery += ",";
+                    }
+                }
+
+                bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Getting team names...");
+
+                urlQueries teamOneUQ; //Make a reference to the url query list
+                teamOneUQ._URL = "teamOneNameQuery"; //Tell the query list that we have a match to report on the todo list
+                _urlQuery.push_back(teamOneUQ); //Push the information to the todo list
+
+                bz_addURLJob(LEAGUE_URL.c_str(), this, teamOneNameQuery.c_str()); //Send the match data to the league website
+
+                std::string teamTwoNameQuery = "query=matchTeamQuery";
+                teamTwoNameQuery += std::string("&teamPlayers=");
+
+                for (unsigned int i = 0; i < matchPlayers.size(); i++) //Add all the red players to the match report
+                {
+                    if (matchPlayers.at(i).team == teamOne)
+                    {
+                        teamTwoNameQuery += std::string(bz_urlEncode(matchPlayers.at(i).bzid.c_str()));
+                        if (i+1 < matchPlayers.size()) //Only add a quote if there is another player on the list
+                            teamTwoNameQuery += ",";
+                    }
+                }
+
+                bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Getting team names...");
+
+                urlQueries teamTwoUQ; //Make a reference to the url query list
+                teamTwoUQ._URL = "teamTwoNameQuery"; //Tell the query list that we have a match to report on the todo list
+                _urlQuery.push_back(teamTwoUQ); //Push the information to the todo list
+
+                bz_addURLJob(LEAGUE_URL.c_str(), this, teamTwoNameQuery.c_str()); //Send the match data to the league website
             }
         }
         break;
@@ -334,7 +376,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
 
             if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && officialMatch) //If there is an official match in progress, notify others who join
-                bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");
+                bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** There is currently an official match (%s vs %s) in progress, please be respectful. ***", teamOneName.c_str(), teamTwoName.c_str());
             else if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && funMatch) //If there is a fun match in progress, notify others who join
                 bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently a fun match in progress, please be respectful. ***");
         }
@@ -347,11 +389,13 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             if (totaltanks == 0)
             {
                 //Incase a boolean gets messed up in the plugin, reset all the plugin variables when there are no players (Observers excluded)
-                if (officialMatch) officialMatch = false;
-                if (matchCanceled) matchCanceled = false;
-                if (funMatch) funMatch = false;
-                if (teamOnePoints > 0) teamOnePoints = 0;
-                if (teamTwoPoints > 0) teamTwoPoints = 0;
+                officialMatch = false;
+                matchCanceled = false;
+                funMatch = false;
+                teamOnePoints = 0;
+                teamTwoPoints = 0;
+                teamOneName = "";
+                teamTwoName = "";
 
                 //This should never happen but just incase the countdown is going when there are no tanks
                 if (bz_isCountDownActive())
@@ -459,13 +503,13 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
             bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Match ended by %s (%s).",playerData->callsign.c_str(),playerData->ipAddress.c_str());
 
             //Reset the server. Cleanly ends a match
-            if (officialMatch) officialMatch = false;
-            if (matchCanceled) matchCanceled = false;
-            if (funMatch) funMatch = false;
-            if (RTW > 0) RTW = 0;
-            if (GTW > 0) GTW = 0;
-            if (BTW > 0) BTW = 0;
-            if (PTW > 0) PTW = 0;
+            officialMatch = false;
+            matchCanceled = false;
+            funMatch = false;
+            teamOnePoints = 0;
+            teamTwoPoints = 0;
+            teamOneName = "";
+            teamTwoName = "";
 
             //End the countdown
             if (bz_isCountDownActive())
@@ -546,8 +590,21 @@ void leagueOverSeer::URLDone(const char* URL, void* data, unsigned int size, boo
 
     if (_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //The plugin reported the match successfully
     {
-        bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"%s",(char*)data);
-        bz_debugMessagef(DEBUG, "%s",(char*)data);
+        bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s", siteData.c_str());
+        bz_debugMessagef(DEBUG, "%s", siteData.c_str());
+
+        _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+    }
+    else if (_urlQuery.at(0)._URL.compare("teamOneNameQuery") == 0 && URL == LEAGUE_URL)
+    {
+        teamOneName = siteData;
+
+        _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+    }
+    else if (_urlQuery.at(0)._URL.compare("teamTwoNameQuery") == 0 && URL == LEAGUE_URL)
+    {
+        teamTwoName = siteData;
+        bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS, "Offical Match Started: %s vs %s", teamOneName.c_str(), teamTwoName.c_str());
 
         _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
     }

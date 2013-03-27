@@ -57,13 +57,10 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 
     //All the variables that will be used in the plugin
     bool officialMatch, matchCanceled, funMatch, rotLeague, gameoverReport;
-    int DEBUG, RTW, GTW, BTW, PTW;
-    std::string LEAGUE_URL, LEAGUE, map, SQLiteDB;
+    int DEBUG, teamOnePoints, teamTwoPoints;
+    std::string LEAGUE_URL, map, SQLiteDB, teamOneName, teamTwoName;
     const char* mapchangePath;
-
     bz_eTeamType teamOne, teamTwo;
-    int teamOnePoints, teamTwoPoints;
-    std::string teamOneName, teamTwoName;
 
     struct teamQueries { //Stores all the queries that a player request
         int _playerID;
@@ -240,8 +237,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 matchTimeConversion << (bz_getTimeLimit());
 
                 //Keep references to values for quick reference
-                std::string matchToSend = "league=" + LEAGUE;
-                matchToSend += "&query=reportMatch";
+                std::string matchToSend = "query=reportMatch";
                 std::string teamOnePointsFinal = teamOnePointsConversion.str();
                 std::string teamTwoPointsFinal = teamTwoPointsConversion.str();
                 std::string matchTimeFinal = matchTimeConversion.str();
@@ -395,7 +391,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             }
             else
             {
-                bz_debugMessagef(2, "DEBUG :: League Over Seer :: SQLite :: bz_eGetPlayerMotto :: Error #%i: %s", sqlite3_errcode(db), sqlite3_errmsg(db));
+                bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: SQLite :: bz_eGetPlayerMotto :: Error #%i: %s", sqlite3_errcode(db), sqlite3_errmsg(db));
             }
         }
 
@@ -653,7 +649,6 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
     if (config.errors) bz_shutdown(); //Shutdown the server
 
     //Extract all the data in the configuration file and assign it to plugin variables
-    LEAGUE = config.item(section, "LEAGUE");
     rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
     mapchangePath = (config.item(section, "MAPCHANGE_PATH")).c_str();
     SQLiteDB = config.item(section, "SQLITE_DB");
@@ -662,11 +657,6 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
     DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
 
     //Check for errors in the configuration data. If there is an error, shut down the server
-    if (strcmp(LEAGUE.c_str(), "") == 0)
-    {
-        bz_debugMessage(0, "*** DEBUG :: League Over Seer :: No league was specified ***");
-        bz_shutdown();
-    }
     if (strcmp(LEAGUE_URL.c_str(), "") == 0)
     {
             bz_debugMessage(0, "*** DEBUG :: League Over Seer :: No URLs were choosen to report matches or query teams. ***");

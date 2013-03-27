@@ -1,6 +1,6 @@
 <?php
 //List of IPs that are allowed to report matches
-$ips = array('127.0.0.1', '108.0.61.94');
+$ips = array('127.0.0.1', '108.0.61.94', '97.107.129.174');
 if (!in_array($_SERVER['REMOTE_ADDR'], $ips)) die('Error: 403 - Forbidden');
 
 require_once("./CMS/siteoptions.php");
@@ -106,6 +106,16 @@ else if ($_GET['query'] == 'matchTeamQuery')
     $teamName = mysqli_fetch_array($getTeamNameQuery);
 
     echo $teamName[0];
+}
+else if ($_GET['query'] == 'teamDump')
+{
+    $getTeams = "SELECT players.external_id, teams.name FROM players, teams WHERE players.teamid = teams.id AND players.external_id != ''";
+    $getTeamsQuery = @mysqli_query($dbc, $getTeams);
+
+    while ($entry = mysqli_fetch_array($getTeamsQuery))
+    {
+        echo "INSERT OR REPLACE INTO players(bzid, team)VALUES(" . $entry[0] . ",'" . $entry[1] . "');";
+    }
 }
 else
 {

@@ -1,6 +1,6 @@
 <?php
 //List of IPs that are allowed to report matches
-$ips = array('127.0.0.1', '127.0.0.2');
+$ips = array('127.0.0.1');
 if (!in_array($_SERVER['REMOTE_ADDR'], $ips)) die('Error: 403 - Forbidden');
 
 //ini_set('display_errors', 'off');
@@ -14,81 +14,54 @@ if (isset($_GET['league']))
 
         if ($_GET['query'] == 'reportMatch')
         {
-            $redTeamWins = $_GET['redTeamWins'];
-            $redTeamWins = mysqli_real_escape_string($dbc, $redTeamWins);
-            $purpleTeamWins = $_GET['purpleTeamWins'];
-            $purpleTeamWins = mysqli_real_escape_string($dbc, $purpleTeamWins);
+            $teamOneWins = $_GET['teamOneWins'];
+            $teamOneWins = mysqli_real_escape_string($dbc, $teamOneWins);
+            $teamTwoWins = $_GET['teamTwoWins'];
+            $teamTwoWins = mysqli_real_escape_string($dbc, $teamTwoWins);
             $timestamp = $_GET['matchTime'];
             $timestamp = mysqli_real_escape_string($dbc, $timestamp);
             $duration = $_GET['duration'];
             $duration = mysqli_real_escape_string($dbc, $duration);
+            $teamOnePlayers = $_GET['teamTwoPlayers'];
+            $teamOnePlayers = mysqli_real_escape_string($dbc, $teamOnePlayers);
+            $teamTwoPlayers = $_GET['teamTwoPlayers'];
+            $teamTwoPlayers = mysqli_real_escape_string($dbc, $teamTwoPlayers);
 
-            //Let's get all the red players' callsigns
-            $redPlayers = explode('"', $_GET['redPlayers']); //Get individual callsigns
-            $redPlayerCount = count ($redPlayers); //Get the number of players
-            $counter = 0; //We're keeping count
+            $getTeamOne = "SELECT teamid FROM players WHERE external_id IN (" . $teamOnePlayers . ") LIMIT 1";
+            $teamOneResult = @mysqli_query($dbc, $getTeamOne);
+            
+            $getTeamTwo = "SELECT teamid FROM players WHERE external_id IN (" . $teamTwoPlayers . ") LIMIT 1";
+            $teamTwoResult = @mysqli_query($dbc, $getTeamTwo);
 
-            $getRedTeam = "SELECT `teamid` FROM `players` WHERE `name` IN("; //Start the MySQL query
-            foreach ($redPlayers as $rp) //Add all the player's callsigns to the MySQL query
-            {
-                $counter++;
-                $rp = mysqli_real_escape_string($dbc, $rp);
-                $getRedTeam .= "'" . $rp . "'";
+            $teamOneIDs = mysqli_fetch_array($teamOneResult);
+            $teamTwoIDs = mysqli_fetch_array($teamTwoResult);
 
-                if ($counter + 1 === $redPlayerCount) //Only add an comma in there is still another element in the array
-                    $getRedTeam .= ", ";
-                if ($counter === $redPlayerCount) //Only add a ')' if it's the last item
-                    $getRedTeam .= ")";
-            }
-            $redTeamResult = @mysqli_query($dbc, $getRedTeam);
-
-            //Let's get all the purple players' callsign, do the same things as with the red team
-            $purplePlayers = explode('"', $_GET['purplePlayers']);
-            $purplePlayerCount = count($purplePlayers);
-            $counter = 0;
-            $getPurpleTeam = "SELECT `teamid` FROM `players` WHERE `name` IN(";
-            foreach ($purplePlayers as $pp)
-            {
-                $counter++;
-                $pp = mysqli_real_escape_string($dbc, $pp);
-                $getPurpleTeam .= "'" . $pp . "'";
-
-                if ($counter + 1 === $purplePlayerCount)
-                    $getPurpleTeam .= ", ";
-                if ($counter === $purplePlayerCount)
-                    $getPurpleTeam .= ")";
-            }
-            $purpleTeamResult = @mysqli_query($dbc, $getPurpleTeam);
-
-            $redTeamIDs = mysqli_fetch_array($redTeamResult);
-            $purpleTeamIDs = mysqli_fetch_array($purpleTeamResult);
-
-            if (mysqli_num_rows($redTeamResult) == 0 || mysqli_num_rows($purpleTeamResult) == 0) //A player that didn't belong to the team ruined the match
+            if (mysqli_num_rows($teamOneResult) == 0 || mysqli_num_rows($teamTwoResult) == 0) //A player that didn't belong to the team ruined the match
             {
                 echo "Teams could not be reported properly. Please message a referee with the match data.";
                 die();
             }
 
             //Get a player's team id
-            $redTeamID = $redTeamIDs[0];
-            $purpleTeamID = $purpleTeamIDs[0];
+            $teamOneID = $teamOneIDs[0];
+            $teamTwoID = $teamTwoIDs[0];
 
             /*
-            Go through all the IDs to make sure everyone is on the same
-            team. If someone isn't part of the same team, don't report
-            the match as it was invalid.
+	            Go through all the IDs to make sure everyone is on the same
+	            team. If someone isn't part of the same team, don't report
+	            the match as it was invalid.
             */
-            foreach ($redTeamIDs as $rID)
+            foreach ($teamOneIDs as $rID)
             {
-                if ($rID != $redTeamID)
+                if ($rID != $teamOneID)
                 {
                     echo "There was an invalid team member on the red team. Please report the match to a referee.";
                     die();
                 }
             }
-            foreach ($purpleTeamIDs as $pID)
+            foreach ($teamTwoIDs as $pID)
             {
-                if ($pID != $purpleTeamID)
+                if ($pID != $teamTwoID)
                 {
                     echo "There was an invalid team member on the purple team. Please report the match to a referee.";
                     die();
@@ -102,21 +75,21 @@ if (isset($_GET['league']))
             require("./Matches/match.php");
             $viewerid = 2156;
 
-            los_enter_match($redTeamID, $purpleTeamID, $redTeamWins, $purpleTeamWins, $timestamp, $duration);
+            los_enter_match($teamOneID, $teamTwoID, $teamOneWins, $teamTwoWins, $timestamp, $duration);
 
-            $getRedTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $redTeamIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
-            $redTeamNameQuery = @mysqli_query($dbc, $getRedTeamName);
+            $getTeamOneName = "SELECT `name` FROM `teams` WHERE `id` = " . $teamOneIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
+            $redTeamNameQuery = @mysqli_query($dbc, $getTeamOneName);
             $redTeamName = mysqli_fetch_array($redTeamNameQuery);
 
-            $getPurpleTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $purpleTeamIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
-            $purpleTeamNameQuery = @mysqli_query($dbc, $getPurpleTeamName);
+            $getTeamTwoName = "SELECT `name` FROM `teams` WHERE `id` = " . $teamTwoIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
+            $purpleTeamNameQuery = @mysqli_query($dbc, $getTeamTwoName);
             $purpleTeamName = mysqli_fetch_array($purpleTeamNameQuery);
 
             $getDiff = "SELECT `team1_new_score`, `team2_new_score` FROM `matches` WHERE `timestamp` = \"" . $timestamp . "\" ORDER BY `timestamp` DESC LIMIT 1"; //Get the name of the team with the teamid that we got before
             $getDiffQuery = @mysqli_query($dbc, $getDiff);
             $diffs = mysqli_fetch_array($getDiffQuery);
 
-            echo "(+/- " . abs($diffs[0] - $diffs[1])/2 . ") " . $purpleTeamName[0] . "[" . $purpleTeamWins . "] vs [" . $redTeamWins . "] " . $redTeamName[0];
+            echo "(+/- " . abs($diffs[0] - $diffs[1])/2 . ") " . $purpleTeamName[0] . "[" . $teamTwoWins . "] vs [" . $teamOneWins . "] " . $redTeamName[0];
         }
     }
     else

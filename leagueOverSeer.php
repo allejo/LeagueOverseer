@@ -1,9 +1,7 @@
 <?php
 //List of IPs that are allowed to report matches
-$ips = array('127.0.0.1');
+$ips = array('127.0.0.1', '108.0.61.94');
 if (!in_array($_SERVER['REMOTE_ADDR'], $ips)) die('Error: 403 - Forbidden');
-
-//ini_set('display_errors', 'off');
 
 require_once("./CMS/siteoptions.php");
 $dbc = new mysqli("localhost", pw_secret::mysqluser_secret(), pw_secret::mysqlpw_secret(), db_used_custom_name());
@@ -18,7 +16,7 @@ if ($_GET['query'] == 'reportMatch')
     $timestamp = mysqli_real_escape_string($dbc, $timestamp);
     $duration = $_GET['duration'];
     $duration = mysqli_real_escape_string($dbc, $duration);
-    $teamOnePlayers = $_GET['teamTwoPlayers'];
+    $teamOnePlayers = $_GET['teamOnePlayers'];
     $teamOnePlayers = mysqli_real_escape_string($dbc, $teamOnePlayers);
     $teamTwoPlayers = $_GET['teamTwoPlayers'];
     $teamTwoPlayers = mysqli_real_escape_string($dbc, $teamTwoPlayers);
@@ -74,16 +72,42 @@ if ($_GET['query'] == 'reportMatch')
     los_enter_match($teamOneID, $teamTwoID, $teamOneWins, $teamTwoWins, $timestamp, $duration);
 
     $getTeamOneName = "SELECT `name` FROM `teams` WHERE `id` = " . $teamOneIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
-    $redTeamNameQuery = @mysqli_query($dbc, $getTeamOneName);
-    $redTeamName = mysqli_fetch_array($redTeamNameQuery);
+    $getTeamOneNameQuery = @mysqli_query($dbc, $getTeamOneName);
+    $teamOneName = mysqli_fetch_array($getTeamOneNameQuery);
 
     $getTeamTwoName = "SELECT `name` FROM `teams` WHERE `id` = " . $teamTwoIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
-    $purpleTeamNameQuery = @mysqli_query($dbc, $getTeamTwoName);
-    $purpleTeamName = mysqli_fetch_array($purpleTeamNameQuery);
+    $getTeamTwoNameQuery = @mysqli_query($dbc, $getTeamTwoName);
+    $teamTwoName = mysqli_fetch_array($getTeamTwoNameQuery);
 
     $getDiff = "SELECT `team1_new_score`, `team2_new_score` FROM `matches` WHERE `timestamp` = \"" . $timestamp . "\" ORDER BY `timestamp` DESC LIMIT 1"; //Get the name of the team with the teamid that we got before
     $getDiffQuery = @mysqli_query($dbc, $getDiff);
     $diffs = mysqli_fetch_array($getDiffQuery);
 
-    echo "(+/- " . abs($diffs[0] - $diffs[1])/2 . ") " . $purpleTeamName[0] . "[" . $teamTwoWins . "] vs [" . $teamOneWins . "] " . $redTeamName[0];
+    echo "(+/- " . abs($diffs[0] - $diffs[1])/2 . ") " . $teamTwoName[0] . "[" . $teamTwoWins . "] vs [" . $teamOneWins . "] " . $teamOneName[0];
+}
+else if ($_GET['query'] == 'matchTeamQuery')
+{
+    $teamPlayers = $_GET['teamPlayers'];
+    $teamPlayers = mysqli_real_escape_string($dbc, $teamPlayers);
+
+    $getTeam = "SELECT teamid FROM players WHERE external_id IN (" . $teamPlayers . ") LIMIT 1";
+    $teamResult = @mysqli_query($dbc, $getTeam);
+
+    $teamIDs = mysqli_fetch_array($teamResult);
+
+    if (mysqli_num_rows($teamResult) == 0) //A player that didn't belong to the team ruined the match
+    {
+        echo "error";
+        die();
+    }
+
+    $getTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $teamIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
+    $getTeamNameQuery = @mysqli_query($dbc, $getTeamName);
+    $teamName = mysqli_fetch_array($getTeamNameQuery);
+
+    echo $teamName[0];
+}
+else
+{
+    echo "Error 404 - File not found";
 }

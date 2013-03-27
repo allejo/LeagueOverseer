@@ -1,6 +1,6 @@
 <?php
 //List of IPs that are allowed to report matches
-$ips = array('127.0.0.1', '108.0.61.94', '97.107.129.174');
+$ips = array('127.0.0.1', '108.0.61.94', '97.107.129.174', '130.166.214.110');
 if (!in_array($_SERVER['REMOTE_ADDR'], $ips)) die('Error: 403 - Forbidden');
 
 require_once("./CMS/siteoptions.php");
@@ -119,5 +119,13 @@ else if ($_GET['query'] == 'teamDump')
 }
 else
 {
-    echo "Error 404 - File not found";
+    $pageURL = 'http';
+ if ($_SERVER["HTTPS"] == "on") {$pageURL .= "s";}
+ $pageURL .= "://";
+ if ($_SERVER["SERVER_PORT"] != "80") {
+  $pageURL .= $_SERVER["SERVER_NAME"].":".$_SERVER["SERVER_PORT"].$_SERVER["REQUEST_URI"];
+ } else {
+  $pageURL .= $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"];
+ }
+    echo "Error 404 - $pageURL";
 }

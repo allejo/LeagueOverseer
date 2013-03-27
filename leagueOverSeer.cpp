@@ -181,6 +181,15 @@ void leagueOverSeer::Init (const char* commandLine)
     {
         doQuery("CREATE TABLE IF NOT EXISTS [Players] (BZID INTEGER NOT NULL PRIMARY KEY DEFAULT 0, TEAM TEXT NOT NULL DEFAULT Teamless, SQUAD TEXT);");
     }
+    
+    std::string teamNameDump = "query=teamDump";
+    bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Updating Team name database...");
+
+    urlQueries teamDumpQuery; //Make a reference to the url query list
+    teamDumpQuery._URL = "teamNameUpdate"; //Tell the query list that we have a match to report on the todo list
+    _urlQuery.push_back(teamDumpQuery); //Push the information to the todo list
+
+    bz_addURLJob(LEAGUE_URL.c_str(), this, teamNameDump.c_str()); //Send the match data to the league website
 }
 
 void leagueOverSeer::Cleanup (void)
@@ -608,6 +617,13 @@ void leagueOverSeer::URLDone(const char* URL, void* data, unsigned int size, boo
 
         _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
     }
+    else if (_urlQuery.at(0)._URL.compare("teamNameUpdate") == 0 && URL == LEAGUE_URL)
+    {
+        doQuery(siteData);
+        bz_debugMessagef(0, "DEBUG :: League Over Seer :: Dump: %s", siteData.c_str());
+        
+        _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+    }
 }
 
 void leagueOverSeer::URLTimeout(const char* URL, int errorCode) //The league website is down or is not responding, the request timed out
@@ -643,16 +659,16 @@ void leagueOverSeer::doQuery(std::string query)
         Execute a SQL query without the need of any return values
     */
 
-    bz_debugMessage(2, "DEBUG :: MoFo Cup :: Executing following SQL query...");
-    bz_debugMessagef(2, "DEBUG :: MoFo Cup :: %s", query.c_str());
+    bz_debugMessage(2, "DEBUG :: League Over Seer :: Executing following SQL query...");
+    bz_debugMessagef(2, "DEBUG :: League Over Seer :: %s", query.c_str());
 
     char* db_err = 0; //a place to store the error
     int ret = sqlite3_exec(db, query.c_str(), NULL, 0, &db_err); //execute
 
     if (db_err != 0) //print out any errors
     {
-        bz_debugMessage(2, "DEBUG :: MoFo Cup :: SQL ERROR!");
-        bz_debugMessagef(2, "DEBUG :: MoFo Cup :: %s", db_err);
+        bz_debugMessage(2, "DEBUG :: League Over Seer :: SQL ERROR!");
+        bz_debugMessagef(2, "DEBUG :: League Over Seer :: %s", db_err);
     }
 }
 

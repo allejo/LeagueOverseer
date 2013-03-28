@@ -33,14 +33,14 @@ League Over Seer Plug-in
 //Define plugin version numbering
 const int MAJOR = 0;
 const int MINOR = 9;
-const int REV = 98;
-const int BUILD = 95;
+const int REV = 8;
+const int BUILD = 96;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 0.9.8r95";}
+    virtual const char* Name (){return "League Over Seer 0.9.8 r96";}
     virtual void Init ( const char* config);
     virtual void Event( bz_EventData *eventData );
     virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -484,10 +484,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     else if (command == "pause")
     {
         if (bz_isCountDownActive() && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified)
-        {
             bz_pauseCountdown(playerData->callsign.c_str());
-            bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Countdown paused by ", playerData->callsign.c_str());
-        }
         else if (playerData->team == eObservers)
             bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Observers are not allowed to pause matches.");
         else if (!bz_isCountDownActive())
@@ -497,14 +494,11 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     }
     else if (command == "resume")
     {
-        if (bz_hasPerm(playerID,"spawn") && playerData->verified && !bz_isCountDownActive())
-        {
+        if (bz_hasPerm(playerID,"spawn") && playerData->verified && bz_isCountDownActive())
             bz_resumeCountdown(playerData->callsign.c_str());
-            bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Countdown Resumed by ", playerData->callsign.c_str());
-        }
         else if (playerData->team == eObservers)
             bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Observers are not allowed to resume matches.");
-        else if (bz_isCountDownActive())
+        else if (!bz_isCountDownActive())
             bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "The current match is not paused.");
         else
             bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "You are not have permission to run the /resume command.");

@@ -1,6 +1,7 @@
 <?php
 //List of IPs that are allowed to report matches
-$ips = array('127.0.0.1', '108.0.61.94', '97.107.129.174');
+$autoReportID = 0;
+$ips = array('127.0.0.1', '127.0.0.2');
 if (!in_array($_SERVER['REMOTE_ADDR'], $ips)) die('Error: 403 - Forbidden');
 
 require_once("./CMS/siteoptions.php");
@@ -67,7 +68,7 @@ if ($_POST['query'] == 'reportMatch')
     $connection = $site->connect_to_db();
 
     require("./Matches/match.php");
-    $viewerid = 2156;
+    $viewerid = $autoReportID;
 
     los_enter_match($teamOneID, $teamTwoID, $teamOneWins, $teamTwoWins, $timestamp, $duration);
 

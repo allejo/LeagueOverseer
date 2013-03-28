@@ -53,12 +53,13 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     virtual int isValidCallsign(std::string callsign);
     virtual bool isValidPlayerID(int playerID);
     virtual int loadConfig(const char *cmdLine);
+    virtual sqlite3_stmt* prepareQuery(std::string sql);
     virtual bool toBool(std::string var);
 
     //All the variables that will be used in the plugin
     bool officialMatch, matchCanceled, funMatch, rotLeague, gameoverReport;
     int DEBUG, teamOnePoints, teamTwoPoints;
-    std::string LEAGUE_URL, map, SQLiteDB, teamOneName, teamTwoName;
+    std::string LEAGUE_URL, map, SQLiteDB;
     const char* mapchangePath;
     bz_eTeamType teamOne, teamTwo;
 
@@ -74,6 +75,11 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
         bz_eTeamType team;
     };
     std::vector<playersInMatch> matchPlayers;
+
+    typedef std::map<std::string, sqlite3_stmt*> PreparedStatementMap; // Define the type as a shortcut
+    PreparedStatementMap preparedStatements; // Create the object to store prepared statements
+
+    sqlite3_stmt *getPlayerMotto;
 };
 
 BZ_PLUGIN(leagueOverSeer);
@@ -181,6 +187,8 @@ void leagueOverSeer::Init (const char* commandLine)
     {
         doQuery("CREATE TABLE IF NOT EXISTS [Players] (BZID INTEGER NOT NULL PRIMARY KEY DEFAULT 0, TEAM TEXT NOT NULL DEFAULT Teamless, SQUAD TEXT);");
     }
+
+    getPlayerMotto = prepareQuery("SELECT team FROM players WHERE bzid = ?");
 
     std::string teamNameDump = "query=teamDump";
     bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Updating Team name database...");
@@ -294,8 +302,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 matchPlayers.clear();
                 teamOnePoints = 0;
                 teamTwoPoints = 0;
-                teamOneName = "";
-                teamTwoName = "";
             }
             else
                 bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: Fun match was not reported.");
@@ -314,8 +320,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 //Set the team scores to zero just in case
                 teamOnePoints = 0;
                 teamTwoPoints = 0;
-                teamOneName = "";
-                teamTwoName = "";
 
                 for (unsigned int i = 0; i < playerList->size(); i++)
                 {
@@ -343,7 +347,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
 
             if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && officialMatch) //If there is an official match in progress, notify others who join
-                bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** There is currently an official match (%s vs %s) in progress, please be respectful. ***", teamOneName.c_str(), teamTwoName.c_str());
+                bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");
             else if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && funMatch) //If there is a fun match in progress, notify others who join
                 bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently a fun match in progress, please be respectful. ***");
         }
@@ -361,8 +365,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 funMatch = false;
                 teamOnePoints = 0;
                 teamTwoPoints = 0;
-                teamOneName = "";
-                teamTwoName = "";
 
                 //This should never happen but just incase the countdown is going when there are no tanks
                 if (bz_isCountDownActive())
@@ -386,24 +388,15 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         case bz_eGetPlayerMotto:
         {
             bz_GetPlayerMottoData_V2* mottoEvent = (bz_GetPlayerMottoData_V2*)eventData;
-            sqlite3_stmt *getPlayerMotto;
 
-            if (sqlite3_prepare_v2(db, "SELECT `TEAM` FROM `Players` WHERE `BZID` = ?", -1, &getPlayerMotto, 0) == SQLITE_OK)
-            {
-                //prepare the query
-                sqlite3_bind_text(getPlayerMotto, 1, mottoEvent->record->bzID.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(getPlayerMotto, 1, mottoEvent->record->bzID.c_str(), -1, SQLITE_TRANSIENT);
 
-                if (sqlite3_step(getPlayerMotto) == SQLITE_ROW)
-                    mottoEvent->motto = (char*)sqlite3_column_text(getPlayerMotto, 0);
-                else
-                    mottoEvent->motto = "";
-
-                sqlite3_finalize(getPlayerMotto);
-            }
+            if (sqlite3_step(getPlayerMotto) == SQLITE_ROW)
+                mottoEvent->motto = (char*)sqlite3_column_text(getPlayerMotto, 0);
             else
-            {
-                bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: SQLite :: bz_eGetPlayerMotto :: Error #%i: %s", sqlite3_errcode(db), sqlite3_errmsg(db));
-            }
+                mottoEvent->motto = "";
+
+            sqlite3_reset(getPlayerMotto);
         }
 
         default:
@@ -475,8 +468,6 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
             funMatch = false;
             teamOnePoints = 0;
             teamTwoPoints = 0;
-            teamOneName = "";
-            teamTwoName = "";
 
             //End the countdown
             if (bz_isCountDownActive())
@@ -492,20 +483,12 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         if (bz_isCountDownActive() && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified)
         {
             bz_pauseCountdown(playerData->callsign.c_str());
-
-            bz_setBZDBDouble("_tankSpeed", 0, 0, false);
-            bz_setBZDBDouble("_shotSpeed", 0, 0, false);
-
             bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Countdown paused by ", playerData->callsign.c_str());
         }
     }
     else if (command == "resume")
     {
         bz_resumeCountdown(playerData->callsign.c_str());
-
-        bz_resetBZDBVar("_tankSpeed");
-        bz_resetBZDBVar("_shotSpeed");
-
         bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,"Countdown Resumed by ", playerData->callsign.c_str());
     }
     else if (command == "spawn")
@@ -685,6 +668,34 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
         bz_debugMessage(0, "*** DEBUG :: League Over Seer :: Invalid debug level in the configuration file. ***");
         bz_shutdown();
     }
+}
+
+sqlite3_stmt* leagueOverSeer::prepareQuery(std::string sql)
+{
+    /*
+        Thanks to blast for this function
+    */
+
+    // Search our std::map for this statement
+    PreparedStatementMap::iterator itr = preparedStatements.find(sql);
+
+    // If it doesn't exist, create it
+    if (itr == preparedStatements.end())
+    {
+        sqlite3_stmt* newStatement;
+
+        if (sqlite3_prepare_v2(db, sql.c_str(), -1, &newStatement, 0) != SQLITE_OK)
+        {
+            bz_debugMessagef(2, "DEBUG :: League Over Seer :: SQLite :: Failed to generate prepared statement for '%s' :: Error #%i: %s", sql.c_str(), sqlite3_errcode(db), sqlite3_errmsg(db));
+            return NULL;
+        }
+        else
+        {
+            preparedStatements[sql] = newStatement;
+        }
+    }
+
+    return preparedStatements[sql];
 }
 
 bool leagueOverSeer::toBool(std::string var) //Turn std::string into a boolean value

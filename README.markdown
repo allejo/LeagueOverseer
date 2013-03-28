@@ -37,32 +37,33 @@ Ned Anderson (mdskpr)
 <pre>/path/to/leagueOverSeer.so,/path/to/leagueOverSeer.cfg</pre>
 
 ### Configuration File Options
-```ROTATIONAL_LEAGUE```
+
+ROTATIONAL_LEAGUE
 
 * Default: <em>false</em>
 * Description:  If a league uses different maps for its matches (such as Open League) then make sure that this value is set to 'true' and if the league is GU or Ducati, then set the value to 'false'
 
-```MAPCHANGE_PATH```
+MAPCHANGE_PATH
 
 * Default: <em>N/A</em>
 * Description: If this is a rotational league, then be sure to change the path to the mapchange.out file because that is where the name of the map file is stored. Whatever is located in this file is what will be submitted as the map played. If this is not a rotational, then this variable can be left with the current value or commented out.
 
-```SQLITE_DB```
+SQLITE_DB
 
 * Default: <em>N/A</em>
 * Description: This is the SQLite database that will be used to store all the team names according to BZID
 
-```GAMEOVER_REPORT```
+GAMEOVER_REPORT
 
 * Default: <em>false</em>
 * Description: If you would like the plugin to report any match that was ended by a /gameover, then make sure that this value is set to 'true' and if you don't want the match to be reported, be sure to set it to 'false'
 
-```LEAGUE_OVER_SEER_URL```
+LEAGUE_OVER_SEER_URL
 
 * Default: <em>N/A</em>
 * Description: The URL of the main leagueOverSeer PHP script
 
-```DEBUG_LEVEL```
+DEBUG_LEVEL
 
 * Default: <em>1</em>
 * Description: The debug level that will be used by the plugin to report some information on who started a match, who canceled a match, what teams played, etc

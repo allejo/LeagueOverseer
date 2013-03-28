@@ -506,9 +506,9 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
                         callsignToLookup += " "; // add a whitespace between each chat text parameter
                 }
 
-                if (std::string::npos != std::string(params->get(0).c_str()).find("#") && isValidPlayerID(atoi(std::string(params->get(0).c_str()).substr(0, 1).c_str())))
+                if (std::string::npos != std::string(params->get(0).c_str()).find("#") && isValidPlayerID(atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str())))
                 {
-                    bz_grantPerm(atoi(std::string(params->get(0).c_str()).substr(0, 1).c_str()), "spawn");
+                    bz_grantPerm(atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str()), "spawn");
                     bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", bz_getPlayerByIndex(playerID)->callsign.c_str(), bz_getPlayerByIndex(atoi(std::string(params->get(0).c_str()).substr(0, 1).c_str()))->callsign.c_str());
                 }
                 else if (isValidCallsign(callsignToLookup) >= 0)
@@ -618,8 +618,9 @@ int leagueOverSeer::isValidCallsign(std::string callsign)
     {
         if (strcmp(bz_getPlayerByIndex(playerList->get(i))->callsign.c_str(), callsign.c_str()) == 0)
         {
+            int playerID = playerList->get(i);
             bz_deleteIntList(playerList);
-            return playerList->get(i);
+            return playerID;
         }
     }
 

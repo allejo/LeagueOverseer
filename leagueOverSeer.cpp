@@ -506,20 +506,19 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
                         callsignToLookup += " "; // add a whitespace between each chat text parameter
                 }
 
-                if (std::string::npos != std::string(params->get(0).c_str()).find("#"))
+                if (std::string::npos != std::string(params->get(0).c_str()).find("#") && isValidPlayerID(atoi(std::string(params->get(0).c_str()).substr(0, 1).c_str())))
                 {
                     bz_grantPerm(atoi(std::string(params->get(0).c_str()).substr(0, 1).c_str()), "spawn");
                     bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", bz_getPlayerByIndex(playerID)->callsign.c_str(), bz_getPlayerByIndex(atoi(std::string(params->get(0).c_str()).substr(0, 1).c_str()))->callsign.c_str());
-                }
-                else if (isDigit(params->get(0).c_str()))
-                {
-                    bz_grantPerm(atoi(params->get(0).c_str()), "spawn");
-                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", bz_getPlayerByIndex(playerID)->callsign.c_str(), bz_getPlayerByIndex(atoi(params->get(0).c_str()))->callsign.c_str());
                 }
                 else if (isValidCallsign(callsignToLookup) >= 0)
                 {
                     bz_grantPerm(isValidCallsign(callsignToLookup), "spawn");
                     bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", bz_getPlayerByIndex(playerID)->callsign.c_str(), bz_getPlayerByIndex(isValidCallsign(callsignToLookup))->callsign.c_str());
+                }
+                else
+                {
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", params->get(0).c_str());
                 }
             }
             else
@@ -618,11 +617,13 @@ int leagueOverSeer::isValidCallsign(std::string callsign)
     for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
     {
         if (strcmp(bz_getPlayerByIndex(playerList->get(i))->callsign.c_str(), callsign.c_str()) == 0)
+        {
+            bz_deleteIntList(playerList);
             return playerList->get(i);
+        }
     }
 
     bz_deleteIntList(playerList);
-
     return -1;
 }
 
@@ -634,11 +635,13 @@ bool leagueOverSeer::isValidPlayerID(int playerID)
     for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
     {
         if (playerList->get(i) == playerID)
+        {
+            bz_deleteIntList(playerList);
             return true;
+        }
     }
 
     bz_deleteIntList(playerList);
-
     return false;
 }
 

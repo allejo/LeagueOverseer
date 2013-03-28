@@ -413,7 +413,10 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     {
         if (playerData->team == eObservers) //Observers can't start matches
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
-        else if (bz_getTeamCount(eRedTeam) < 2 || bz_getTeamCount(eGreenTeam) < 2 || bz_getTeamCount(eBlueTeam) < 2 || bz_getTeamCount(ePurpleTeam) < 2) //An official match cannot be 1v1 or 2v1
+        else if ((bz_getTeamCount(eRedTeam) < 2 && bz_getTeamPlayerLimit(eRedTeam) > 0) ||
+                (bz_getTeamCount(eGreenTeam) < 2 && bz_getTeamPlayerLimit(eGreenTeam) > 0) ||
+                (bz_getTeamCount(eBlueTeam) < 2 && bz_getTeamPlayerLimit(eBlueTeam) > 0) ||
+                (bz_getTeamCount(ePurpleTeam) < 2 && bz_getTeamPlayerLimit(ePurpleTeam) > 0)) //An official match cannot be 1v1 or 2v1
             bz_sendTextMessage(BZ_SERVER, playerID, "You may not have an official match with less than 2 players per team.");
         else if (funMatch) //A fun match cannot be declared an official match
             bz_sendTextMessage(BZ_SERVER,playerID,"Fun matches cannot be turned into official matches.");

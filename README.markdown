@@ -73,7 +73,8 @@ If you are hosting a league website using the <a href="https://code.google.com/p
 
 1. Make a backup of the /Matches/match.php file and replace it with the one provided in this repository.
 2. Upload leagueOverSeer.php to the root of your league website directory.
-3. Add the IPs of the official match servers to the $ips array located on line 3 of leagueOverSeer.php. This is a precaution so only official match servers can report and access data.
+3. Add the IPs of the official match servers to the $ips array located on line 4 of leagueOverSeer.php. This is a precaution so only official match servers can report and access data.
+4. Set $autoReportID on line 3 to the user ID of the person who will be reporting the matches. For instance, you may want to create an 'autoreport' account on the league website and use that ID.
 
 ## License:
 GPL 3.0

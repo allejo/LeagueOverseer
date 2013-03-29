@@ -488,31 +488,31 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
                 bz_gameOver(253, eObservers);
         }
         else if (!bz_isCountDownActive())
-            bz_sendTextMessage(BZ_SERVER,playerID,"There is no match in progress to cancel.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to cancel.");
         else //Not a league player
-            bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to run the /cancel command.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to run the /cancel command.");
     }
     else if (command == "pause")
     {
         if (bz_isCountDownActive() && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified)
             bz_pauseCountdown(playerData->callsign.c_str());
         else if (playerData->team == eObservers)
-            bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Observers are not allowed to pause matches.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to pause matches.");
         else if (!bz_isCountDownActive())
-            bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "There is no active match to pause right now.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to pause right now.");
         else
-            bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "You are not have permission to run the /pause command.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "You are not have permission to run the /pause command.");
     }
     else if (command == "resume")
     {
         if (bz_hasPerm(playerID,"spawn") && playerData->verified && bz_isCountDownActive())
             bz_resumeCountdown(playerData->callsign.c_str());
         else if (playerData->team == eObservers)
-            bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Observers are not allowed to resume matches.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to resume matches.");
         else if (!bz_isCountDownActive())
-            bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "The current match is not paused.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "The current match is not paused.");
         else
-            bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "You are not have permission to run the /resume command.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "You are not have permission to run the /resume command.");
     }
     else if (command == "spawn")
     {

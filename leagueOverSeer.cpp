@@ -34,7 +34,7 @@ League Over Seer Plug-in
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 8;
-const int BUILD = 100;
+const int BUILD = 101;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
@@ -261,7 +261,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 std::ostringstream teamTwoPointsConversion;
                 teamTwoPointsConversion << (teamTwoPoints);
                 std::ostringstream matchTimeConversion;
-                matchTimeConversion << (bz_getTimeLimit());
+                matchTimeConversion << (bz_getTimeLimit()/60);
 
                 //Keep references to values for quick reference
                 std::string teamOnePointsFinal = teamOnePointsConversion.str();
@@ -273,7 +273,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 matchToSend += "&teamOneWins=" + std::string(bz_urlEncode(teamOnePointsFinal.c_str()));
                 matchToSend += "&teamTwoWins=" + std::string(bz_urlEncode(teamTwoPointsFinal.c_str()));
 
-                matchToSend += "&matchTime=" + std::string(bz_urlEncode(matchTimeFinal.c_str())) + "&matchDate=" + std::string(bz_urlEncode(match_date));
+                matchToSend += "&duration=" + std::string(bz_urlEncode(matchTimeFinal.c_str())) + "&matchTime=" + std::string(bz_urlEncode(match_date));
 
                 if (rotLeague) //Only add this parameter if it's a rotational league such as Open League
                     matchToSend += "&mapPlayed=" + std::string(bz_urlEncode(map.c_str()));

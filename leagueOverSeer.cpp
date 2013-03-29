@@ -34,13 +34,13 @@ League Over Seer Plug-in
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 8;
-const int BUILD = 96;
+const int BUILD = 100;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 0.9.8 r96";}
+    virtual const char* Name (){return "League Over Seer 0.9.8 r100";}
     virtual void Init ( const char* config);
     virtual void Event( bz_EventData *eventData );
     virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -81,7 +81,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     typedef std::map<std::string, sqlite3_stmt*> PreparedStatementMap; // Define the type as a shortcut
     PreparedStatementMap preparedStatements; // Create the object to store prepared statements
 
-    sqlite3_stmt *getPlayerMotto;
+    sqlite3_stmt *getPlayerMotto, *requestNewMotto, *removeOldMotto;
 };
 
 BZ_PLUGIN(leagueOverSeer);
@@ -190,6 +190,8 @@ void leagueOverSeer::Init (const char* commandLine)
 
     // Prepare the SQL query to get the team names based on a BZID
     getPlayerMotto = prepareQuery("SELECT team FROM players WHERE bzid = ?");
+    requestNewMotto = prepareQuery("INSERT OR REPLACE INTO players (bzid, team) VALUES (?, ?)");
+    removeOldMotto = prepareQuery("DELETE FROM players WHERE bzid = ?");
 
     updateTeamNames();
 }
@@ -202,6 +204,8 @@ void leagueOverSeer::Cleanup (void)
 
     // Remove the prepared SQLite statement from memory
     sqlite3_finalize(getPlayerMotto);
+    sqlite3_finalize(requestNewMotto);
+    sqlite3_finalize(removeOldMotto);
 
     // Remove all the slash commands
     bz_removeCustomSlashCommand("official");
@@ -370,6 +374,21 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");
             else if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && funMatch)
                 bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently a fun match in progress, please be respectful. ***");
+
+            if (joinData->record->verified)
+            {
+                // Build the POST data for the URL job
+                std::string teamMotto = "query=teamNameQuery";
+                teamMotto += "&teamPlayers=" + std::string(joinData->record->bzID.c_str());
+
+                bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Getting motto for %s...", joinData->record->callsign.c_str());
+
+                urlQueries teamMottoQuery; //Make a reference to the url query list
+                teamMottoQuery._URL = joinData->record->bzID.c_str(); //Tell the query list that we have a match to report on the todo list
+                _urlQuery.push_back(teamMottoQuery); //Push the information to the todo list
+
+                bz_addURLJob(LEAGUE_URL.c_str(), this, teamMotto.c_str()); //Send the team update request to the league website
+            }
         }
         break;
 
@@ -390,9 +409,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 if (bz_isCountDownActive())
                     bz_gameOver(253, eObservers);
             }
-
-            if (lastDatabaseUpdate + 1800 < bz_getCurrentTime())
-                updateTeamNames();
         }
         break;
 
@@ -548,21 +564,41 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
 void leagueOverSeer::URLDone(const char* URL, void* data, unsigned int size, bool complete) //Everything went fine with the report
 {
     std::string siteData = (char*)(data); //Convert the data to a std::string
-    bz_debugMessagef(0, ">> %s", siteData.c_str());
 
     if (_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //The plugin reported the match successfully
     {
         bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s", siteData.c_str());
         bz_debugMessagef(DEBUG, "%s", siteData.c_str());
 
-        _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+        _urlQuery.erase(_urlQuery.begin(), _urlQuery.begin() + 1); //Tell the plugin that the the match query has been delt with, move to the next url job
     }
     else if (_urlQuery.at(0)._URL.compare("teamNameUpdate") == 0 && URL == LEAGUE_URL)
     {
         doQuery(siteData);
         lastDatabaseUpdate = bz_getCurrentTime();
 
-        _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
+        _urlQuery.erase(_urlQuery.begin(), _urlQuery.begin() + 1); //Tell the plugin that the the match query has been delt with, move to the next url job
+    }
+    else if (atoi(_urlQuery.at(0)._URL.c_str()) > 0 && URL == LEAGUE_URL)
+    {
+        if (strcmp(siteData.c_str(), "Teamless") != 0)
+        {
+            // Prepare the SQL query with the BZID of the player
+            sqlite3_bind_text(requestNewMotto, 1, _urlQuery.at(0)._URL.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(requestNewMotto, 2, siteData.c_str(), -1, SQLITE_TRANSIENT);
+
+            sqlite3_step(requestNewMotto);
+            sqlite3_reset(requestNewMotto); //Clear the prepared statement so it can be reused
+        }
+        else
+        {
+            sqlite3_bind_text(removeOldMotto, 1, _urlQuery.at(0)._URL.c_str(), -1, SQLITE_TRANSIENT);
+
+            sqlite3_step(removeOldMotto);
+            sqlite3_reset(removeOldMotto); //Clear the prepared statement so it can be reused
+        }
+
+        _urlQuery.erase(_urlQuery.begin(), _urlQuery.begin() + 1); //Tell the plugin that the the match query has been delt with, move to the next url job
     }
 }
 

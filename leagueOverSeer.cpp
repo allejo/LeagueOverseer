@@ -55,6 +55,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     virtual int loadConfig(const char *cmdLine);
     virtual sqlite3_stmt* prepareQuery(std::string sql);
     virtual bool toBool(std::string var);
+    virtual void updateTeamNames(void);
 
     //All the variables that will be used in the plugin
     bool officialMatch, matchCanceled, funMatch, rotLeague, gameoverReport;
@@ -62,6 +63,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     std::string LEAGUE_URL, map, SQLiteDB;
     const char* mapchangePath;
     bz_eTeamType teamOne, teamTwo;
+    double lastDatabaseUpdate;
 
     struct urlQueries //Stores the order of match reports and team queries
     {
@@ -189,15 +191,7 @@ void leagueOverSeer::Init (const char* commandLine)
     // Prepare the SQL query to get the team names based on a BZID
     getPlayerMotto = prepareQuery("SELECT team FROM players WHERE bzid = ?");
 
-    // Build the POST data for the URL job
-    std::string teamNameDump = "query=teamDump";
-    bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Updating Team name database...");
-
-    urlQueries teamDumpQuery; //Make a reference to the url query list
-    teamDumpQuery._URL = "teamNameUpdate"; //Tell the query list that we have a match to report on the todo list
-    _urlQuery.push_back(teamDumpQuery); //Push the information to the todo list
-
-    bz_addURLJob(LEAGUE_URL.c_str(), this, teamNameDump.c_str()); //Send the team update request to the league website
+    updateTeamNames();
 }
 
 void leagueOverSeer::Cleanup (void)
@@ -396,6 +390,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 if (bz_isCountDownActive())
                     bz_gameOver(253, eObservers);
             }
+
+            if (lastDatabaseUpdate + 1800 < bz_getCurrentTime())
+                updateTeamNames();
         }
         break;
 
@@ -563,6 +560,7 @@ void leagueOverSeer::URLDone(const char* URL, void* data, unsigned int size, boo
     else if (_urlQuery.at(0)._URL.compare("teamNameUpdate") == 0 && URL == LEAGUE_URL)
     {
         doQuery(siteData);
+        lastDatabaseUpdate = bz_getCurrentTime();
 
         _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
     }
@@ -723,4 +721,17 @@ bool leagueOverSeer::toBool(std::string var) //Turn std::string into a boolean v
         return true;
     else //If it's not true, then it's false.
         return false;
+}
+
+void leagueOverSeer::updateTeamNames(void)
+{
+    // Build the POST data for the URL job
+    std::string teamNameDump = "query=teamDump";
+    bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Updating Team name database...");
+
+    urlQueries teamDumpQuery; //Make a reference to the url query list
+    teamDumpQuery._URL = "teamNameUpdate"; //Tell the query list that we have a match to report on the todo list
+    _urlQuery.push_back(teamDumpQuery); //Push the information to the todo list
+
+    bz_addURLJob(LEAGUE_URL.c_str(), this, teamNameDump.c_str()); //Send the team update request to the league website
 }

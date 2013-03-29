@@ -98,13 +98,19 @@ else if ($_POST['query'] == 'teamNameQuery')
 
     if (mysqli_num_rows($teamResult) == 0) //A player that didn't belong to the team ruined the match
     {
-        echo "error";
+        echo "Teamless";
         die();
     }
 
     $getTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $teamIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
     $getTeamNameQuery = @mysqli_query($dbc, $getTeamName);
     $teamName = mysqli_fetch_array($getTeamNameQuery);
+
+    if (mysqli_num_rows($getTeamNameQuery) == 0) //A player belongs to a team that doesn't exist
+    {
+        echo "Teamless";
+        die();
+    }
 
     echo $teamName[0];
 }

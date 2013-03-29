@@ -112,7 +112,7 @@ else if ($_POST['query'] == 'teamNameQuery')
         die();
     }
 
-    echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $teamPlayers . ", " . $teamName[0] . ")";
+    echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $teamPlayers . ", '" . $teamName[0] . "')";
 }
 else if ($_POST['query'] == 'teamDump')
 {

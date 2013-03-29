@@ -112,7 +112,7 @@ else if ($_POST['query'] == 'teamNameQuery')
         die();
     }
 
-    echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $teamPlayers . ", '" . $teamName[0] . "')";
+    echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $teamPlayers . ", '" . mysqli_real_escape_string($dbc, $teamName[0]) . "')";
 }
 else if ($_POST['query'] == 'teamDump')
 {
@@ -121,7 +121,7 @@ else if ($_POST['query'] == 'teamDump')
 
     while ($entry = mysqli_fetch_array($getTeamsQuery))
     {
-        echo "INSERT OR REPLACE INTO players(bzid, team)VALUES(" . $entry[0] . ",'" . $entry[1] . "');";
+        echo "INSERT OR REPLACE INTO players(bzid, team)VALUES(" . $entry[0] . ",'" . mysqli_real_escape_string($dbc, $entry[1]) . "');";
     }
 }
 else

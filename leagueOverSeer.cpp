@@ -34,13 +34,13 @@ League Over Seer Plug-in
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 8;
-const int BUILD = 102;
+const int BUILD = 107;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 0.9.8 r102";}
+    virtual const char* Name (){return "League Over Seer 0.9.8 r107";}
     virtual void Init ( const char* config);
     virtual void Event( bz_EventData *eventData );
     virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -49,6 +49,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     virtual void URLTimeout(const char* URL, int errorCode);
     virtual void URLError(const char* URL, int errorCode, const char *errorString);
     virtual void doQuery(std::string query);
+    virtual std::string getCallsignByBZID(std::string bzid);
     virtual bool isDigit(std::string myString);
     virtual int isValidCallsign(std::string callsign);
     virtual bool isValidPlayerID(int playerID);
@@ -221,8 +222,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
             if (officialMatch) //Only keep score if it's official
             {
-                if (capData->teamCapped == teamOne) teamOnePoints++;
-                else if (capData->teamCapped == teamTwo) teamTwoPoints++;
+                if (capData->teamCapping == teamOne) teamOnePoints++;
+                else if (capData->teamCapping == teamTwo) teamTwoPoints++;
             }
         }
         break;
@@ -263,6 +264,14 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 std::string teamTwoPointsFinal = teamTwoPointsConversion.str();
                 std::string matchTimeFinal = matchTimeConversion.str();
 
+                // Store match data in the logs
+                bz_debugMessagef(DEBUG, "Match Data :: League Over Seer Match Report");
+                bz_debugMessagef(DEBUG, "Match Data :: -----------------------------");
+                bz_debugMessagef(DEBUG, "Match Data :: Match Time      : %s", match_date);
+                bz_debugMessagef(DEBUG, "Match Data :: Duration        : %s", matchTimeFinal.c_str());
+                bz_debugMessagef(DEBUG, "Match Data :: Team One Score  : %s", teamOnePointsFinal.c_str());
+                bz_debugMessagef(DEBUG, "Match Data :: Team Two Score  : %s", teamOnePointsFinal.c_str());
+
                 // Start building POST data to be sent to the league website
                 std::string matchToSend = "query=reportMatch";
                 matchToSend += "&teamOneWins=" + std::string(bz_urlEncode(teamOnePointsFinal.c_str()));
@@ -274,24 +283,34 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                     matchToSend += "&mapPlayed=" + std::string(bz_urlEncode(map.c_str()));
 
                 matchToSend += "&teamOnePlayers=";
+                bz_debugMessagef(DEBUG, "Match Data :: Team One Players");
 
                 for (unsigned int i = 0; i < matchPlayers.size(); i++) //Add all the red players to the match report
                 {
                     if (matchPlayers.at(i).team == teamOne)
+                    {
                         matchToSend += std::string(bz_urlEncode(matchPlayers.at(i).bzid.c_str())) + ",";
+                        bz_debugMessagef(DEBUG, "Match Data ::  (%s) %s", getCallsignByBZID(matchPlayers.at(i).bzid).c_str());
+                    }
                 }
 
                 matchToSend.erase(matchToSend.size() - 1);
                 matchToSend += "&teamTwoPlayers=";
+                bz_debugMessagef(DEBUG, "Match Data :: Team Two Players");
 
                 for (unsigned int i = 0; i < matchPlayers.size(); i++) //Add all the red players to the match report
                 {
                     if (matchPlayers.at(i).team == teamTwo)
+                    {
                         matchToSend += std::string(bz_urlEncode(matchPlayers.at(i).bzid.c_str())) + ",";
+                        bz_debugMessagef(DEBUG, "Match Data ::  (%s) %s", getCallsignByBZID(matchPlayers.at(i).bzid).c_str());
+                    }
                 }
 
                 matchToSend.erase(matchToSend.size() - 1);
 
+                bz_debugMessagef(DEBUG, "Match Data :: -----------------------------");
+                bz_debugMessagef(DEBUG, "Match Data :: End of Match Report");
                 bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Reporting match data...");
                 bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Reporting match...");
 
@@ -619,6 +638,25 @@ void leagueOverSeer::doQuery(std::string query)
         bz_debugMessage(2, "DEBUG :: League Over Seer :: SQL ERROR!");
         bz_debugMessagef(2, "DEBUG :: League Over Seer :: %s", db_err);
     }
+}
+
+std::string leagueOverSeer::getCallsignByBZID(std::string bzid)
+{
+    bz_APIIntList *playerList = bz_newIntList();
+    bz_getPlayerIndexList(playerList);
+
+    for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
+    {
+        if (strcmp(bz_getPlayerByIndex(playerList->get(i))->bzID.c_str(), bzid.c_str()) == 0)
+        {
+            std::string callsign = bz_getPlayerByIndex(playerList->get(i))->callsign.c_str();
+            bz_deleteIntList(playerList);
+            return callsign;
+        }
+    }
+
+    bz_deleteIntList(playerList);
+    return "(UNKNOWN)";
 }
 
 bool leagueOverSeer::isDigit(std::string myString)

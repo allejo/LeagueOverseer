@@ -1,7 +1,7 @@
 <?php
 //List of IPs that are allowed to report matches
 $autoReportID = 0;
-$ips = array('127.0.0.1', '127.0.0.2');
+$ips = array('127.0.0.1');
 if (!in_array($_SERVER['REMOTE_ADDR'], $ips)) die('Error: 403 - Forbidden');
 
 require_once("./CMS/siteoptions.php");
@@ -98,7 +98,7 @@ else if ($_POST['query'] == 'teamNameQuery')
 
     if (mysqli_num_rows($teamResult) == 0) //A player that didn't belong to the team ruined the match
     {
-        echo "Teamless";
+        echo "DELETE FROM players WHERE bzid = " . $teamPlayers;
         die();
     }
 
@@ -108,11 +108,11 @@ else if ($_POST['query'] == 'teamNameQuery')
 
     if (mysqli_num_rows($getTeamNameQuery) == 0) //A player belongs to a team that doesn't exist
     {
-        echo "Teamless";
+        echo "DELETE FROM players WHERE bzid = " . $teamPlayers;
         die();
     }
 
-    echo $teamName[0];
+    echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $teamPlayers . ", " . $teamName[0] . ")";
 }
 else if ($_POST['query'] == 'teamDump')
 {

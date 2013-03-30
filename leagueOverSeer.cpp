@@ -513,10 +513,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     }
     else if (command == "pause")
     {
-        if (bz_isCountDownActive() && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified)
+        if (bz_isCountDownActive() && bz_hasPerm(playerID,"spawn") && playerData->verified)
             bz_pauseCountdown(playerData->callsign.c_str());
-        else if (playerData->team == eObservers)
-            bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to pause matches.");
         else if (!bz_isCountDownActive())
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to pause right now.");
         else
@@ -526,8 +524,6 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     {
         if (bz_hasPerm(playerID,"spawn") && playerData->verified && bz_isCountDownActive())
             bz_resumeCountdown(playerData->callsign.c_str());
-        else if (playerData->team == eObservers)
-            bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to resume matches.");
         else if (!bz_isCountDownActive())
             bz_sendTextMessage(BZ_SERVER, playerID, "The current match is not paused.");
         else
@@ -578,6 +574,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
 void leagueOverSeer::URLDone(const char* URL, void* data, unsigned int size, bool complete) //Everything went fine with the report
 {
     std::string siteData = (char*)(data); //Convert the data to a std::string
+    bz_debugMessagef(1, "URL Job Successful! Data returned: %s", siteData.c_str());
 
     if (_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //The plugin reported the match successfully
     {

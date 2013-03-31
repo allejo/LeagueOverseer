@@ -60,7 +60,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 
     //All the variables that will be used in the plugin
     bool officialMatch, matchCanceled, funMatch, rotLeague, gameoverReport;
-    int DEBUG, teamOnePoints, teamTwoPoints;
+    int DEBUG, teamOnePoints, teamTwoPoints, matchDuration;
     std::string LEAGUE_URL, map, SQLiteDB;
     const char* mapchangePath;
     bz_eTeamType teamOne, teamTwo;
@@ -110,6 +110,7 @@ void leagueOverSeer::Init (const char* commandLine)
     funMatch = false;
     teamOnePoints = 0;
     teamTwoPoints = 0;
+    matchDuration = bz_getTimeLimit();
 
     loadConfig(commandLine); //Load the configuration data when the plugin is loaded
 
@@ -257,7 +258,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 std::ostringstream teamTwoPointsConversion;
                 teamTwoPointsConversion << (teamTwoPoints);
                 std::ostringstream matchTimeConversion;
-                matchTimeConversion << (bz_getTimeLimit()/60);
+                matchTimeConversion << (matchDuration/60);
 
                 //Keep references to values for quick reference
                 std::string teamOnePointsFinal = teamOnePointsConversion.str();
@@ -270,7 +271,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 bz_debugMessagef(DEBUG, "Match Data :: Match Time      : %s", match_date);
                 bz_debugMessagef(DEBUG, "Match Data :: Duration        : %s", matchTimeFinal.c_str());
                 bz_debugMessagef(DEBUG, "Match Data :: Team One Score  : %s", teamOnePointsFinal.c_str());
-                bz_debugMessagef(DEBUG, "Match Data :: Team Two Score  : %s", teamOnePointsFinal.c_str());
+                bz_debugMessagef(DEBUG, "Match Data :: Team Two Score  : %s", teamTwoPointsFinal.c_str());
 
                 // Start building POST data to be sent to the league website
                 std::string matchToSend = "query=reportMatch";
@@ -290,7 +291,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                     if (matchPlayers.at(i).team == teamOne)
                     {
                         matchToSend += std::string(bz_urlEncode(matchPlayers.at(i).bzid.c_str())) + ",";
-                        bz_debugMessagef(DEBUG, "Match Data ::  (%s) %s", getCallsignByBZID(matchPlayers.at(i).bzid).c_str());
+                        bz_debugMessagef(DEBUG, "Match Data ::  %s (%s)", getCallsignByBZID(matchPlayers.at(i).bzid).c_str(), matchPlayers.at(i).bzid.c_str());
                     }
                 }
 
@@ -303,7 +304,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                     if (matchPlayers.at(i).team == teamTwo)
                     {
                         matchToSend += std::string(bz_urlEncode(matchPlayers.at(i).bzid.c_str())) + ",";
-                        bz_debugMessagef(DEBUG, "Match Data ::  (%s) %s", getCallsignByBZID(matchPlayers.at(i).bzid).c_str());
+                        bz_debugMessagef(DEBUG, "Match Data ::  %s (%s)", getCallsignByBZID(matchPlayers.at(i).bzid).c_str(), matchPlayers.at(i).bzid.c_str());
                     }
                 }
 
@@ -343,6 +344,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 //Set the team scores to zero just in case
                 teamOnePoints = 0;
                 teamTwoPoints = 0;
+                matchDuration = bz_getTimeLimit();
 
                 for (unsigned int i = 0; i < playerList->size(); i++)
                 {

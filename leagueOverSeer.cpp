@@ -65,12 +65,6 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     const char* mapchangePath;
     bz_eTeamType teamOne, teamTwo;
 
-    struct urlQueries //Stores the order of match reports and team queries
-    {
-        std::string _URL;
-    };
-    std::vector<urlQueries> _urlQuery;
-
     struct playersInMatch //Maintains the players that started the match on the red team
     {
         std::string bzid;
@@ -315,11 +309,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Reporting match data...");
                 bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Reporting match...");
 
-                // Add URL job to our queue
-                urlQueries uq;
-                uq._URL = "match";
-                _urlQuery.push_back(uq);
-
                 bz_addURLJob(LEAGUE_URL.c_str(), this, matchToSend.c_str()); //Send the match data to the league website
 
                 //Clear all the structures and scores for next match
@@ -398,10 +387,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 teamMotto += "&teamPlayers=" + std::string(joinData->record->bzID.c_str());
 
                 bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Getting motto for %s...", joinData->record->callsign.c_str());
-
-                urlQueries teamMottoQuery; //Make a reference to the url query list
-                teamMottoQuery._URL = "mottoUpdate"; //Tell the query list that we have a match to report on the todo list
-                _urlQuery.push_back(teamMottoQuery); //Push the information to the todo list
 
                 bz_addURLJob(LEAGUE_URL.c_str(), this, teamMotto.c_str()); //Send the team update request to the league website
             }
@@ -578,46 +563,24 @@ void leagueOverSeer::URLDone(const char* URL, void* data, unsigned int size, boo
     std::string siteData = (char*)(data); //Convert the data to a std::string
     bz_debugMessagef(1, "URL Job Successful! Data returned: %s", siteData.c_str());
 
-    if (_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //The plugin reported the match successfully
+    if (strcmp(siteData.substr(0, 6).c_str(), "INSERT") == 0 || strcmp(siteData.substr(0, 6).c_str(), "DELETE") == 0)
+        doQuery(siteData);
+    else
     {
         bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s", siteData.c_str());
         bz_debugMessagef(DEBUG, "%s", siteData.c_str());
-
-        _urlQuery.erase(_urlQuery.begin(), _urlQuery.begin() + 1); //Tell the plugin that the the match query has been delt with, move to the next url job
-    }
-    else if ((_urlQuery.at(0)._URL.compare("teamNameUpdate") == 0 || _urlQuery.at(0)._URL.compare("mottoUpdate") == 0) && URL == LEAGUE_URL)
-    {
-        doQuery(siteData);
-
-        _urlQuery.erase(_urlQuery.begin(), _urlQuery.begin() + 1); //Tell the plugin that the the match query has been delt with, move to the next url job
     }
 }
 
 void leagueOverSeer::URLTimeout(const char* URL, int errorCode) //The league website is down or is not responding, the request timed out
 {
-    if (_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //Something went wrong while reporting the match, it timed out
-    {
-        bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- WARNING --<");
-        bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- The request to report the match has timed out. --<");
-        bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- Please contact a league admin or referee with the match result. --<");
-        bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: The request to report the match has timed out.");
-
-        _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
-    }
+    bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: The request to the league site has timed out.");
 }
 
 void leagueOverSeer::URLError(const char* URL, int errorCode, const char *errorString) //The server owner must have set up the URLs wrong because this shouldn't happen
 {
-    if (_urlQuery.at(0)._URL.compare("match") == 0 && URL == LEAGUE_URL) //Something went wrong while reporting the match, no website found
-    {
-        bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- WARNING --<");
-        bz_sendTextMessagef(BZ_SERVER,BZ_ALLUSERS,">-- Match report failed with error code %i - %s --<",errorCode,errorString);
-        bz_sendTextMessage(BZ_SERVER,BZ_ALLUSERS,">-- Please contact a league admin or referee with this error and the match result. --<");
-        bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: Match report failed with the following error:");
-        bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Error code: %i - %s",errorCode,errorString);
-
-        _urlQuery.erase(_urlQuery.begin(),_urlQuery.begin()+1); //Tell the plugin that the the match query has been delt with, move to the next url job
-    }
+    bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: Match report failed with the following error:");
+    bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Error code: %i - %s", errorCode, errorString);
 }
 
 void leagueOverSeer::doQuery(std::string query)
@@ -774,10 +737,6 @@ void leagueOverSeer::updateTeamNames(void)
     // Build the POST data for the URL job
     std::string teamNameDump = "query=teamDump";
     bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Updating Team name database...");
-
-    urlQueries teamDumpQuery; //Make a reference to the url query list
-    teamDumpQuery._URL = "teamNameUpdate"; //Tell the query list that we have a match to report on the todo list
-    _urlQuery.push_back(teamDumpQuery); //Push the information to the todo list
 
     bz_addURLJob(LEAGUE_URL.c_str(), this, teamNameDump.c_str()); //Send the team update request to the league website
 }

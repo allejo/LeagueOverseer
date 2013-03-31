@@ -7,19 +7,19 @@ if (!in_array($_SERVER['REMOTE_ADDR'], $ips)) die('Error: 403 - Forbidden');
 require_once("./CMS/siteoptions.php");
 $dbc = new mysqli("localhost", pw_secret::mysqluser_secret(), pw_secret::mysqlpw_secret(), db_used_custom_name());
 
-if ($_GET['query'] == 'reportMatch')
+if ($_POST['query'] == 'reportMatch')
 {
-    $teamOneWins = $_GET['teamOneWins'];
+    $teamOneWins = $_POST['teamOneWins'];
     $teamOneWins = mysqli_real_escape_string($dbc, $teamOneWins);
-    $teamTwoWins = $_GET['teamTwoWins'];
+    $teamTwoWins = $_POST['teamTwoWins'];
     $teamTwoWins = mysqli_real_escape_string($dbc, $teamTwoWins);
-    $timestamp = $_GET['matchTime'];
+    $timestamp = $_POST['matchTime'];
     $timestamp = mysqli_real_escape_string($dbc, $timestamp);
-    $duration = $_GET['duration'];
+    $duration = $_POST['duration'];
     $duration = mysqli_real_escape_string($dbc, $duration);
-    $teamOnePlayers = $_GET['teamOnePlayers'];
+    $teamOnePlayers = $_POST['teamOnePlayers'];
     $teamOnePlayers = mysqli_real_escape_string($dbc, $teamOnePlayers);
-    $teamTwoPlayers = $_GET['teamTwoPlayers'];
+    $teamTwoPlayers = $_POST['teamTwoPlayers'];
     $teamTwoPlayers = mysqli_real_escape_string($dbc, $teamTwoPlayers);
 
     $getTeamOne = "SELECT teamid FROM players WHERE external_id IN (" . $teamOnePlayers . ") LIMIT 1";
@@ -82,9 +82,9 @@ if ($_GET['query'] == 'reportMatch')
 
     echo $teamTwoName[0] . "[" . $teamTwoWins . "] vs [" . $teamOneWins . "] " . $teamOneName[0];
 }
-else if ($_GET['query'] == 'teamNameQuery')
+else if ($_POST['query'] == 'teamNameQuery')
 {
-    $teamPlayers = $_GET['teamPlayers'];
+    $teamPlayers = $_POST['teamPlayers'];
     $teamPlayers = mysqli_real_escape_string($dbc, $teamPlayers);
 
     $getTeam = "SELECT teamid FROM players WHERE external_id IN (" . $teamPlayers . ") LIMIT 1";
@@ -110,7 +110,7 @@ else if ($_GET['query'] == 'teamNameQuery')
 
     echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $teamPlayers . ", '" . $teamName[0] . "')";
 }
-else if ($_GET['query'] == 'teamDump')
+else if ($_POST['query'] == 'teamDump')
 {
     $getTeams = "SELECT players.external_id, teams.name FROM players, teams WHERE players.teamid = teams.id AND players.external_id != ''";
     $getTeamsQuery = @mysqli_query($dbc, $getTeams);

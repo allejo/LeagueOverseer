@@ -7,19 +7,19 @@ if (!in_array($_SERVER['REMOTE_ADDR'], $ips)) die('Error: 403 - Forbidden');
 require_once("./CMS/siteoptions.php");
 $dbc = new mysqli("localhost", pw_secret::mysqluser_secret(), pw_secret::mysqlpw_secret(), db_used_custom_name());
 
-if ($_POST['query'] == 'reportMatch')
+if ($_GET['query'] == 'reportMatch')
 {
-    $teamOneWins = $_POST['teamOneWins'];
+    $teamOneWins = $_GET['teamOneWins'];
     $teamOneWins = mysqli_real_escape_string($dbc, $teamOneWins);
-    $teamTwoWins = $_POST['teamTwoWins'];
+    $teamTwoWins = $_GET['teamTwoWins'];
     $teamTwoWins = mysqli_real_escape_string($dbc, $teamTwoWins);
-    $timestamp = $_POST['matchTime'];
+    $timestamp = $_GET['matchTime'];
     $timestamp = mysqli_real_escape_string($dbc, $timestamp);
-    $duration = $_POST['duration'];
+    $duration = $_GET['duration'];
     $duration = mysqli_real_escape_string($dbc, $duration);
-    $teamOnePlayers = $_POST['teamOnePlayers'];
+    $teamOnePlayers = $_GET['teamOnePlayers'];
     $teamOnePlayers = mysqli_real_escape_string($dbc, $teamOnePlayers);
-    $teamTwoPlayers = $_POST['teamTwoPlayers'];
+    $teamTwoPlayers = $_GET['teamTwoPlayers'];
     $teamTwoPlayers = mysqli_real_escape_string($dbc, $teamTwoPlayers);
 
     $getTeamOne = "SELECT teamid FROM players WHERE external_id IN (" . $teamOnePlayers . ") LIMIT 1";
@@ -80,15 +80,11 @@ if ($_POST['query'] == 'reportMatch')
     $getTeamTwoNameQuery = @mysqli_query($dbc, $getTeamTwoName);
     $teamTwoName = mysqli_fetch_array($getTeamTwoNameQuery);
 
-    $getDiff = "SELECT `team1_new_score`, `team2_new_score` FROM `matches` WHERE `timestamp` = \"" . $timestamp . "\" ORDER BY `timestamp` DESC LIMIT 1"; //Get the name of the team with the teamid that we got before
-    $getDiffQuery = @mysqli_query($dbc, $getDiff);
-    $diffs = mysqli_fetch_array($getDiffQuery);
-
-    echo "(+/- " . abs($diffs[0] - $diffs[1])/2 . ") " . $teamTwoName[0] . "[" . $teamTwoWins . "] vs [" . $teamOneWins . "] " . $teamOneName[0];
+    echo $teamTwoName[0] . "[" . $teamTwoWins . "] vs [" . $teamOneWins . "] " . $teamOneName[0];
 }
-else if ($_POST['query'] == 'teamNameQuery')
+else if ($_GET['query'] == 'teamNameQuery')
 {
-    $teamPlayers = $_POST['teamPlayers'];
+    $teamPlayers = $_GET['teamPlayers'];
     $teamPlayers = mysqli_real_escape_string($dbc, $teamPlayers);
 
     $getTeam = "SELECT teamid FROM players WHERE external_id IN (" . $teamPlayers . ") LIMIT 1";
@@ -112,16 +108,16 @@ else if ($_POST['query'] == 'teamNameQuery')
         die();
     }
 
-    echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $teamPlayers . ", \"" . mysqli_real_escape_string($dbc, $teamName[0]) . "\")";
+    echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $teamPlayers . ", '" . $teamName[0] . "')";
 }
-else if ($_POST['query'] == 'teamDump')
+else if ($_GET['query'] == 'teamDump')
 {
     $getTeams = "SELECT players.external_id, teams.name FROM players, teams WHERE players.teamid = teams.id AND players.external_id != ''";
     $getTeamsQuery = @mysqli_query($dbc, $getTeams);
 
     while ($entry = mysqli_fetch_array($getTeamsQuery))
     {
-        echo "INSERT OR REPLACE INTO players(bzid, team)VALUES(" . $entry[0] . ", \"" . mysqli_real_escape_string($dbc, $entry[1]) . "\");";
+        echo "INSERT OR REPLACE INTO players(bzid, team)VALUES(" . $entry[0] . ",'" . $entry[1] . "');";
     }
 }
 else

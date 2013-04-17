@@ -55,7 +55,7 @@ SQLITE_DB
 
 GAMEOVER_REPORT
 
-* Default: <em>false</em>
+* Default: <em>true</em>
 * Description: If you would like the plugin to report any match that was ended by a /gameover, then make sure that this value is set to 'true' and if you don't want the match to be reported, be sure to set it to 'false'
 
 LEAGUE_OVER_SEER_URL
@@ -71,10 +71,9 @@ DEBUG_LEVEL
 ## Web Hosting Details
 If you are hosting a league website using the <a href="https://code.google.com/p/bz-owl/" target="_blank">bz-owl</a> project, make sure you follow these requirements:
 
-1. Make a backup of the /Matches/match.php file and replace it with the one provided in this repository.
-2. Upload leagueOverSeer.php to the root of your league website directory.
-3. Add the IPs of the official match servers to the $ips array located on line 4 of leagueOverSeer.php. This is a precaution so only official match servers can report and access data.
-4. Set $autoReportID on line 3 to the user ID of the person who will be reporting the matches. For instance, you may want to create an 'autoreport' account on the league website and use that ID.
+1. Upload leagueOverSeer.php to the root of your league website directory.
+2. Add the IPs of the official match servers to the $ips array located on line 24 of leagueOverSeer.php. This is a precaution so only official match servers can report and access data.
+3. Set $autoReportID on line 21 to the user ID of the person who will be reporting the matches. For instance, you may want to create an 'autoreport' account on the league website and use that ID.
 
 ## License:
 GPL 3.0

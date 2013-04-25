@@ -161,7 +161,7 @@
         $teamTwoName = mysql_fetch_array($getTeamTwoNameQuery);
 
         //Output the match stats that will be sent back to BZFS
-        echo "(+/- " . $difference[0] . ") " . $teamTwoName[0] . "[" . $teamTwoWins . "] vs [" . $teamOneWins . "] " . $teamOneName[0];
+        echo "(+/- " . abs($difference[0]) . ") " . $teamTwoName[0] . "[" . $teamTwoWins . "] vs [" . $teamOneWins . "] " . $teamOneName[0];
 
         //Have the league site perform maintainence as it sees fit
         ob_start();

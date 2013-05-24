@@ -58,7 +58,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     virtual void updateTeamNames(void);
 
     //All the variables that will be used in the plugin
-    bool officialMatch, matchCanceledWithGameover, funMatch, rotLeague, gameoverReport, matchParticipantsRecorded;
+    bool officialMatch, doNotReportMatch, funMatch, rotLeague, matchParticipantsRecorded;
     int DEBUG, teamOnePoints, teamTwoPoints, matchDuration;
     double matchStartTime;
     std::string LEAGUE_URL, map, SQLiteDB;
@@ -101,7 +101,7 @@ void leagueOverSeer::Init (const char* commandLine)
 
     //Set all boolean values for the plugin to false
     officialMatch = false;
-    matchCanceledWithGameover = false;
+    doNotReportMatch = false;
     matchParticipantsRecorded = false;
     funMatch = false;
     teamOnePoints = 0;
@@ -233,10 +233,10 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             matchStartTime = 0;
             matchParticipantsRecorded = false;
 
-            if (matchCanceledWithGameover && officialMatch && !gameoverReport) //The match was canceled via /gameover or /superkill and we do not want to report these matches
+            if (doNotReportMatch && officialMatch) //The match was canceled via /gameover or /superkill and we do not want to report these matches
             {
                 officialMatch = false; //Match is over
-                matchCanceledWithGameover = false; //Reset the variable for next usage
+                doNotReportMatch = false; //Reset the variable for next usage
                 teamOnePoints = 0;
                 teamTwoPoints = 0;
                 matchPlayers.clear();
@@ -385,16 +385,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
             std::string command = commandData->message.c_str(); //Use std::string for quick reference
 
-            if (command.compare("/gameover") == 0 && bz_hasPerm(commandData->from, "ENDGAME") && gameoverReport) //Check if they did a /gameover
-            {
-                if (officialMatch && bz_isCountDownActive()) //Only announce that the match was canceled if it's an official match
-                {
-                    bz_debugMessagef(DEBUG, "DEBUG :: Match Over Seer :: Official match canceled by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
-                    bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match canceled by %s", playerData->callsign.c_str());
-
-                    matchCanceledWithGameover = true; //To prevent reporting a canceled match, let plugin know the match was canceled
-                }
-            }
+            if (strncmp("/gameover", commandData->message.c_str(), 9) == 0)
+                bz_sendTextMessagef(BZ_SERVER, commandData->from, "** '/gameover' is disabled, please use /finish or /cancel instead **");
             else if (strncmp("/countdown pause", commandData->message.c_str(), 16) == 0)
                 bz_sendTextMessagef(BZ_SERVER, commandData->from, "** '/countdown pause' is disabled, please use /pause instead **");
             else if (strncmp("/countdown resume", commandData->message.c_str(), 17 ) == 0)
@@ -414,7 +406,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             {
                 //Incase a boolean gets messed up in the plugin, reset all the plugin variables when there are no players (Observers excluded)
                 officialMatch = false;
-                matchCanceledWithGameover = false;
+                doNotReportMatch = false;
                 funMatch = false;
                 teamOnePoints = 0;
                 teamTwoPoints = 0;
@@ -523,7 +515,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
 
             //Reset the server. Cleanly ends a match
             officialMatch = false;
-            matchCanceledWithGameover = false;
+            doNotReportMatch = true;
             funMatch = false;
             teamOnePoints = 0;
             teamTwoPoints = 0;
@@ -536,6 +528,24 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to cancel.");
         else //Not a league player
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to run the /cancel command.");
+    }
+    else if (command == "finish")
+    {
+        if (bz_hasPerm(playerID,"spawn") && bz_isCountDownActive() && officialMatch)
+        {
+            bz_debugMessagef(DEBUG, "DEBUG :: Match Over Seer :: Official match canceled by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
+            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match canceled by %s", playerData->callsign.c_str());
+
+            doNotReportMatch = false; //To prevent reporting a canceled match, let plugin know the match was canceled
+
+            //End the countdown
+            if (bz_isCountDownActive())
+                bz_gameOver(253, eObservers);
+        }
+        else if (!bz_isCountDownActive())
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to end.");
+        else //Not a league player
+            bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to run the /finish command.");
     }
     else if (command == "pause")
     {
@@ -557,7 +567,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     }
     else if (command == "spawn")
     {
-        if (bz_hasPerm(playerID, "kick"))
+        if (bz_hasPerm(playerID, "ban"))
         {
             if (params->size() > 0)
             {
@@ -581,17 +591,13 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
                     bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", bz_getPlayerByIndex(playerID)->callsign.c_str(), bz_getPlayerByIndex(isValidCallsign(callsignToLookup))->callsign.c_str());
                 }
                 else
-                {
                     bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", params->get(0).c_str());
-                }
             }
             else
                 bz_sendTextMessage(BZ_SERVER, playerID, "/spawn <player id or callsign>");
         }
         else if (!playerData->admin)
-        {
             bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to use the /spawn command.");
-        }
     }
 
     bz_freePlayerRecord(playerData);
@@ -699,7 +705,6 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
     rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
     mapchangePath = (config.item(section, "MAPCHANGE_PATH")).c_str();
     SQLiteDB = config.item(section, "SQLITE_DB");
-    gameoverReport = toBool(config.item(section, "GAMEOVER_REPORT"));
     LEAGUE_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
     DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
 

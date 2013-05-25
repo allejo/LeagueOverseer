@@ -34,13 +34,13 @@ League Over Seer Plug-in
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 9;
-const int BUILD = 114;
+const int BUILD = 117;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 0.9.9 r114";}
+    virtual const char* Name (){return "League Over Seer 0.9.9 r117";}
     virtual void Init ( const char* config);
     virtual void Event( bz_EventData *eventData );
     virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -416,7 +416,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                     bz_gameOver(253, eObservers);
             }
 
-            if (matchStartTime > 0 && matchStartTime + 60 < bz_getCurrentTime() && officialMatch && !matchParticipantsRecorded)
+            if (matchStartTime > 0 && matchStartTime + 90 < bz_getCurrentTime() && officialMatch && !matchParticipantsRecorded)
             {
                 bz_APIIntList *playerList = bz_newIntList();
                 bz_getPlayerIndexList(playerList);

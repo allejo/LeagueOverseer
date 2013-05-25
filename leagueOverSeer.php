@@ -17,13 +17,30 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.
     */
 
-    //The bz-owl user id given to the person who will be entering the matches automatically
-    $autoReportID = 0;
+    /*
+        === League Over Seer Settings ===
+        Feel free to modify these settings
+    */
 
-    //List of IPs that are allowed to report matches
+    // List of IPs that are allowed to report matches
     $ips = array('127.0.0.1');
+
+    $autoReportID = 0;                            // The bz-owl user id given to the person who will be entering the matches automatically
+    $keepLog = true;                              // Set it respectively whether or not you want to log match data
+    $pathToLogFile = "leagueOverSeer.log";        // The path to the log file
+
+
+
+    /*
+        === League Over Seer Code ===
+        Even though patches are welcome, you're on your
+        own for modifications below
+    */
     if (!in_array($_SERVER['REMOTE_ADDR'], $ips))
+    {
+        writeToDebug("Unauthorized access attempt from " . $_SERVER['REMOTE_ADDR']);
         die('Error: 403 - Forbidden');
+    }
 
     //Create an object to access the database
     require_once 'CMS/siteinfo.php';
@@ -32,136 +49,135 @@
 
     if ($_POST['query'] == 'reportMatch') //We'll be reporting a match
     {
+        writeToDebug("Match data received from " . $_SERVER['REMOTE_ADDR']);
+        writeToDebug("--------------------------------------");
+
         //Clean up user input [I'm using whatever ts is using, sqlSafeString()]
-        $teamOneWins = $_POST['teamOneWins'];
-        $teamOneWins = sqlSafeString($teamOneWins);
-        $teamTwoWins = $_POST['teamTwoWins'];
-        $teamTwoWins = sqlSafeString($teamTwoWins);
-        $timestamp = $_POST['matchTime'];
-        $timestamp = sqlSafeString($timestamp);
-        $duration = $_POST['duration'];
-        $duration = sqlSafeString($duration);
-        $teamOnePlayers = $_POST['teamOnePlayers'];
-        $teamOnePlayers = sqlSafeString($teamOnePlayers);
-        $teamTwoPlayers = $_POST['teamTwoPlayers'];
-        $teamTwoPlayers = sqlSafeString($teamTwoPlayers);
+        $teamOneWins    = sqlSafeString($_POST['teamOneWins']);
+        $teamTwoWins    = sqlSafeString($_POST['teamTwoWins']);
+        $timestamp      = sqlSafeString($_POST['matchTime']);
+        $duration       = sqlSafeString($_POST['duration']);
+        $teamOnePlayers = sqlSafeString($_POST['teamOnePlayers']);
+        $teamTwoPlayers = sqlSafeString($_POST['teamTwoPlayers']);
 
-        //Get the team ids judging by the players who participated in the match and store them
-        $getTeamOne = ('SELECT teamid FROM players WHERE external_id IN (' . $teamOnePlayers . ') LIMIT 1');
-        $teamOneResult = @$site->execute_query('players', $getTeamOne, $dbc);
-        $getTeamTwo = "SELECT teamid FROM players WHERE external_id IN (" . $teamTwoPlayers . ") LIMIT 1";
-        $teamTwoResult = @$site->execute_query('players', $getTeamTwo, $dbc);
-        $teamOneIDs = mysql_fetch_array($teamOneResult);
-        $teamTwoIDs = mysql_fetch_array($teamTwoResult);
-        $teamOneID = $teamOneIDs[0];
-        $teamTwoID = $teamTwoIDs[0];
-
-        //A player that didn't belong to the team ruined the match
-        if (mysql_num_rows($teamOneResult) == 0 || mysql_num_rows($teamTwoResult) == 0)
+        //Check which team won
+        if ($teamOneWins > $teamTwoWins)
         {
+            $winningTeamID      = getTeamID($teamOnePlayers);
+            $winningTeamPoints  = $teamOneWins;
+            $winningTeamPlayers = $teamOnePlayers;
+
+            $losingTeamID       = getTeamID($teamTwoPlayers);
+            $losingTeamPoints   = $teamTwoWins;
+            $losingTeamPlayers  = $teamTwoPlayers;
+        }
+        else //Team two won or it was a draw
+        {
+            $winningTeamID      = getTeamID($teamTwoPlayers);
+            $winningTeamPoints  = $teamTwoWins;
+            $winningTeamPlayers = $teamTwoPlayers;
+
+            $losingTeamID       = getTeamID($teamOnePlayers);
+            $losingTeamPoints   = $teamOneWins;
+            $losingTeamPlayers  = $teamOnePlayers;
+        }
+
+        if ($winningTeamID == -1 || $losingTeamID == -1)
+        {
+            if ($winningTeamID == -1)
+                writeToDebug("The BZIDs (" . $winningTeamPlayers . ") were not found on the same team. Match invalidated.");
+            else
+                writeToDebug("The BZIDs (" . $losingTeamPlayers . ") were not found on the same team. Match invalidated.");
+
+            writeToDebug("--------------------------------------");
+            writeToDebug("End of Match Report");
+
             echo "Teams could not be reported properly. Please message a referee with the match data.";
             die();
         }
 
-        /*
-            Go through all the IDs to make sure everyone is on the same
-            team. If someone isn't part of the same team, don't report
-            the match as it was invalid.
-        */
-        foreach ($teamOneIDs as $rID)
-        {
-            if ($rID != $teamOneID)
-            {
-                echo "There was an invalid team member on either team. Please report the match to a referee or admin.";
-                die();
-            }
-        }
-        foreach ($teamTwoIDs as $pID)
-        {
-            if ($pID != $teamTwoID)
-            {
-                echo "There was an invalid team member on either team. Please report the match to a referee or admin.";
-                die();
-            }
-        }
+        //These variables aren't score dependant since the parameter has already been set
+        $winningTeamName    = getTeamName($winningTeamID);
+        $winningTeamELO     = getTeamELO($winningTeamID);
+        $losingTeamName     = getTeamName($losingTeamID);
+        $losingTeamELO      = getTeamELO($losingTeamID);
+
+        writeToDebug("Match Time      : " . $timestamp);
+        writeToDebug("Duration        : " . $duration);
+        writeToDebug("");
+        writeToDebug("Team '" . $winningTeamName . "'");
+        writeToDebug("--------");
+        writeToDebug("* Old ELO       : " . $winningTeamELO);
+        writeToDebug("* Score         : " . $winningTeamPoints);
+        writeToDebug("* Players");
+        echoParticipants($winningTeamPlayers);
+        writeToDebug("");
+        writeToDebug("Team '" . $losingTeamName . "'");
+        writeToDebug("--------");
+        writeToDebug("* Old ELO       : " . $losingTeamELO);
+        writeToDebug("* Score         : " . $losingTeamPoints);
+        writeToDebug("* Players");
+        echoParticipants($losingTeamPlayers);
+        writeToDebug("");
+
 
         /*
-            This code is commented out for the future when ts has finished the matchServices add-on
+            === GU League Time Limit Settings ===
+        */
+        if ($duration == 30)        $eloFraction = 1;
+        else if ($duration == 20)   $eloFraction = 2/3;
+
+        /*
+            ===  DUC League Time Limit Settings ===
         */
         /*
-            require('CMS/add-ons/pathLoaderSystem/pathLoaderSystem.php');
-            $pathLoaderObject = new pathLoaderSystem(true);
-            $matchServicesObject = $pathLoaderObject->loadAddon('matchServices', '','');
-
-            if (!$matchServicesObject)
-            {
-                // you may present message to user or whatever
-                return;
-            }
-
-            define('matchDataFormat', 1);
-
-            $matchData = array('timestamp' => $timestamp, 'duration' => (int) $duration,'team1ID' => (int) $teamOneID, 'team2ID' => (int) $teamTwoID, 'team1Score' => (int) $teamOneWins, 'team2Score' => (int) $teamTwoWins);
-            $matchServicesObject->enterMatch($matchData, matchDataFormat);
+        if ($duration == 30)        $eloFraction = 1.5;
+        else if ($duration == 20)   $eloFraction = 1;
+        else if ($duration == 15)   $eloFraction = 2/3
         */
 
-        //Check which team won or if it was a tie
-        if ($teamOneWins > $teamTwoWins)
-        {
-            $winningTeamPoints = $teamOneWins;
-            $losingTeamPoints = $teamTwoWins;
-            $winningTeamPlayers = $teamOnePlayers;
-            $losingTeamPlayers = $teamTwoPlayers;
+
+        if ($winningTeamPoints == $losingTeamPoints)
+            $pointsForElo = 0.5;
+        else
             $pointsForElo = 1;
+
+        //Do the math to figure out the point difference
+        $eloDifference = floor($eloFraction * 50 * ($pointsForElo - (1 / (1 + pow(10, ($losingTeamELO - $winningTeamELO)/400)))));
+        writeToDebug("ELO Difference  : +/- " . $eloDifference);
+
+        $winningTeamNewELO = $winningTeamELO + $eloDifference;
+        $losingTeamNewELO  = $losingTeamELO - $eloDifference;
+
+        $insertNewMatchQuery = "INSERT INTO matches (userid, timestamp, team1ID, team2ID, team1_points, team2_points, team1_new_score, team2_new_score, duration)" .
+                                "VALUES (" .
+                                    "'" . $autoReportID       . "', " .
+                                    "'" . $timestamp          . "', " .
+                                    "'" . $winningTeamID      . "', " .
+                                    "'" . $losingTeamID       . "', " .
+                                    "'" . $winningTeamPoints  . "', " .
+                                    "'" . $losingTeamPoints   . "', " .
+                                    "'" . $winningTeamNewELO  . "', " .
+                                    "'" . $losingTeamNewELO   . "', " .
+                                    "'" . $duration           . "');";
+
+        @$site->execute_query("matches", $insertNewMatchQuery); //Actually enter the match
+        @$site->execute_query("teams_overview", "UPDATE teams_overview SET score = " . $winningTeamNewELO . ", num_matches_played = num_matches_played + 1 WHERE teamid = " . $winningTeamID . ";"); //Update the number of matches played
+        @$site->execute_query("teams_overview", "UPDATE teams_overview SET score = " . $losingTeamNewELO . ", num_matches_played = num_matches_played + 1 WHERE teamid = " . $losingTeamID . ";");
+
+        if ($winningTeamPoints == $losingTeamPoints)
+        {
+            @$site->execute_query("teams_profile", "UPDATE teams_profile SET num_matches_draw = num_matches_draw + 1 WHERE teamid = " . $winningTeamID . ";");
+            @$site->execute_query("teams_profile", "UPDATE teams_profile SET num_matches_draw = num_matches_draw + 1 WHERE teamid = " . $losingTeamID . ";");
         }
         else
         {
-            $winningTeamPoints = $teamTwoWins;
-            $losingTeamPoints = $teamOneWins;
-            $winningTeamPlayers = $teamTwoPlayers;
-            $losingTeamPlayers = $teamOnePlayers;
-            $pointsForElo = 0.5;
+            @$site->execute_query("teams_profile", "UPDATE teams_profile SET num_matches_won = num_matches_won + 1 WHERE teamid = " . $winningTeamID . ";");
+            @$site->execute_query("teams_profile", "UPDATE teams_profile SET num_matches_lost = num_matches_lost + 1 WHERE teamid = " . $losingTeamID . ";");
         }
 
-        /*
-            === League Time Limit Settings ===
-            This has been set up for GU league where 30 minutes is the full
-            length and 20 minute matches are 2/3 of the ELO. For Duc, you
-            would change the settings accordingly.
-        */
-        if ($duration == 30) $eloFraction = 1;
-        else if ($duration == 20) $eloFraction = 2/3;
-
-        //A very very very long batch MySQL queries, I'll explain as I see fit.
-        @$site->execute_query("enter_matches", "SET @points := (SELECT " . $pointsForElo . ");");
-        @$site->execute_query("enter_matches", "SET @winningTeamPoints := (SELECT " . $winningTeamPoints . ");");
-        @$site->execute_query("enter_matches", "SET @losingTeamPoints := (SELECT " . $losingTeamPoints . ");");
-        @$site->execute_query("enter_matches", "SET @winningTeamID := (SELECT teamid FROM players WHERE external_id IN (" . $winningTeamPlayers . ") LIMIT 1);"); //Just save the IDs as a MySQL variable
-        @$site->execute_query("enter_matches", "SET @losingTeamID := (SELECT teamid FROM players WHERE external_id IN (" . $losingTeamPlayers . ") LIMIT 1);");
-        @$site->execute_query("enter_matches", "SET @winningTeamOldScore := (SELECT score FROM teams_overview WHERE teamid = @winningTeamID);"); //Save the old scores
-        @$site->execute_query("enter_matches", "SET @losingTeamOldScore := (SELECT score FROM teams_overview WHERE teamid = @losingTeamID);");
-        @$site->execute_query("enter_matches", "SET @difference := (SELECT FLOOR(" . $eloFraction . " * 50 * (@points - (SELECT (1 / (1 + POW(10, ((@losingTeamOldScore - @winningTeamOldScore)/400))))))));"); //Calculate the ELO difference
-        @$site->execute_query("enter_matches", "SET @winningTeamNewScore := (SELECT (@winningTeamOldScore + @difference));"); //Update the ELO for the winner
-        @$site->execute_query("enter_matches", "SET @losingTeamNewScore := (SELECT (@losingTeamOldScore - @difference));"); //Update the ELO for the loser
-        @$site->execute_query("enter_matches", "INSERT INTO matches (userid, timestamp, team1ID, team2ID, team1_points, team2_points, team1_new_score, team2_new_score, duration) VALUES (" . $autoReportID . ", \"" . $timestamp . "\", @winningTeamID, @losingTeamID, @winningTeamPoints, @losingTeamPoints, @winningTeamNewScore, @losingTeamNewScore, " . $duration . ");"); //Actually enter the match
-        @$site->execute_query("enter_matches", "UPDATE teams_overview SET score = @winningTeamNewScore, num_matches_played = num_matches_played + 1 WHERE teamid = @winningTeamID;"); //Update the number of matches played
-        @$site->execute_query("enter_matches", "UPDATE teams_overview SET score = @losingTeamNewScore, num_matches_played = num_matches_played + 1 WHERE teamid = @losingTeamID;");
-        @$site->execute_query("enter_matches", "UPDATE teams_profile SET num_matches_draw = num_matches_draw + 1 WHERE teamid = @winningTeamID AND @winningTeamPoints = @losingTeamPoints;");
-        @$site->execute_query("enter_matches", "UPDATE teams_profile SET num_matches_draw = num_matches_draw + 1 WHERE teamid = @losingTeamID AND @winningTeamPoints = @losingTeamPoints;");
-        @$site->execute_query("enter_matches", "UPDATE teams_profile SET num_matches_won = num_matches_won + 1 WHERE teamid = @winningTeamID AND @winningTeamPoints != @losingTeamPoints;");
-        @$site->execute_query("enter_matches", "UPDATE teams_profile SET num_matches_lost = num_matches_lost + 1 WHERE teamid = @losingTeamID AND @winningTeamPoints != @losingTeamPoints;");
-        $difference = mysql_fetch_array(@$site->execute_query("enter_matches", "SELECT @difference;"));
-
-        //Get the team names so we can announce them
-        $getTeamOneName = "SELECT `name` FROM `teams` WHERE `id` = " . $teamOneIDs[0] . " LIMIT 1";
-        $getTeamOneNameQuery = @$site->execute_query('teams', $getTeamOneName, $dbc);
-        $teamOneName = mysql_fetch_array($getTeamOneNameQuery);
-        $getTeamTwoName = "SELECT `name` FROM `teams` WHERE `id` = " . $teamTwoIDs[0] . " LIMIT 1";
-        $getTeamTwoNameQuery = @$site->execute_query('teams', $getTeamTwoName, $dbc);
-        $teamTwoName = mysql_fetch_array($getTeamTwoNameQuery);
-
         //Output the match stats that will be sent back to BZFS
-        echo "(+/- " . abs($difference[0]) . ") " . $teamTwoName[0] . "[" . $teamTwoWins . "] vs [" . $teamOneWins . "] " . $teamOneName[0];
+        echo "(+/- " . $eloDifference . ") " . $winningTeamName . "[" . $winningTeamPoints . "] vs [" . $losingTeamPoints . "] " . $losingTeamName;
 
         //Have the league site perform maintainence as it sees fit
         ob_start();
@@ -170,31 +186,16 @@
     }
     else if ($_POST['query'] == 'teamNameQuery') //We would like to get the team name for a user
     {
-        $teamPlayers = $_POST['teamPlayers'];
-        $teamPlayers = sqlSafeString($teamPlayers);
+        $player = sqlSafeString($_POST['teamPlayers']);
+        $teamID = getTeamID($player);
 
-        $getTeam = "SELECT teamid FROM players WHERE external_id IN (" . $teamPlayers . ") LIMIT 1";
-        $teamResult = @$site->execute_query('players', $getTeam);
-
-        $teamIDs = mysql_fetch_array($teamResult);
-
-        if (mysql_num_rows($teamResult) == 0) //A player that didn't belong to the team ruined the match
+        if ($teamID < 0) //A player that didn't belong to the team ruined the match
         {
-            echo "DELETE FROM players WHERE bzid = " . $teamPlayers;
+            echo "DELETE FROM players WHERE bzid = " . $player;
             die();
         }
 
-        $getTeamName = "SELECT `name` FROM `teams` WHERE `id` = " . $teamIDs[0] . " LIMIT 1"; //Get the name of the team with the teamid that we got before
-        $getTeamNameQuery = @$site->execute_query('teams', $getTeamName);
-        $teamName = mysql_fetch_array($getTeamNameQuery);
-
-        if (mysql_num_rows($getTeamNameQuery) == 0) //A player belongs to a team that doesn't exist
-        {
-            echo "DELETE FROM players WHERE bzid = " . $teamPlayers;
-            die();
-        }
-
-        echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $teamPlayers . ", \"" . sqlSafeString($teamName[0]) . "\")";
+        echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $player . ", \"" . sqlSafeString(getTeamName($teamID)) . "\")";
     }
     else if ($_POST['query'] == 'teamDump') //We are starting a server and need a database dump of all the team names
     {
@@ -209,4 +210,96 @@
     else //Oh noes! Someone is trying to h4x0r us!
     {
         echo "Error 404 - Page not found";
+    }
+
+
+    /**
+    * Write all the match participants ot the log file
+    *
+    * @param The players who participated in the match
+    */
+    function echoParticipants($players)
+    {
+        $matchPlayers = explode(",", $players);
+
+        foreach ($matchPlayers as $player)
+            writeToDebug("    (" . $player . ") " . getPlayerCallsign($player));
+    }
+
+    /**
+    * Get the recorded callsign of a player based on the BZID
+    *
+    * @param A players BZID
+    * @return A player's callsign
+    */
+    function getPlayerCallsign($bzid)
+    {
+        $query = "SELECT name FROM players WHERE external_id = " . sqlSafeString($bzid) . " LIMIT 1";
+        $execution = @$site->execute_query('players', $query, $dbc);
+        $results = mysql_fetch_array($execution);
+
+        return $results[0];
+    }
+
+    /**
+    * Queries the database to get the team ELO
+    *
+    * @param The team ID to be looked up
+    * @return The team ELO
+    */
+    function getTeamELO($teamID)
+    {
+        $query = "SELECT score FROM teams_overview WHERE teamid = " . $teamID . " LIMIT 1";
+        $execution = @$site->execute_query('teams', $query, $dbc);
+        $results = mysql_fetch_array($execution);
+
+        return $results[0];
+    }
+
+    /**
+    * Queries the database to get the team ID of which players belong to
+    *
+    * @param The BZIDs of players seperated by commas
+    * @return The team ID
+    */
+    function getTeamID($players)
+    {
+        $query = "SELECT teamid FROM players WHERE external_id IN (" . $teamOnePlayers . ") LIMIT 1";
+        $execution = @$site->execute_query('players', $getTeamOne, $dbc);
+        $results = mysql_fetch_array($execution);
+
+        if (mysql_num_rows($execution) == 0)
+            return -1;
+
+        return $results[0];
+    }
+
+    /**
+    * Queries the database to get the team name from a given team ID
+    *
+    * @param The team ID to be looked up
+    * @return The team name
+    */
+    function getTeamName($teamID)
+    {
+        $query = "SELECT `name` FROM `teams` WHERE `id` = " . $teamID . " LIMIT 1";
+        $execution = @$site->execute_query('teams', $query, $dbc);
+        $results = mysql_fetch_array($execution);
+
+        return $results[0];
+    }
+
+    /**
+    * Writes the specified string to the log file if logging is enabled
+    *
+    * @param The string that will written
+    */
+    function writeToDebug($string)
+    {
+        if ($keepLog)
+        {
+            $file_handler = fopen($pathToLogFile, 'w');
+            fwrite($file_handler, date("Y-m-d H:i:s") . " :: " . $string);
+            fclose($file_handler);
+        }
     }

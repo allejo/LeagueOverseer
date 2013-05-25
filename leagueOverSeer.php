@@ -23,7 +23,7 @@
     */
 
     // List of IPs that are allowed to report matches
-    $ips = array('127.0.0.1');
+    $ips = array('127.0.0.1', '127.0.0.2');
 
     $autoReportID = 0;                            // The bz-owl user id given to the person who will be entering the matches automatically
     $keepLog = true;                              // Set it respectively whether or not you want to log match data
@@ -176,6 +176,9 @@
             @$site->execute_query("teams_profile", "UPDATE teams_profile SET num_matches_lost = num_matches_lost + 1 WHERE teamid = " . $losingTeamID . ";");
         }
 
+        writeToDebug("--------------------------------------");
+        writeToDebug("End of Match Report");
+
         //Output the match stats that will be sent back to BZFS
         echo "(+/- " . $eloDifference . ") " . $winningTeamName . "[" . $winningTeamPoints . "] vs [" . $losingTeamPoints . "] " . $losingTeamName;
 
@@ -234,6 +237,8 @@
     */
     function getPlayerCallsign($bzid)
     {
+        global $site, $dbc;
+
         $query = "SELECT name FROM players WHERE external_id = " . sqlSafeString($bzid) . " LIMIT 1";
         $execution = @$site->execute_query('players', $query, $dbc);
         $results = mysql_fetch_array($execution);
@@ -249,6 +254,8 @@
     */
     function getTeamELO($teamID)
     {
+        global $site, $dbc;
+
         $query = "SELECT score FROM teams_overview WHERE teamid = " . $teamID . " LIMIT 1";
         $execution = @$site->execute_query('teams', $query, $dbc);
         $results = mysql_fetch_array($execution);
@@ -264,11 +271,13 @@
     */
     function getTeamID($players)
     {
-        $query = "SELECT teamid FROM players WHERE external_id IN (" . $teamOnePlayers . ") LIMIT 1";
-        $execution = @$site->execute_query('players', $getTeamOne, $dbc);
+        global $site, $dbc;
+
+        $query = "SELECT teamid FROM players WHERE external_id IN (" . $players . ") LIMIT 1";
+        $execution = @$site->execute_query('players', $query, $dbc);
         $results = mysql_fetch_array($execution);
 
-        if (mysql_num_rows($execution) == 0)
+        if (mysql_num_rows($execution) == 0 || $results[0] == 0)
             return -1;
 
         return $results[0];
@@ -282,6 +291,8 @@
     */
     function getTeamName($teamID)
     {
+        global $site, $dbc;
+
         $query = "SELECT `name` FROM `teams` WHERE `id` = " . $teamID . " LIMIT 1";
         $execution = @$site->execute_query('teams', $query, $dbc);
         $results = mysql_fetch_array($execution);
@@ -296,10 +307,12 @@
     */
     function writeToDebug($string)
     {
-        if ($keepLog)
+        global $keepLog, $pathToLogFile;
+
+        if ($keepLog === true)
         {
-            $file_handler = fopen($pathToLogFile, 'w');
-            fwrite($file_handler, date("Y-m-d H:i:s") . " :: " . $string);
+            $file_handler = fopen($pathToLogFile, 'a');
+            fwrite($file_handler, date("Y-m-d H:i:s") . " :: " . $string . "\n");
             fclose($file_handler);
         }
     }

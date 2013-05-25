@@ -26,6 +26,7 @@ Ned Anderson (mdskpr)
 ### Slash Commands
 <pre>
 /cancel
+/finish
 /fm
 /official
 /spawn
@@ -53,11 +54,6 @@ SQLITE_DB
 * Default: <em>N/A</em>
 * Description: This is the SQLite database that will be used to store all the team names according to BZID
 
-GAMEOVER_REPORT
-
-* Default: <em>true</em>
-* Description: If you would like the plugin to report any match that was ended by a /gameover, then make sure that this value is set to 'true' and if you don't want the match to be reported, be sure to set it to 'false'
-
 LEAGUE_OVER_SEER_URL
 
 * Default: <em>N/A</em>
@@ -72,8 +68,10 @@ DEBUG_LEVEL
 If you are hosting a league website using the <a href="https://code.google.com/p/bz-owl/" target="_blank">bz-owl</a> project, make sure you follow these requirements:
 
 1. Upload leagueOverSeer.php to the root of your league website directory.
-2. Add the IPs of the official match servers to the $ips array located on line 24 of leagueOverSeer.php. This is a precaution so only official match servers can report and access data.
-3. Set $autoReportID on line 21 to the user ID of the person who will be reporting the matches. For instance, you may want to create an 'autoreport' account on the league website and use that ID.
+2. Add the IPs of the official match servers to the $ips array located on line 26 of leagueOverSeer.php. This is a precaution so only official match servers can report and access data.
+3. Set $autoReportID on line 28 to the user ID of the person who will be reporting the matches. For instance, you may want to create an 'autoreport' account on the league website and use that ID.
+4. If you would like for the report handler to output match information received to a file, leave $keepLog (line 29) set to <em>true</em> and set the file location with the $pathToLogFile variable on line 30. If you do not wish to log, set $keepLog to false and leave $pathToLogFile as is.
+5. Since all leagues have different scoring systems, lines 124-137 have GU and Duc points for the ELO fractions. Uncomment and comment which fractions you'd use respectively. By default GU's ```2/3*ELO``` for 20 minute matches and ```1*ELO``` for 30 minute matches is set.
 
 ## License:
 GPL 3.0

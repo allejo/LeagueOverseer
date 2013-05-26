@@ -34,13 +34,13 @@ League Over Seer Plug-in
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 9;
-const int BUILD = 123;
+const int BUILD = 124;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 0.9.9 r123";}
+    virtual const char* Name (){return "League Over Seer 0.9.9 r124";}
     virtual void Init ( const char* config);
     virtual void Event( bz_EventData *eventData );
     virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -94,6 +94,7 @@ void leagueOverSeer::Init (const char* commandLine)
 
     bz_registerCustomSlashCommand("official", this);
     bz_registerCustomSlashCommand("fm",this);
+    bz_registerCustomSlashCommand("finish",this);
     bz_registerCustomSlashCommand("cancel",this);
     bz_registerCustomSlashCommand("spawn",this);
     bz_registerCustomSlashCommand("resume",this);
@@ -204,6 +205,7 @@ void leagueOverSeer::Cleanup (void)
     // Remove all the slash commands
     bz_removeCustomSlashCommand("official");
     bz_removeCustomSlashCommand("fm");
+    bz_removeCustomSlashCommand("finish");
     bz_removeCustomSlashCommand("cancel");
     bz_removeCustomSlashCommand("spawn");
     bz_removeCustomSlashCommand("resume");
@@ -510,8 +512,16 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     {
         if (bz_hasPerm(playerID,"spawn") && bz_isCountDownActive())
         {
-            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official Match ended by %s", playerData->callsign.c_str());
-            bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Match ended by %s (%s).", playerData->callsign.c_str(),playerData->ipAddress.c_str());
+            if (officialMatch)
+            {
+                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match ended by %s", playerData->callsign.c_str());
+                bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Match ended by %s (%s).", playerData->callsign.c_str(),playerData->ipAddress.c_str());
+            }
+            else
+            {
+                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Fun match ended by %s", playerData->callsign.c_str());
+                bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Match ended by %s (%s).", playerData->callsign.c_str(),playerData->ipAddress.c_str());
+            }
 
             //Reset the server. Cleanly ends a match
             officialMatch = false;
@@ -533,8 +543,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     {
         if (bz_hasPerm(playerID,"spawn") && bz_isCountDownActive() && officialMatch)
         {
-            bz_debugMessagef(DEBUG, "DEBUG :: Match Over Seer :: Official match canceled by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
-            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match canceled by %s", playerData->callsign.c_str());
+            bz_debugMessagef(DEBUG, "DEBUG :: Match Over Seer :: Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
+            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match ended early by %s", playerData->callsign.c_str());
 
             doNotReportMatch = false; //To prevent reporting a canceled match, let plugin know the match was canceled
 
@@ -544,6 +554,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         }
         else if (!bz_isCountDownActive())
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to end.");
+        else if (!officialMatch)
+            bz_sendTextMessage(BZ_SERVER, playerID, "You cannot /finish a fun match. Use /cancel instead.");
         else //Not a league player
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to run the /finish command.");
     }

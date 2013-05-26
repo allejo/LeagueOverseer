@@ -10,6 +10,7 @@ Ned Anderson (mdskpr)
 ## Compiling
 ### Requirements
 
+* BZFS r22763 or higher (Change to HTTP API)
 * libsqlite3-dev
 
 ### How to Compile

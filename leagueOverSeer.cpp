@@ -45,7 +45,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     virtual void Event( bz_EventData *eventData );
     virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
     virtual void Cleanup ();
-    virtual void URLDone( const char* URL, void* data, unsigned int size, bool complete );
+    virtual void URLDone( const char* URL, const void* data, unsigned int size, bool complete );
     virtual void URLTimeout(const char* URL, int errorCode);
     virtual void URLError(const char* URL, int errorCode, const char *errorString);
     virtual void doQuery(std::string query);
@@ -603,7 +603,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     bz_freePlayerRecord(playerData);
 }
 
-void leagueOverSeer::URLDone(const char* URL, void* data, unsigned int size, bool complete) //Everything went fine with the report
+void leagueOverSeer::URLDone(const char* URL, const void* data, unsigned int size, bool complete) //Everything went fine with the report
 {
     std::string siteData = (char*)(data); //Convert the data to a std::string
     bz_debugMessagef(1, "URL Job Successful! Data returned: %s", siteData.c_str());

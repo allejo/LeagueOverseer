@@ -23,7 +23,7 @@
     */
 
     // List of IPs that are allowed to report matches
-    $ips = array('127.0.0.1', '127.0.0.2');
+    $ips = array('127.0.0.1');
 
     $autoReportID = 0;                            // The bz-owl user id given to the person who will be entering the matches automatically
     $keepLog = true;                              // Set it respectively whether or not you want to log match data
@@ -82,7 +82,7 @@
             $losingTeamPlayers  = $teamOnePlayers;
         }
 
-        if ($winningTeamID == -1 || $losingTeamID == -1)
+        if (($winningTeamID == -1 || $losingTeamID == -1) || $winningTeamID == $losingTeamID)
         {
             if ($winningTeamID == -1)
                 writeToDebug("The BZIDs (" . $winningTeamPlayers . ") were not found on the same team. Match invalidated.");

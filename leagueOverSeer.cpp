@@ -26,6 +26,7 @@ League Over Seer Plug-in
 #include <algorithm>
 #include <stdlib.h>
 #include <ctype.h>
+#include <math.h>
 #include <string.h>
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
@@ -34,13 +35,13 @@ League Over Seer Plug-in
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 9;
-const int BUILD = 124;
+const int BUILD = 125;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 0.9.9 r124";}
+    virtual const char* Name (){return "League Over Seer 0.9.9 r125";}
     virtual void Init ( const char* config);
     virtual void Event( bz_EventData *eventData );
     virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -60,7 +61,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     //All the variables that will be used in the plugin
     bool officialMatch, doNotReportMatch, funMatch, rotLeague, matchParticipantsRecorded;
     int DEBUG, teamOnePoints, teamTwoPoints, matchDuration;
-    double matchStartTime;
+    double matchStartTime, matchRollCall;
     std::string LEAGUE_URL, map, SQLiteDB;
     const char* mapchangePath;
     bz_eTeamType teamOne, teamTwo;
@@ -109,6 +110,7 @@ void leagueOverSeer::Init (const char* commandLine)
     teamTwoPoints = 0;
     matchDuration = bz_getTimeLimit();
     matchStartTime = 0;
+    matchRollCall = 90;
 
     loadConfig(commandLine); //Load the configuration data when the plugin is loaded
 
@@ -418,8 +420,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                     bz_gameOver(253, eObservers);
             }
 
-            if (matchStartTime > 0 && matchStartTime + 90 < bz_getCurrentTime() && officialMatch && !matchParticipantsRecorded)
+            if (matchStartTime > 0 && matchStartTime + matchRollCall < bz_getCurrentTime() && officialMatch && !matchParticipantsRecorded)
             {
+                bool invalidateRollCall = false;
                 bz_APIIntList *playerList = bz_newIntList();
                 bz_getPlayerIndexList(playerList);
 
@@ -434,6 +437,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                         currentPlayer.callsign = playerRecord->callsign.c_str(); //Add team to structure
                         currentPlayer.bzid = playerRecord->bzID.c_str(); //Add bzid to structure
 
+                        if (std::string(playerRecord->bzID.c_str()).empty())
+                            invalidateRollCall = true;
+
                         matchPlayers.push_back(currentPlayer);
                     }
 
@@ -441,7 +447,17 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 }
 
                 bz_deleteIntList(playerList);
-                matchParticipantsRecorded = true;
+
+                if (invalidateRollCall && matchRollCall < matchDuration)
+                {
+                    bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Invalid player found on field at %i:%i.", (int)(matchRollCall/60), (int)(fmod(matchRollCall,60.0)));
+
+                    matchParticipantsRecorded = false;
+                    matchRollCall += 30;
+                    matchPlayers.clear();
+                }
+                else
+                    matchParticipantsRecorded = true;
             }
         }
         break;
@@ -622,7 +638,7 @@ void leagueOverSeer::URLDone(const char* URL, const void* data, unsigned int siz
 
     if (strcmp(siteData.substr(0, 6).c_str(), "INSERT") == 0 || strcmp(siteData.substr(0, 6).c_str(), "DELETE") == 0)
         doQuery(siteData);
-    else
+    else if (strcmp(siteData.c_str(), "<html>") < 0)
     {
         bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s", siteData.c_str());
         bz_debugMessagef(DEBUG, "%s", siteData.c_str());

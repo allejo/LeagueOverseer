@@ -21,7 +21,7 @@ Ned Anderson (mdskpr)
 3. Replace the blank leagueOverSeer.cpp file with the one downloaded
 4. Add '-lsqlite3' to LDFLAGS in the Makefile in order to compile linking to the SQLite3 library
 5. Add the plug-in to the build system<br>
-```./autogen.sh; make; make install;```
+```./autogen.sh; ./configure; make; make install;```
 
 ## BZFS Details
 ### Slash Commands

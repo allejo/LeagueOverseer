@@ -75,4 +75,4 @@ If you are hosting a league website using the <a href="https://code.google.com/p
 5. Since all leagues have different scoring systems, lines 124-137 have GU and Duc points for the ELO fractions. Uncomment and comment which fractions you'd use respectively. By default GU's ```2/3*ELO``` for 20 minute matches and ```1*ELO``` for 30 minute matches is set.
 
 ## License:
-GPL 3.0
+<a href="https://github.com/allejo/leagueOverSeer/blob/master/LICENSE.md">GNU General Public License 3.0</a>

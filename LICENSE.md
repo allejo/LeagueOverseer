@@ -541,10 +541,3 @@ connection with the Program, unless a warranty or assumption of liability accomp
 a copy of the Program in return for a fee.
 
 END OF TERMS AND CONDITIONS
-
-The GNU General Public License does not permit incorporating your program into
-proprietary programs. If your program is a subroutine library, you may consider it
-more useful to permit linking proprietary applications with the library. If this is
-what you want to do, use the GNU Lesser General Public License instead of this
-License. But first, please read
-&lt;<http://www.gnu.org/philosophy/why-not-lgpl.html>&gt;.

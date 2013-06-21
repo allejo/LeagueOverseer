@@ -198,7 +198,7 @@
             die();
         }
 
-        echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $player . ", \"" . sqlSafeString(getTeamName($teamID)) . "\")";
+        echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $player . ", \"" . preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID))) . "\")";
     }
     else if ($_POST['query'] == 'teamDump') //We are starting a server and need a database dump of all the team names
     {
@@ -207,7 +207,7 @@
 
         while ($entry = mysql_fetch_array($getTeamsQuery)) //For each player, we'll output a SQLite query for BZFS to execute
         {
-            echo "INSERT OR REPLACE INTO players(bzid, team) VALUES (" . $entry[0] . ",\"" . sqlSafeString($entry[1]) . "\");";
+            echo "INSERT OR REPLACE INTO players(bzid, team) VALUES (" . $entry[0] . ",\"" . preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[1])) . "\");";
         }
     }
     else //Oh noes! Someone is trying to h4x0r us!

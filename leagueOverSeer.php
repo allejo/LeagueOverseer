@@ -277,7 +277,7 @@
         $execution = @$site->execute_query('players', $query, $dbc);
         $results = mysql_fetch_array($execution);
 
-        if (mysql_num_rows($execution) == 0 || $results[0] == 0)
+        if (mysql_num_rows($execution) == 0 || $results[0] == 0 || count(array_unique($results)) != 1)
             return -1;
 
         return $results[0];

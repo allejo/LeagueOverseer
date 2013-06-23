@@ -35,13 +35,13 @@ League Over Seer Plug-in
 const int MAJOR = 0;
 const int MINOR = 9;
 const int REV = 9;
-const int BUILD = 132;
+const int BUILD = 139;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 0.9.9 r132";}
+    virtual const char* Name (){return "League Over Seer 0.9.9 r139";}
     virtual void Init ( const char* config);
     virtual void Event( bz_EventData *eventData );
     virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -366,6 +366,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         case bz_ePlayerJoinEvent: //A player joins
         {
             bz_PlayerJoinPartEventData_V1 *joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
+
+            if (!joinData)
+                return;
 
             if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && officialMatch)
                 bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");

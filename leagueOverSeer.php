@@ -273,14 +273,22 @@
     {
         global $site, $dbc;
 
-        $query = "SELECT teamid FROM players WHERE external_id IN (" . $players . ") LIMIT 1";
+        $query = "SELECT teamid FROM players WHERE external_id IN (" . $players . ")";
         $execution = @$site->execute_query('players', $query, $dbc);
-        $results = mysql_fetch_array($execution);
 
-        if (mysql_num_rows($execution) == 0 || $results[0] == 0 || count(array_unique($results)) != 1)
+        if (mysql_num_rows($execution) == 0)
             return -1;
 
-        return $results[0];
+        $teamIDs = array();
+        while($results = mysql_fetch_array($execution, MYSQL_NUM))
+        {
+            $teamIDs[] = $results[0];
+        }
+
+        if (count(array_unique($teamIDs)) != 1)
+            return -1;
+
+        return $teamIDs[0];
     }
 
     /**

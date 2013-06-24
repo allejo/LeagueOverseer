@@ -32,16 +32,16 @@ League Over Seer Plug-in
 #include "plugin_utils.h"
 
 //Define plugin version numbering
-const int MAJOR = 0;
-const int MINOR = 9;
-const int REV = 9;
-const int BUILD = 139;
+const int MAJOR = 1;
+const int MINOR = 0;
+const int REV = 0;
+const int BUILD = 142;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 0.9.9 r139";}
+    virtual const char* Name (){return "League Over Seer 1.0";}
     virtual void Init ( const char* config);
     virtual void Event( bz_EventData *eventData );
     virtual bool SlashCommand( int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);

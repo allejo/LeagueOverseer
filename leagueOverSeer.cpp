@@ -53,7 +53,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     virtual bool isDigit(std::string myString);
     virtual int isValidCallsign(std::string callsign);
     virtual bool isValidPlayerID(int playerID);
-    virtual int loadConfig(const char *cmdLine);
+    virtual void loadConfig(const char *cmdLine);
     virtual sqlite3_stmt* prepareQuery(std::string sql);
     virtual bool toBool(std::string var);
     virtual void updateTeamNames(void);
@@ -117,7 +117,7 @@ void leagueOverSeer::Init (const char* commandLine)
     {
         //Open the mapchange.out file to see what map is being used
         std::ifstream infile;
-        infile.open (mapchangePath);
+        infile.open(mapchangePath.c_str());
         getline(infile,map);
         infile.close();
 
@@ -504,6 +504,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         }
         else
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to run the /official command.");
+
+        return true;
     }
     else if (command == "fm") //Someone uses the /fm command
     {
@@ -527,6 +529,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         }
         else
             bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to run the /fm command.");
+
+        return true;
     }
     else if (command == "cancel")
     {
@@ -558,6 +562,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to cancel.");
         else //Not a league player
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to run the /cancel command.");
+
+        return true;
     }
     else if (command == "finish")
     {
@@ -578,6 +584,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
             bz_sendTextMessage(BZ_SERVER, playerID, "You cannot /finish a fun match. Use /cancel instead.");
         else //Not a league player
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to run the /finish command.");
+
+        return true;
     }
     else if (command == "pause")
     {
@@ -587,6 +595,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to pause right now.");
         else
             bz_sendTextMessage(BZ_SERVER, playerID, "You are not have permission to run the /pause command.");
+
+        return true;
     }
     else if (command == "resume")
     {
@@ -596,6 +606,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
             bz_sendTextMessage(BZ_SERVER, playerID, "The current match is not paused.");
         else
             bz_sendTextMessage(BZ_SERVER, playerID, "You are not have permission to run the /resume command.");
+
+        return true;
     }
     else if (command == "spawn")
     {
@@ -630,9 +642,12 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         }
         else if (!playerData->admin)
             bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to use the /spawn command.");
+
+        return true;
     }
 
     bz_freePlayerRecord(playerData);
+    return false;
 }
 
 void leagueOverSeer::URLDone(const char* URL, const void* data, unsigned int size, bool complete) //Everything went fine with the report
@@ -670,7 +685,7 @@ void leagueOverSeer::doQuery(std::string query)
     bz_debugMessagef(2, "DEBUG :: League Over Seer :: %s", query.c_str());
 
     char* db_err = 0; //a place to store the error
-    int ret = sqlite3_exec(db, query.c_str(), NULL, 0, &db_err); //execute
+    sqlite3_exec(db, query.c_str(), NULL, 0, &db_err); //execute
 
     if (db_err != 0) //print out any errors
     {
@@ -726,7 +741,7 @@ bool leagueOverSeer::isValidPlayerID(int playerID)
     return false;
 }
 
-int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configuration file
+void leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configuration file
 {
     PluginConfig config = PluginConfig(cmdLine);
     std::string section = "leagueOverSeer";

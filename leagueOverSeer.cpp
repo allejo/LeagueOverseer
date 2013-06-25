@@ -62,8 +62,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     bool officialMatch, doNotReportMatch, funMatch, rotLeague, matchParticipantsRecorded;
     int DEBUG, teamOnePoints, teamTwoPoints, matchDuration;
     double matchStartTime, matchRollCall;
-    std::string LEAGUE_URL, map, SQLiteDB;
-    const char* mapchangePath;
+    std::string LEAGUE_URL, map, SQLiteDB, mapchangePath;
     bz_eTeamType teamOne, teamTwo;
 
     struct playersInMatch //Maintains the players that started the match on the red team

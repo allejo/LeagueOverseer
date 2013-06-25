@@ -62,8 +62,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     bool officialMatch, doNotReportMatch, funMatch, rotLeague, matchParticipantsRecorded;
     int DEBUG, teamOnePoints, teamTwoPoints, matchDuration;
     double matchStartTime, matchRollCall;
-    std::string LEAGUE_URL, map, SQLiteDB;
-    const char* mapchangePath;
+    std::string LEAGUE_URL, map, SQLiteDB, mapchangePath;
     bz_eTeamType teamOne, teamTwo;
 
     struct playersInMatch //Maintains the players that started the match on the red team
@@ -80,7 +79,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     sqlite3_stmt *getPlayerMotto;
 };
 
-BZ_PLUGIN(leagueOverSeer);
+BZ_PLUGIN(leagueOverSeer)
 
 void leagueOverSeer::Init (const char* commandLine)
 {
@@ -153,7 +152,7 @@ void leagueOverSeer::Init (const char* commandLine)
             continue;
         }
 
-        //Figure out the other team
+        // Figure out the other team
         if (bz_getTeamPlayerLimit(eRedTeam) > 0 && teamOne != eRedTeam && teamTwo == eNoTeam)
         {
             teamTwo = eRedTeam;
@@ -736,7 +735,7 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
 
     //Extract all the data in the configuration file and assign it to plugin variables
     rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
-    mapchangePath = (config.item(section, "MAPCHANGE_PATH")).c_str();
+    mapchangePath = config.item(section, "MAPCHANGE_PATH");
     SQLiteDB = config.item(section, "SQLITE_DB");
     LEAGUE_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
     DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());

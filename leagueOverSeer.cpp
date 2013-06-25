@@ -353,7 +353,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             sqlite3_bind_text(getPlayerMotto, 1, mottoEvent->record->bzID.c_str(), -1, SQLITE_TRANSIENT);
 
             if (sqlite3_step(getPlayerMotto) == SQLITE_ROW) // If returns a team name, use it
-                mottoEvent->motto = (char*)sqlite3_column_text(getPlayerMotto, 0);
+                mottoEvent->motto = (const char*)sqlite3_column_text(getPlayerMotto, 0);
             else
                 mottoEvent->motto = "";
 
@@ -650,7 +650,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
 
 void leagueOverSeer::URLDone(const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/) //Everything went fine with the report
 {
-    std::string siteData = (char*)(data); //Convert the data to a std::string
+    std::string siteData = (const char*)(data); //Convert the data to a std::string
     bz_debugMessagef(1, "URL Job Successful! Data returned: %s", siteData.c_str());
 
     if (strcmp(siteData.substr(0, 6).c_str(), "INSERT") == 0 || strcmp(siteData.substr(0, 6).c_str(), "DELETE") == 0)

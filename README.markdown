@@ -7,6 +7,14 @@ This is a BZFlag plug-in that allows official league servers to communicate with
 Vlad Jimenez (allejo)<br>
 Ned Anderson (mdskpr)
 
+## Thanks to
+
+* alezakos
+* blast
+* BulletCatcher
+* JeffM
+* ... and all the beta testers
+
 ## Compiling
 ### Requirements
 

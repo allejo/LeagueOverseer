@@ -180,7 +180,7 @@
         writeToDebug("End of Match Report");
 
         //Output the match stats that will be sent back to BZFS
-        echo "(+/- " . $eloDifference . ") " . $winningTeamName . "[" . $winningTeamPoints . "] vs [" . $losingTeamPoints . "] " . $losingTeamName;
+        echo "(+/- " . $eloDifference . ") " . $winningTeamName . " [" . $winningTeamPoints . "] vs [" . $losingTeamPoints . "] " . $losingTeamName;
 
         //Have the league site perform maintainence as it sees fit
         ob_start();
@@ -198,7 +198,7 @@
             die();
         }
 
-        echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $player . ", \"" . sqlSafeString(getTeamName($teamID)) . "\")";
+        echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $player . ", \"" . preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID))) . "\")";
     }
     else if ($_POST['query'] == 'teamDump') //We are starting a server and need a database dump of all the team names
     {
@@ -207,7 +207,7 @@
 
         while ($entry = mysql_fetch_array($getTeamsQuery)) //For each player, we'll output a SQLite query for BZFS to execute
         {
-            echo "INSERT OR REPLACE INTO players(bzid, team) VALUES (" . $entry[0] . ",\"" . sqlSafeString($entry[1]) . "\");";
+            echo "INSERT OR REPLACE INTO players(bzid, team) VALUES (" . $entry[0] . ",\"" . preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[1])) . "\");";
         }
     }
     else //Oh noes! Someone is trying to h4x0r us!
@@ -273,14 +273,22 @@
     {
         global $site, $dbc;
 
-        $query = "SELECT teamid FROM players WHERE external_id IN (" . $players . ") LIMIT 1";
+        $query = "SELECT teamid FROM players WHERE external_id IN (" . $players . ")";
         $execution = @$site->execute_query('players', $query, $dbc);
-        $results = mysql_fetch_array($execution);
 
-        if (mysql_num_rows($execution) == 0 || $results[0] == 0)
+        if (mysql_num_rows($execution) == 0)
             return -1;
 
-        return $results[0];
+        $teamIDs = array();
+        while($results = mysql_fetch_array($execution, MYSQL_NUM))
+        {
+            $teamIDs[] = $results[0];
+        }
+
+        if (count(array_unique($teamIDs)) != 1)
+            return -1;
+
+        return $teamIDs[0];
     }
 
     /**

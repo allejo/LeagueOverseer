@@ -38,6 +38,10 @@ Ned Anderson (mdskpr)
 ### Parameters
 <pre>/path/to/leagueOverSeer.so,/path/to/leagueOverSeer.cfg</pre>
 
+### Redundant Permissions
+
+With this plugin loaded, there is no need for /countdown or /gameover and it is highly recommended that you remove these permissions from the group permissions file in order to avoid confusion. Any matches started with /countdown or ended with /gameover will not be handled by the plugin and therefore should not be allowed for matches.
+
 ### Configuration File Options
 
 ROTATIONAL_LEAGUE

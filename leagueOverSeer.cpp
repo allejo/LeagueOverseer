@@ -332,8 +332,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
         case bz_eGameStartEvent: //The countdown has started
         {
-            bz_GameStartEndEventData_V1 *startData = (bz_GameStartEndEventData_V1*)eventData;
-
             if (officialMatch) //Don't waste memory if the match isn't official
             {
                 //Set the team scores to zero just in case
@@ -471,7 +469,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
     }
 }
 
-bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiString message, bz_APIStringList *params)
+bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiString /*message*/, bz_APIStringList *params)
 {
     int timeToStart = atoi(params->get(0).c_str());
     bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(playerID);
@@ -650,7 +648,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     return false;
 }
 
-void leagueOverSeer::URLDone(const char* URL, const void* data, unsigned int size, bool complete) //Everything went fine with the report
+void leagueOverSeer::URLDone(const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/) //Everything went fine with the report
 {
     std::string siteData = (char*)(data); //Convert the data to a std::string
     bz_debugMessagef(1, "URL Job Successful! Data returned: %s", siteData.c_str());
@@ -664,12 +662,12 @@ void leagueOverSeer::URLDone(const char* URL, const void* data, unsigned int siz
     }
 }
 
-void leagueOverSeer::URLTimeout(const char* URL, int errorCode) //The league website is down or is not responding, the request timed out
+void leagueOverSeer::URLTimeout(const char* /*URL*/, int /*errorCode*/) //The league website is down or is not responding, the request timed out
 {
     bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: The request to the league site has timed out.");
 }
 
-void leagueOverSeer::URLError(const char* URL, int errorCode, const char *errorString) //The server owner must have set up the URLs wrong because this shouldn't happen
+void leagueOverSeer::URLError(const char* /*URL*/, int errorCode, const char *errorString) //The server owner must have set up the URLs wrong because this shouldn't happen
 {
     bz_debugMessage(DEBUG, "DEBUG :: League Over Seer :: Match report failed with the following error:");
     bz_debugMessagef(DEBUG, "DEBUG :: League Over Seer :: Error code: %i - %s", errorCode, errorString);
@@ -696,7 +694,7 @@ void leagueOverSeer::doQuery(std::string query)
 
 bool leagueOverSeer::isDigit(std::string myString)
 {
-    for (int i = 0; i < myString.size(); i++) //Go through entire string
+    for (unsigned int i = 0; i < myString.size(); i++) //Go through entire string
     {
         if (!isdigit(myString[i])) //If one character is not a digit, then the string is not a digit
             return false;

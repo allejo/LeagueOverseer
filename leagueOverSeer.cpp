@@ -80,7 +80,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     sqlite3_stmt *getPlayerMotto;
 };
 
-BZ_PLUGIN(leagueOverSeer);
+BZ_PLUGIN(leagueOverSeer)
 
 void leagueOverSeer::Init (const char* commandLine)
 {
@@ -153,7 +153,7 @@ void leagueOverSeer::Init (const char* commandLine)
             continue;
         }
 
-        //Figure out the other team
+        // Figure out the other team
         if (bz_getTeamPlayerLimit(eRedTeam) > 0 && teamOne != eRedTeam && teamTwo == eNoTeam)
         {
             teamTwo = eRedTeam;

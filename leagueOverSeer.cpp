@@ -735,7 +735,7 @@ int leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configurat
 
     //Extract all the data in the configuration file and assign it to plugin variables
     rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
-    mapchangePath = (config.item(section, "MAPCHANGE_PATH")).c_str();
+    mapchangePath = config.item(section, "MAPCHANGE_PATH");
     SQLiteDB = config.item(section, "SQLITE_DB");
     LEAGUE_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
     DEBUG = atoi((config.item(section, "DEBUG_LEVEL")).c_str());

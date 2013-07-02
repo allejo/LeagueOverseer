@@ -22,13 +22,13 @@ Ned Anderson (mdskpr)
 * libsqlite3-dev
 
 ### How to Compile
-1. Check out the BZFlag source code.<br>
+1. Check out the BZFlag source code:<br>
 ```svn co svn://svn.code.sf.net/p/bzflag/code/trunk/bzflag ```
-2. Create a plugin in the source.<br>
+2. Create a plugin in the source:<br>
 ```sh newplug.sh leagueOverSeer```
-3. Replace the blank leagueOverSeer.cpp file with the one downloaded
-4. Add '-lsqlite3' to LDFLAGS in the Makefile in order to compile linking to the SQLite3 library
-5. Add the plug-in to the build system<br>
+3. Delete the newly created leagueOverSeer directory
+4. Run a git clone of this repository from within the plugins/ directory. This should have created a new leagueOverSeer directory within the plugins directory.
+5. Instruct the build system to generate a Makefile and then compile and install the plugin:<br>
 ```./autogen.sh; ./configure; make; make install;```
 
 ## BZFS Details

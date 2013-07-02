@@ -10,10 +10,11 @@ AM_CFLAGS = $(CONF_CFLAGS)
 AM_CXXFLAGS = $(CONF_CXXFLAGS)
 
 EXTRA_DIST = \
-	README.txt \
+	LICENSE.markdown \
+	README.markdown \
+	leagueOverSeer.cfg \
 	leagueOverSeer.def \
-	leagueOverSeer.sln \
-	leagueOverSeer.vcxproj
+	league.sqlite
 
 MAINTAINERCLEANFILES =	\
 	Makefile.in

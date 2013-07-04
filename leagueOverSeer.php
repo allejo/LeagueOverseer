@@ -273,7 +273,7 @@
     {
         global $site, $dbc;
 
-        $query = "SELECT teamid FROM players WHERE external_id IN (" . $players . ")";
+        $query = "SELECT teamid FROM players WHERE external_id IN (" . $players . ") AND status = 'active'";
         $execution = @$site->execute_query('players', $query, $dbc);
 
         if (mysql_num_rows($execution) == 0)
@@ -285,7 +285,7 @@
             $teamIDs[] = $results[0];
         }
 
-        if (count(array_unique($teamIDs)) != 1)
+        if (count(array_unique($teamIDs)) != 1 || $teamIDs[0] == 0)
             return -1;
 
         return $teamIDs[0];

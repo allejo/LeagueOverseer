@@ -35,7 +35,7 @@ League Over Seer Plug-in
 const int MAJOR = 1;
 const int MINOR = 0;
 const int REV = 0;
-const int BUILD = 142;
+const int BUILD = 156;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
@@ -655,7 +655,7 @@ void leagueOverSeer::URLDone(const char* /*URL*/, const void* data, unsigned int
 
     if (strcmp(siteData.substr(0, 6).c_str(), "INSERT") == 0 || strcmp(siteData.substr(0, 6).c_str(), "DELETE") == 0)
         doQuery(siteData);
-    else if (strcmp(siteData.c_str(), "<html>") < 0)
+    else if (siteData.find("<html>") == std::string::npos)
     {
         bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s", siteData.c_str());
         bz_debugMessagef(DEBUG, "%s", siteData.c_str());

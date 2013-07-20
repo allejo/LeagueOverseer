@@ -84,7 +84,7 @@ If you are hosting a league website using the <a href="https://code.google.com/p
 2. Add the IPs of the official match servers to the $ips array located on line 26 of leagueOverSeer.php. This is a precaution so only official match servers can report and access data.
 3. Set $autoReportID on line 28 to the user ID of the person who will be reporting the matches. For instance, you may want to create an 'autoreport' account on the league website and use that ID.
 4. If you would like for the report handler to output match information received to a file, leave $keepLog (line 29) set to <em>true</em> and set the file location with the $pathToLogFile variable on line 30. If you do not wish to log, set $keepLog to false and leave $pathToLogFile as is.
-5. Since all leagues have different scoring systems, lines 124-137 have GU and Duc points for the ELO fractions. Uncomment and comment which fractions you'd use respectively. By default GU's ```2/3*ELO``` for 20 minute matches and ```1*ELO``` for 30 minute matches is set.
+5. Since all leagues have different scoring systems, lines 124-137 have GU and Ducati points for the ELO fractions. Uncomment and comment which fractions you'd use respectively. By default GU's ```2/3*ELO``` for 20 minute matches and ```1*ELO``` for 30 minute matches is set.
 
 ## License
 <a href="https://github.com/allejo/leagueOverSeer/blob/master/LICENSE.markdown">GNU General Public License 3.0</a>

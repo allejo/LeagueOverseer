@@ -468,18 +468,25 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     if (command == "official") //Someone used the /official command
     {
         if (playerData->team == eObservers) //Observers can't start matches
+        {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
-        else if ((bz_getTeamCount(eRedTeam) < 2 && bz_getTeamPlayerLimit(eRedTeam) > 0) ||
-                (bz_getTeamCount(eGreenTeam) < 2 && bz_getTeamPlayerLimit(eGreenTeam) > 0) ||
-                (bz_getTeamCount(eBlueTeam) < 2 && bz_getTeamPlayerLimit(eBlueTeam) > 0) ||
-                (bz_getTeamCount(ePurpleTeam) < 2 && bz_getTeamPlayerLimit(ePurpleTeam) > 0)) //An official match cannot be 1v1 or 2v1
+        }
+        else if (bz_getTeamCount(teamOne) < 2 || bz_getTeamCount(teamTwo) < 2) //An official match cannot be 1v1 or 2v1
+        {
             bz_sendTextMessage(BZ_SERVER, playerID, "You may not have an official match with less than 2 players per team.");
+        }
         else if (funMatch) //A fun match cannot be declared an official match
+        {
             bz_sendTextMessage(BZ_SERVER,playerID,"Fun matches cannot be turned into official matches.");
+        }
         else if (!playerData->verified || !bz_hasPerm(playerID,"spawn")) //If they can't spawn, they aren't a league player so they can't start a match
+        {
             bz_sendTextMessage(BZ_SERVER,playerID,"Only registered league players may start an official match.");
+        }
         else if (bz_isCountDownActive() || bz_isCountDownInProgress()) //A countdown is in progress already
+        {
             bz_sendTextMessage(BZ_SERVER,playerID,"There is currently a countdown active, you may not start another.");
+        }
         else if (playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !bz_isCountDownActive() && !funMatch) //Check the user is not an obs and is a league member
         {
             officialMatch = true; //Notify the plugin that the match is official
@@ -499,11 +506,17 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     else if (command == "fm") //Someone uses the /fm command
     {
         if (bz_isCountDownActive() || bz_isCountDownInProgress() || funMatch || officialMatch) //There is already a countdown
+        {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is currently a countdown active, you may not start another.");
+        }
         else if (playerData->team == eObservers) //Observers can't start matches
+        {
             bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
+        }
         else if (!playerData->verified || !bz_hasPerm(playerID,"spawn")) //If they can't spawn, they aren't a league player so they can't start a match
+        {
             bz_sendTextMessage(BZ_SERVER,playerID,"Only registered league players may start an official match.");
+        }
         else if (!bz_isCountDownActive() && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified && !officialMatch)
         {
             funMatch = true; //It's a fun match
@@ -664,6 +677,86 @@ void leagueOverSeer::URLError(const char* /*URL*/, int errorCode, const char *er
     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Error code: %i - %s", errorCode, errorString);
 }
 
+/* ==== bool functions ==== */
+
+bool leagueOverSeer::isDigit(std::string myString)
+{
+    for (unsigned int i = 0; i < myString.size(); i++) //Go through entire string
+    {
+        if (!isdigit(myString[i])) //If one character is not a digit, then the string is not a digit
+            return false;
+    }
+    return true; //All characters are digits
+}
+
+bool leagueOverSeer::isValidPlayerID(int playerID)
+{
+    bz_APIIntList *playerList = bz_newIntList();
+    bz_getPlayerIndexList(playerList);
+
+    for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
+    {
+        if (playerList->get(i) == playerID)
+        {
+            bz_deleteIntList(playerList);
+            return true;
+        }
+    }
+
+    bz_deleteIntList(playerList);
+    return false;
+}
+
+bool leagueOverSeer::toBool(std::string var) //Turn std::string into a boolean value
+{
+    if (var == "true" || var == "TRUE" || var == "1") //If the value is true then the boolean is true
+        return true;
+    else //If it's not true, then it's false.
+        return false;
+}
+
+/* ==== const char* functions ==== */
+
+const char* leagueOverSeer::getMotto(const char* bzid)
+{
+    const char* motto;
+
+    // Prepare the SQL query with the BZID of the player
+    sqlite3_bind_text(getPlayerMotto, 1, bzid, -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(getPlayerMotto) == SQLITE_ROW) // If returns a team name, use it
+        motto = (const char*)sqlite3_column_text(getPlayerMotto, 0);
+    else
+        motto = "";
+
+    sqlite3_reset(getPlayerMotto); //Clear the prepared statement so it can be reused
+
+    return motto;
+}
+
+/* ==== int functions ==== */
+
+int leagueOverSeer::isValidCallsign(std::string callsign)
+{
+    bz_APIIntList *playerList = bz_newIntList();
+    bz_getPlayerIndexList(playerList);
+
+    for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
+    {
+        if (strcmp(bz_getPlayerByIndex(playerList->get(i))->callsign.c_str(), callsign.c_str()) == 0)
+        {
+            int playerID = playerList->get(i);
+            bz_deleteIntList(playerList);
+            return playerID;
+        }
+    }
+
+    bz_deleteIntList(playerList);
+    return -1;
+}
+
+/* ==== std::string functions ==== */
+
 std::string leagueOverSeer::buildBZIDString(bz_eTeamType team)
 {
     std::string teamString;
@@ -679,25 +772,6 @@ std::string leagueOverSeer::buildBZIDString(bz_eTeamType team)
     }
 
     return teamString.erase(teamString.size() - 1);
-}
-
-void leagueOverSeer::doQuery(std::string query)
-{
-    /*
-        Execute a SQL query without the need of any return values
-    */
-
-    bz_debugMessage(2, "DEBUG :: League Over Seer :: Executing following SQL query...");
-    bz_debugMessagef(2, "DEBUG :: League Over Seer :: %s", query.c_str());
-
-    char* db_err = 0; //a place to store the error
-    sqlite3_exec(db, query.c_str(), NULL, 0, &db_err); //execute
-
-    if (db_err != 0) //print out any errors
-    {
-        bz_debugMessage(2, "DEBUG :: League Over Seer :: SQL ERROR!");
-        bz_debugMessagef(2, "DEBUG :: League Over Seer :: %s", db_err);
-    }
 }
 
 std::string leagueOverSeer::formatTeam(bz_eTeamType teamColor, bool addWhiteSpace)
@@ -733,23 +807,6 @@ std::string leagueOverSeer::formatTeam(bz_eTeamType teamColor, bool addWhiteSpac
     return color;
 }
 
-const char* leagueOverSeer::getMotto(const char* bzid)
-{
-    const char* motto;
-
-    // Prepare the SQL query with the BZID of the player
-    sqlite3_bind_text(getPlayerMotto, 1, bzid, -1, SQLITE_TRANSIENT);
-
-    if (sqlite3_step(getPlayerMotto) == SQLITE_ROW) // If returns a team name, use it
-        motto = (const char*)sqlite3_column_text(getPlayerMotto, 0);
-    else
-        motto = "";
-
-    sqlite3_reset(getPlayerMotto); //Clear the prepared statement so it can be reused
-
-    return motto;
-}
-
 std::string leagueOverSeer::getString(int number) //Convert an integer into a string
 {
     std::stringstream string;
@@ -758,79 +815,7 @@ std::string leagueOverSeer::getString(int number) //Convert an integer into a st
     return string.str();
 }
 
-bool leagueOverSeer::isDigit(std::string myString)
-{
-    for (unsigned int i = 0; i < myString.size(); i++) //Go through entire string
-    {
-        if (!isdigit(myString[i])) //If one character is not a digit, then the string is not a digit
-            return false;
-    }
-    return true; //All characters are digits
-}
-
-int leagueOverSeer::isValidCallsign(std::string callsign)
-{
-    bz_APIIntList *playerList = bz_newIntList();
-    bz_getPlayerIndexList(playerList);
-
-    for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
-    {
-        if (strcmp(bz_getPlayerByIndex(playerList->get(i))->callsign.c_str(), callsign.c_str()) == 0)
-        {
-            int playerID = playerList->get(i);
-            bz_deleteIntList(playerList);
-            return playerID;
-        }
-    }
-
-    bz_deleteIntList(playerList);
-    return -1;
-}
-
-bool leagueOverSeer::isValidPlayerID(int playerID)
-{
-    bz_APIIntList *playerList = bz_newIntList();
-    bz_getPlayerIndexList(playerList);
-
-    for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
-    {
-        if (playerList->get(i) == playerID)
-        {
-            bz_deleteIntList(playerList);
-            return true;
-        }
-    }
-
-    bz_deleteIntList(playerList);
-    return false;
-}
-
-void leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configuration file
-{
-    PluginConfig config = PluginConfig(cmdLine);
-    std::string section = "leagueOverSeer";
-
-    if (config.errors) bz_shutdown(); //Shutdown the server
-
-    //Extract all the data in the configuration file and assign it to plugin variables
-    rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
-    mapchangePath = config.item(section, "MAPCHANGE_PATH");
-    SQLiteDB = config.item(section, "SQLITE_DB");
-    LEAGUE_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
-    DEBUG_LEVEL = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
-
-    //Check for errors in the configuration data. If there is an error, shut down the server
-    if (strcmp(LEAGUE_URL.c_str(), "") == 0)
-    {
-            bz_debugMessage(0, "*** DEBUG :: League Over Seer :: No URLs were choosen to report matches or query teams. ***");
-            bz_shutdown();
-    }
-    if (DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0)
-    {
-        bz_debugMessage(0, "*** DEBUG :: League Over Seer :: Invalid debug level in the configuration file. ***");
-        bz_shutdown();
-    }
-}
+/* ==== sqlite3_stmt* functions ==== */
 
 sqlite3_stmt* leagueOverSeer::prepareQuery(std::string sql)
 {
@@ -860,12 +845,52 @@ sqlite3_stmt* leagueOverSeer::prepareQuery(std::string sql)
     return preparedStatements[sql];
 }
 
-bool leagueOverSeer::toBool(std::string var) //Turn std::string into a boolean value
+/* ==== void functions ==== */
+
+void leagueOverSeer::doQuery(std::string query)
 {
-    if (var == "true" || var == "TRUE" || var == "1") //If the value is true then the boolean is true
-        return true;
-    else //If it's not true, then it's false.
-        return false;
+    /*
+        Execute a SQL query without the need of any return values
+    */
+
+    bz_debugMessage(2, "DEBUG :: League Over Seer :: Executing following SQL query...");
+    bz_debugMessagef(2, "DEBUG :: League Over Seer :: %s", query.c_str());
+
+    char* db_err = 0; //a place to store the error
+    sqlite3_exec(db, query.c_str(), NULL, 0, &db_err); //execute
+
+    if (db_err != 0) //print out any errors
+    {
+        bz_debugMessage(2, "DEBUG :: League Over Seer :: SQL ERROR!");
+        bz_debugMessagef(2, "DEBUG :: League Over Seer :: %s", db_err);
+    }
+}
+
+void leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configuration file
+{
+    PluginConfig config = PluginConfig(cmdLine);
+    std::string section = "leagueOverSeer";
+
+    if (config.errors) bz_shutdown(); //Shutdown the server
+
+    //Extract all the data in the configuration file and assign it to plugin variables
+    rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
+    mapchangePath = config.item(section, "MAPCHANGE_PATH");
+    SQLiteDB = config.item(section, "SQLITE_DB");
+    LEAGUE_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
+    DEBUG_LEVEL = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
+
+    //Check for errors in the configuration data. If there is an error, shut down the server
+    if (strcmp(LEAGUE_URL.c_str(), "") == 0)
+    {
+        bz_debugMessage(0, "*** DEBUG :: League Over Seer :: No URLs were choosen to report matches or query teams. ***");
+        bz_shutdown();
+    }
+    if (DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0)
+    {
+        bz_debugMessage(0, "*** DEBUG :: League Over Seer :: Invalid debug level in the configuration file. ***");
+        bz_shutdown();
+    }
 }
 
 void leagueOverSeer::updateTeamNames(void)

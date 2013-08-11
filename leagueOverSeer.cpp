@@ -67,6 +67,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 
     virtual std::string buildBZIDString(bz_eTeamType team);
     virtual std::string formatTeam(bz_eTeamType teamColor, bool addWhiteSpace);
+    virtual std::string getTeam(bz_eTeamType teamColor);
     virtual std::string getString(int number);
 
     virtual sqlite3_stmt* prepareQuery(std::string sql);
@@ -93,6 +94,8 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     std::string  LEAGUE_URL,
                  map,
                  mapchangePath,
+                 teamOneName,
+                 teamTwoName,
                  SQLiteDB;
 
     bz_eTeamType teamOne,
@@ -330,6 +333,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             if (officialMatch) //Don't waste memory if the match isn't official
             {
                 //Set the team scores to zero just in case
+                teamOneName      = getTeam(teamOne);
+                teamTwoName      = getTeam(teamTwo);
                 teamOnePoints    = 0;
                 teamTwoPoints    = 0;
                 matchDuration    = bz_getTimeLimit();
@@ -357,7 +362,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
             {
                 if (officialMatch)
-                    bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");
+                    bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** %s vs %s ***", teamOneName.c_str(), teamTwoName.c_str());
+                    bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** This is an official match, please be respectful. ***");
                 if (funMatch)
                     bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently a fun match in progress, please be respectful. ***");
             }
@@ -382,13 +388,21 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             std::string command = commandData->message.c_str(); //Use std::string for quick reference
 
             if (strncmp("/gameover", command.c_str(), 9) == 0)
+            {
                 bz_sendTextMessagef(BZ_SERVER, commandData->from, "** '/gameover' is disabled, please use /finish or /cancel instead **");
+            }
             else if (strncmp("/countdown pause", command.c_str(), 16) == 0)
+            {
                 bz_sendTextMessagef(BZ_SERVER, commandData->from, "** '/countdown pause' is disabled, please use /pause instead **");
+            }
             else if (strncmp("/countdown resume", command.c_str(), 17 ) == 0)
+            {
                 bz_sendTextMessagef(BZ_SERVER, commandData->from, "** '/countdown resume' is disabled, please use /resume instead **");
+            }
             else if (isdigit(atoi(command.c_str()) + 12))
+            {
                 bz_sendTextMessage(BZ_SERVER, commandData->from, "** '/countdown TIME' is disabled, please use /official or /fm instead **");
+            }
 
             bz_freePlayerRecord(playerData);
         }
@@ -444,6 +458,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 }
 
                 bz_deleteIntList(playerList);
+
+                if (getTeam(teamOne) == ">Unknown<" || getTeam(teamTwo) == ">Unknown<")
+                    invalidateRollCall = true;
 
                 if (invalidateRollCall && matchRollCall < matchDuration)
                 {
@@ -809,6 +826,32 @@ std::string leagueOverSeer::formatTeam(bz_eTeamType teamColor, bool addWhiteSpac
           color += " ";
 
     return color;
+}
+
+std::string leagueOverSeer::getTeam(bz_eTeamType teamColor)
+{
+    std::string teamName = "";
+    bz_APIIntList *playerList = bz_newIntList();
+    bz_getPlayerIndexList(playerList);
+
+    for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
+    {
+        if (bz_getPlayerByIndex(playerList->get(i))->team == teamColor)
+        {
+            std::string myTeamName = getMotto(bz_getPlayerByIndex(playerList->get(i))->bzID.c_str());
+
+            if (teamName == "")
+                teamName = myTeamName;
+            else if (teamName != myTeamName)
+            {
+                teamName = ">Unknown<";
+                break;
+            }
+        }
+    }
+
+    bz_deleteIntList(playerList);
+    return teamName;
 }
 
 std::string leagueOverSeer::getString(int number) //Convert an integer into a string

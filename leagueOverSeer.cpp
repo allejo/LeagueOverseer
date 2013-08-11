@@ -377,13 +377,13 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(commandData->from);
             std::string command = commandData->message.c_str(); //Use std::string for quick reference
 
-            if (strncmp("/gameover", command, 9) == 0)
+            if (strncmp("/gameover", command.c_str(), 9) == 0)
                 bz_sendTextMessagef(BZ_SERVER, commandData->from, "** '/gameover' is disabled, please use /finish or /cancel instead **");
-            else if (strncmp("/countdown pause", command, 16) == 0)
+            else if (strncmp("/countdown pause", command.c_str(), 16) == 0)
                 bz_sendTextMessagef(BZ_SERVER, commandData->from, "** '/countdown pause' is disabled, please use /pause instead **");
-            else if (strncmp("/countdown resume", command, 17 ) == 0)
+            else if (strncmp("/countdown resume", command.c_str(), 17 ) == 0)
                 bz_sendTextMessagef(BZ_SERVER, commandData->from, "** '/countdown resume' is disabled, please use /resume instead **");
-            else if (isdigit(atoi(command) + 12))
+            else if (isdigit(atoi(command.c_str()) + 12))
                 bz_sendTextMessage(BZ_SERVER, commandData->from, "** '/countdown TIME' is disabled, please use /official or /fm instead **");
 
             bz_freePlayerRecord(playerData);
@@ -721,6 +721,9 @@ std::string leagueOverSeer::formatTeam(bz_eTeamType teamColor, bool addWhiteSpac
         case eRedTeam:
             color = "Red";
             break;
+
+        default:
+            break;
     }
 
     if (addWhiteSpace)
@@ -822,7 +825,7 @@ void leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configura
             bz_debugMessage(0, "*** DEBUG :: League Over Seer :: No URLs were choosen to report matches or query teams. ***");
             bz_shutdown();
     }
-    if (DEBUG > 4 || DEBUG < 0)
+    if (DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0)
     {
         bz_debugMessage(0, "*** DEBUG :: League Over Seer :: Invalid debug level in the configuration file. ***");
         bz_shutdown();

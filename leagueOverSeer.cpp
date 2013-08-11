@@ -36,13 +36,13 @@ League Over Seer Plug-in
 const int MAJOR = 1;
 const int MINOR = 0;
 const int REV = 0;
-const int BUILD = 156;
+const int BUILD = 159;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 1.0";}
+    virtual const char* Name (){return "League Over Seer 1.0 (159)";}
     virtual void Init(const char* config);
     virtual void Event(bz_EventData *eventData);
     virtual bool SlashCommand(int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -287,8 +287,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: -----------------------------");
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: Match Time      : %s", match_date);
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: Duration        : %s", matchTimeFinal.c_str());
-                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: Team One Score  : %s", teamOnePointsFinal.c_str());
-                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: Team Two Score  : %s", teamTwoPointsFinal.c_str());
+                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: %s   Score  : %s", formatTeam(teamOne, true).c_str(), teamOnePointsFinal.c_str());
+                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: %s   Score  : %s", formatTeam(teamTwo, true).c_str(), teamTwoPointsFinal.c_str());
 
                 // Start building POST data to be sent to the league website
                 std::string matchToSend = "query=reportMatch";

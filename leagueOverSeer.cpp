@@ -42,7 +42,12 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 {
     sqlite3* db; //sqlite database we'll be using
 
-    virtual const char* Name (){return "League Over Seer 1.0 (159)";}
+    virtual const char* Name ()
+    {
+        char buffer[100];
+        sprintf(buffer, "League Over Seer %i.%i.%i (%i)", MAJOR, MINOR, REV, BUILD);
+        return std::string(buffer).c_str();
+    }
     virtual void Init(const char* config);
     virtual void Event(bz_EventData *eventData);
     virtual bool SlashCommand(int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
@@ -208,8 +213,7 @@ void leagueOverSeer::Init (const char* commandLine)
 
     if (db == 0) //we couldn't read the database provided
         bz_debugMessagef(0, "DEBUG :: League Over Seer :: Error! Could not connect to: %s", SQLiteDB.c_str());
-
-    if (db != 0) //if the database connection succeed and the database is empty, let's create the tables needed
+    else //if the database connection succeed and the database is empty, let's create the tables needed
         doQuery("CREATE TABLE IF NOT EXISTS [Players] (BZID INTEGER NOT NULL PRIMARY KEY DEFAULT 0, TEAM TEXT NOT NULL DEFAULT Teamless, SQUAD TEXT);");
 
     // Prepare the SQL query to get the team names based on a BZID

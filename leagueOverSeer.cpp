@@ -332,7 +332,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         {
             if (officialMatch) //Don't waste memory if the match isn't official
             {
-                //Set the team scores to zero just in case
                 teamOneName      = getTeam(teamOne);
                 teamTwoName      = getTeam(teamTwo);
                 teamOnePoints    = 0;
@@ -362,9 +361,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
             {
                 if (officialMatch)
-                    bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** %s vs %s ***", teamOneName.c_str(), teamTwoName.c_str());
-                    bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** This is an official match, please be respectful. ***");
-                if (funMatch)
+                    bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");
+                else
                     bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently a fun match in progress, please be respectful. ***");
             }
 
@@ -410,7 +408,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
         case bz_eTickEvent: //Tick tock tick tock...
         {
-            int totaltanks = bz_getTeamCount(eRogueTeam) + bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
+            int totaltanks = bz_getTeamCount(eObservers) + bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
 
             if (totaltanks == 0)
             {

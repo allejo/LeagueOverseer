@@ -36,7 +36,7 @@ League Over Seer Plug-in
 const int MAJOR = 1;
 const int MINOR = 0;
 const int REV = 0;
-const int BUILD = 159;
+const int BUILD = 164;
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
@@ -253,7 +253,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             bz_CTFCaptureEventData_V1 *capData = (bz_CTFCaptureEventData_V1*)eventData;
 
             if (officialMatch)
-                (capData->teamCapped == teamOne) ? teamOnePoints++ : teamTwoPoints++;
+                (capData->teamCapping == teamOne) ? teamOnePoints++ : teamTwoPoints++;
         }
         break;
 

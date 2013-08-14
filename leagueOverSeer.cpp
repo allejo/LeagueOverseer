@@ -545,7 +545,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         }
         else //They are verified, not an observer, there is no match so start one!
         {
-            match = new TentativeMatch(false); //It's a fun match
+            match.reset(TentativeMatch(false)); //It's a fun match
 
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Fun match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Fun match started by %s.", playerData->callsign.c_str());
@@ -716,7 +716,7 @@ std::string leagueOverSeer::buildBZIDString(bz_eTeamType team)
         if (match->matchPlayers.at(i).team == team)
         {
             teamString += std::string(bz_urlEncode(match->matchPlayers.at(i).bzid.c_str())) + ",";
-            bz_debugMessagef(DEBUG_LEVEL, "Match Data ::  %s (%s)", match->matchPlayers.at(i).callsign.c_str(), matchPlayers.at(i).bzid.c_str());
+            bz_debugMessagef(DEBUG_LEVEL, "Match Data ::  %s (%s)", match->matchPlayers.at(i).callsign.c_str(), match->matchPlayers.at(i).bzid.c_str());
         }
     }
 

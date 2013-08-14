@@ -17,17 +17,18 @@ League Over Seer Plug-in
 */
 
 #include <algorithm>
-#include <ctype.h>
+#include <cctype>
 #include <fstream>
 #include <iostream>
-#include <math.h>
+#include <cmath>
 #include <sqlite3.h>
 #include <sstream>
 #include <stdexcept>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <string>
+#include <memory>
 
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
@@ -37,6 +38,86 @@ const int MAJOR = 1;
 const int MINOR = 0;
 const int REV = 0;
 const int BUILD = 159;
+
+// Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
+#define ASSERT(x) { if (!(x)) bz_debugMessagef(0, "DEBUG :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }
+
+//Custom functions
+//Functions that don't use the class variables have no need to be in the class.
+
+/* ==== int functions ==== */
+
+int getPlayerByCallsign(std::string callsign)
+{
+    std::unique_ptr<bz_APIIntList> list(bz_getPlayerIndexList());
+    for (unsigned int i = 0; i < list->size(); i++) //Go through all the players
+    {
+      if (bz_getPlayerCallsign(list->get(i)) == callsign)
+        return list->get(i);
+    }
+    return -1;
+}
+
+static std::string getString(int number) //Convert an integer into a string
+{
+    std::stringstream string;
+    string << number;
+
+    return string.str();
+}
+
+static std::string formatTeam(bz_eTeamType teamColor, bool addWhiteSpace)
+{
+    std::string color;
+
+    switch (teamColor)
+    {
+        case eBlueTeam:
+            color = "Blue";
+            break;
+
+        case eGreenTeam:
+            color = "Green";
+            break;
+
+        case ePurpleTeam:
+            color = "Purple";
+            break;
+
+        case eRedTeam:
+            color = "Red";
+            break;
+
+        default:
+            break;
+    }
+
+    if (addWhiteSpace)
+        while (color.length() < 7)
+          color += " ";
+
+    return color;
+}
+
+bool isValidPlayerID(int playerID)
+{
+    std::unique_ptr<bz_APIIntList> list(bz_getPlayerIndexList());
+    for (unsigned int i = 0; i < list->size(); i++)
+    {
+      if (list->get(i) == playerID) {
+        return true;
+      }
+    }
+    return false;
+}
+
+bool toBool(std::string var) //Turn std::string into a boolean value
+{
+    if (var == "true" || var == "TRUE" || var == "1") //If the value is true then the boolean is true
+        return true;
+    else //If it's not true, then it's false.
+        return false;
+}
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
@@ -56,19 +137,9 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     virtual void URLTimeout(const char* URL, int errorCode);
     virtual void URLError(const char* URL, int errorCode, const char *errorString);
 
-    //Custom functions
-    virtual bool isDigit(std::string myString);
-    virtual bool isValidPlayerID(int playerID);
-    virtual bool toBool(std::string var);
-
     virtual const char* getMotto(const char* bzid);
 
-    virtual int isValidCallsign(std::string callsign);
-
     virtual std::string buildBZIDString(bz_eTeamType team);
-    virtual std::string formatTeam(bz_eTeamType teamColor, bool addWhiteSpace);
-    virtual std::string getTeam(bz_eTeamType teamColor);
-    virtual std::string getString(int number);
 
     virtual sqlite3_stmt* prepareQuery(std::string sql);
 
@@ -76,38 +147,63 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     virtual void loadConfig(const char *cmdLine);
     virtual void updateTeamNames(void);
 
-    //All the variables that will be used in the plugin
-    bool         doNotReportMatch,
-                 funMatch,
-                 matchParticipantsRecorded,
-                 officialMatch,
-                 rotLeague;
-
-    int          DEBUG_LEVEL,
-                 matchDuration,
-                 teamOnePoints,
-                 teamTwoPoints;
-
-    double       matchRollCall,
-                 matchStartTime;
-
-    std::string  LEAGUE_URL,
-                 map,
-                 mapchangePath,
-                 teamOneName,
-                 teamTwoName,
-                 SQLiteDB;
-
-    bz_eTeamType teamOne,
-                 teamTwo;
-
-    struct playersInMatch //Maintains the players that started the match
+    struct MatchPlayer //Maintains the players that started the match
     {
         std::string bzid;
         std::string callsign;
         bz_eTeamType team;
+        
+        MatchPlayer(std::string _bzid, std::string _callsign, bz_eTeamType _team) : bzid(_bzid), callsign(_callsign), team(_team)
+        {
+        }
     };
-    std::vector<playersInMatch> matchPlayers;
+    
+    //Keep the record of funmatches and finished matches until gameover (in case we want to store the statistics).
+    //FIXME: Why even track FMs when the FMer list isn't kept?
+    struct TentativeMatch
+    {
+        bool isOfficial;
+        bool shouldReport;
+        double startTime; // Negative when the official start event hasn't occurred
+        double duration;
+        int teamOnePoints;
+        int teamTwoPoints;
+        
+        //Non-empty when match players have been recorded. It is crucial for a match to never have an empty team after this registration.
+        //(Empty team means lost score, so there is no need to handle this case generously.)
+        std::vector<MatchPlayer> matchPlayers;
+        
+        TentativeMatch(bool _isOfficial)
+        :
+        isOfficial(_isOfficial),
+        shouldReport(true),
+        startTime(-1.0f),
+        duration(-1.0f),
+        teamOnePoints(0),
+        teamTwoPoints(0),
+        matchPlayers()
+        {
+        }
+    };
+    
+    //NULL if no match
+    std::unique_ptr<TentativeMatch> match;
+    
+    //All the variables that will be used in the plugin
+    bool         matchParticipantsRecorded,
+                 rotLeague;
+
+    int          DEBUG_LEVEL;
+
+    double       matchRollCall;
+
+    std::string  LEAGUE_URL,
+                 map,
+                 mapchangePath,
+                 SQLiteDB;
+
+    bz_eTeamType teamOne,
+                 teamTwo;
 
     typedef std::map<std::string, sqlite3_stmt*> PreparedStatementMap; // Define the type as a shortcut
     PreparedStatementMap preparedStatements; // Create the object to store prepared statements
@@ -137,14 +233,7 @@ void leagueOverSeer::Init (const char* commandLine)
     bz_registerCustomSlashCommand("pause", this);
 
     //Set all boolean values for the plugin to false
-    officialMatch             = false;
-    doNotReportMatch          = false;
     matchParticipantsRecorded = false;
-    funMatch                  = false;
-    teamOnePoints             = 0;
-    teamTwoPoints             = 0;
-    matchDuration             = bz_getTimeLimit();
-    matchStartTime            = 0;
     matchRollCall             = 90;
 
     loadConfig(commandLine); //Load the configuration data when the plugin is loaded
@@ -164,52 +253,16 @@ void leagueOverSeer::Init (const char* commandLine)
 
     teamOne = eNoTeam;
     teamTwo = eNoTeam;
-
-    while (teamOne == eNoTeam || teamTwo == eNoTeam)
-    {
-        if (bz_getTeamPlayerLimit(eRedTeam) > 0 && teamOne == eNoTeam)
-        {
-            teamOne = eRedTeam;
-            continue;
-        }
-        if (bz_getTeamPlayerLimit(eGreenTeam) > 0 && teamOne == eNoTeam)
-        {
-            teamOne = eGreenTeam;
-            continue;
-        }
-        if (bz_getTeamPlayerLimit(eBlueTeam) > 0 && teamOne == eNoTeam)
-        {
-            teamOne = eBlueTeam;
-            continue;
-        }
-        if (bz_getTeamPlayerLimit(ePurpleTeam) > 0 && teamOne == eNoTeam)
-        {
-            teamOne = ePurpleTeam;
-            continue;
-        }
-
-        // Figure out the other team
-        if (bz_getTeamPlayerLimit(eRedTeam) > 0 && teamOne != eRedTeam && teamTwo == eNoTeam)
-        {
-            teamTwo = eRedTeam;
-            continue;
-        }
-        if (bz_getTeamPlayerLimit(eGreenTeam) > 0 && teamOne != eGreenTeam && teamTwo == eNoTeam)
-        {
-            teamTwo = eGreenTeam;
-            continue;
-        }
-        if (bz_getTeamPlayerLimit(eBlueTeam) > 0 && teamOne != eBlueTeam && teamTwo == eNoTeam)
-        {
-            teamTwo = eBlueTeam;
-            continue;
-        }
-        if (bz_getTeamPlayerLimit(ePurpleTeam) > 0 && teamOne != ePurpleTeam && teamTwo == eNoTeam)
-        {
-            teamTwo = ePurpleTeam;
-            continue;
-        }
+    
+    for (bz_eTeamType t = eRedTeam; t <= ePurpleTeam; t = (bz_eTeamType) (t + 1)) {
+      if (bz_getTeamPlayerLimit(t) > 0) {
+        if (teamOne == eNoTeam)
+          teamOne = t;
+        else if (teamTwo == eNoTeam)
+          teamTwo = t;
+      }
     }
+    ASSERT(teamOne != eNoTeam && teamTwo != eNoTeam);
 
     bz_debugMessagef(0, "DEBUG :: League Over Seer :: Using the following database: %s", SQLiteDB.c_str());
     sqlite3_open(SQLiteDB.c_str(), &db);
@@ -250,33 +303,25 @@ void leagueOverSeer::Event(bz_EventData *eventData)
     {
         case bz_eCaptureEvent: //Someone caps
         {
-            bz_CTFCaptureEventData_V1 *capData = (bz_CTFCaptureEventData_V1*)eventData;
-
-            if (officialMatch)
-                (capData->teamCapped == teamOne) ? teamOnePoints++ : teamTwoPoints++;
+            if (match) {
+                bz_CTFCaptureEventData_V1 *capData = (bz_CTFCaptureEventData_V1*)eventData;
+                (capData->teamCapping == teamOne) ? match->teamOnePoints++ : match->teamTwoPoints++;
+            }
         }
         break;
 
         case bz_eGameEndEvent: //A /gameover or a match has ended
         {
-            //Clear the bool variables
-            funMatch                  = false;
-            matchStartTime            = 0;
-            matchParticipantsRecorded = false;
-
-            if (doNotReportMatch && officialMatch) //The match was canceled via /gameover or /superkill and we do not want to report these matches
+            // Match is created by command before GameStart so it must still exist.
+            ASSERT(match);
+        
+            if (!match->shouldReport && match->isOfficial) //The match was canceled via /gameover or /superkill and we do not want to report these matches
             {
-                officialMatch    = false; //Match is over
-                doNotReportMatch = false; //Reset the variable for next usage
-                teamOnePoints    = 0;
-                teamTwoPoints    = 0;
-                matchPlayers.clear();
                 bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match was not reported.");
                 bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match was not reported.");
             }
-            else if (officialMatch)
+            else if (match->isOfficial)
             {
-                officialMatch = false; //Match is over
                 bz_Time standardTime;
                 bz_getUTCtime(&standardTime);
 
@@ -285,9 +330,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 sprintf(match_date, "%02d-%02d-%02d %02d:%02d:%02d", standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute, standardTime.second);
 
                 //Keep references to values for quick reference
-                std::string teamOnePointsFinal = getString(teamOnePoints);
-                std::string teamTwoPointsFinal = getString(teamTwoPoints);
-                std::string matchTimeFinal     = getString(matchDuration/60);
+                std::string teamOnePointsFinal = getString(match->teamOnePoints);
+                std::string teamTwoPointsFinal = getString(match->teamTwoPoints);
+                std::string matchTimeFinal     = getString(match->duration/60);
 
                 // Store match data in the logs
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: League Over Seer Match Report");
@@ -317,30 +362,26 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
                 //Send the match data to the league website
                 bz_addURLJob(LEAGUE_URL.c_str(), this, matchToSend.c_str());
-
-                //Clear all the structures and scores for next match
-                matchPlayers.clear();
-                teamOnePoints = 0;
-                teamTwoPoints = 0;
             }
             else
                 bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Fun match was not reported.");
+                
+            match = NULL;
         }
         break;
 
         case bz_eGameStartEvent: //The countdown has started
         {
-            if (officialMatch) //Don't waste memory if the match isn't official
-            {
-                teamOneName      = getTeam(teamOne);
-                teamTwoName      = getTeam(teamTwo);
-                teamOnePoints    = 0;
-                teamTwoPoints    = 0;
-                matchDuration    = bz_getTimeLimit();
-                matchStartTime   = bz_getCurrentTime();
-                doNotReportMatch = false;
-                matchPlayers.clear();
+            if (!match) { //Match wasn't started by the intended commands, but by the old /countdown
+                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match was started without plugin trigger.");
+                bz_shutdown();
             }
+
+            // Reset scores in case Caps happened during countdown delay.
+            match->teamOnePoints = match->teamTwoPoints = 0;
+            
+            match->startTime = bz_getCurrentTime();
+            match->duration = bz_getTimeLimit();
         }
         break;
 
@@ -358,12 +399,10 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             if (!joinData)
                 return;
 
-            if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
+            if ((match || bz_isCountDownActive() || bz_isCountDownInProgress()) && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
             {
-                if (officialMatch)
-                    bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently an official match in progress, please be respectful. ***");
-                else
-                    bz_sendTextMessage(BZ_SERVER, joinData->playerID, "*** There is currently a fun match in progress, please be respectful. ***");
+                bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** There is currently %s match in progress, please be respectful. ***",
+                                    match->isOfficial ? "an official" : "a fun");
             }
 
             if (joinData->record->verified)
@@ -386,21 +425,13 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             std::string command = commandData->message.c_str(); //Use std::string for quick reference
 
             if (strncmp("/gameover", command.c_str(), 9) == 0)
-            {
                 bz_sendTextMessagef(BZ_SERVER, commandData->from, "** '/gameover' is disabled, please use /finish or /cancel instead **");
-            }
             else if (strncmp("/countdown pause", command.c_str(), 16) == 0)
-            {
                 bz_sendTextMessagef(BZ_SERVER, commandData->from, "** '/countdown pause' is disabled, please use /pause instead **");
-            }
             else if (strncmp("/countdown resume", command.c_str(), 17 ) == 0)
-            {
                 bz_sendTextMessagef(BZ_SERVER, commandData->from, "** '/countdown resume' is disabled, please use /resume instead **");
-            }
             else if (isdigit(atoi(command.c_str()) + 12))
-            {
                 bz_sendTextMessage(BZ_SERVER, commandData->from, "** '/countdown TIME' is disabled, please use /official or /fm instead **");
-            }
 
             bz_freePlayerRecord(playerData);
         }
@@ -408,68 +439,51 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
         case bz_eTickEvent: //Tick tock tick tock...
         {
+            if (!match)
+            {
+                break;
+            }
+            
+            // Include observer count in case the match just started and they are just late to join in.
             int totaltanks = bz_getTeamCount(eObservers) + bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
 
-            if (totaltanks == 0)
+            if (totaltanks == 0 && match->shouldReport)
             {
-                //Incase a boolean gets messed up in the plugin, reset all the plugin variables when there are no players (Observers excluded)
-                officialMatch = false;
-                doNotReportMatch = false;
-                funMatch = false;
-                teamOnePoints = 0;
-                teamTwoPoints = 0;
-                matchParticipantsRecorded = false;
-                matchStartTime = 0;
+                // Effectively /cancel the match, because both teams empty is worse than either team going missing, and any missing team loses their score.
+                match->shouldReport = false;
 
-                //This should never happen but just incase the countdown is going when there are no tanks
                 if (bz_isCountDownActive())
                     bz_gameOver(253, eObservers);
             }
 
-            if (officialMatch && matchStartTime > 0 && matchStartTime + matchRollCall < bz_getCurrentTime() && !matchParticipantsRecorded)
+            if (match->isOfficial && match->startTime >= 0.0f && match->startTime + matchRollCall < bz_getCurrentTime() && match->matchPlayers.empty())
             {
-                bool invalidateRollCall = false;
-                bz_APIIntList *playerList = bz_newIntList();
-                bz_getPlayerIndexList(playerList);
+                bool invalidRollCall = false;
+                std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
                 for (unsigned int i = 0; i < playerList->size(); i++)
                 {
-                    bz_BasePlayerRecord *playerRecord = bz_getPlayerByIndex(playerList->get(i));
+                    std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
 
                     if (bz_getPlayerTeam(playerList->get(i)) != eObservers) //If player is not an observer
                     {
-                        playersInMatch currentPlayer;
-                        currentPlayer.team = playerRecord->team; //Add team to structure
-                        currentPlayer.callsign = playerRecord->callsign.c_str(); //Add team to structure
-                        currentPlayer.bzid = playerRecord->bzID.c_str(); //Add bzid to structure
+                        MatchPlayer currentPlayer(playerRecord->bzID.c_str(), playerRecord->callsign.c_str(), playerRecord->team);
+                        if (currentPlayer.bzid.empty())
+                        {
+                            invalidRollCall = true;
+                            break;
+                        }
 
-                        if (std::string(playerRecord->bzID.c_str()).empty())
-                            invalidateRollCall = true;
-
-                        matchPlayers.push_back(currentPlayer);
+                        match->matchPlayers.push_back(currentPlayer);
                     }
-
-                    bz_freePlayerRecord(playerRecord);
-
-                    if (invalidateRollCall)
-                        break;
                 }
 
-                bz_deleteIntList(playerList);
-
-                if (getTeam(teamOne) == ">Unknown<" || getTeam(teamTwo) == ">Unknown<")
-                    invalidateRollCall = true;
-
-                if (invalidateRollCall && matchRollCall < matchDuration)
+                if (invalidRollCall && matchRollCall < match->duration)
                 {
                     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Invalid player found on field at %i:%i.", (int)(matchRollCall/60), (int)(fmod(matchRollCall,60.0)));
-
-                    matchParticipantsRecorded = false;
                     matchRollCall += 30;
-                    matchPlayers.clear();
+                    match->matchPlayers.clear();
                 }
-                else
-                    matchParticipantsRecorded = true;
             }
         }
         break;
@@ -481,9 +495,12 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
 bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiString /*message*/, bz_APIStringList *params)
 {
-    int timeToStart = atoi(params->get(0).c_str());
-    bz_BasePlayerRecord *playerData = bz_getPlayerByIndex(playerID);
+    std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
+    if (!playerData->verified || !bz_hasPerm(playerID,"spawn")) {
+        bz_sendTextMessagef(BZ_SERVER, playerID, "You do not have permission to run the /%s command.", command.c_str());
+    }
+    
     if (command == "official") //Someone used the /official command
     {
         if (playerData->team == eObservers) //Observers can't start matches
@@ -494,140 +511,114 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You may not have an official match with less than 2 players per team.");
         }
-        else if (funMatch) //A fun match cannot be declared an official match
+        else if (match && !match->isOfficial) //A fun match cannot be declared an official match
         {
             bz_sendTextMessage(BZ_SERVER,playerID,"Fun matches cannot be turned into official matches.");
         }
-        else if (!playerData->verified || !bz_hasPerm(playerID,"spawn")) //If they can't spawn, they aren't a league player so they can't start a match
+        else if (match || bz_isCountDownActive() || bz_isCountDownInProgress()) //A countdown is in progress already
         {
-            bz_sendTextMessage(BZ_SERVER,playerID,"Only registered league players may start an official match.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
         }
-        else if (bz_isCountDownActive() || bz_isCountDownInProgress()) //A countdown is in progress already
+        else //They are verified non-observer with valid team sizes and no existing match. Start one!
         {
-            bz_sendTextMessage(BZ_SERVER,playerID,"There is currently a countdown active, you may not start another.");
-        }
-        else if (playerData->verified && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && !bz_isCountDownActive() && !funMatch) //Check the user is not an obs and is a league member
-        {
-            officialMatch = true; //Notify the plugin that the match is official
+            match.reset(new TentativeMatch(true)); //It's an official match
+            
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match started by %s.", playerData->callsign.c_str());
 
+            int timeToStart = params->size() > 1 ? atoi(params->get(0).c_str()) : 10;
             if (timeToStart <= 120 && timeToStart > 5)
                 bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
             else
                 bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
         }
-        else
-            bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to run the /official command.");
-
         return true;
     }
     else if (command == "fm") //Someone uses the /fm command
     {
-        if (bz_isCountDownActive() || bz_isCountDownInProgress() || funMatch || officialMatch) //There is already a countdown
-        {
-            bz_sendTextMessage(BZ_SERVER, playerID, "There is currently a countdown active, you may not start another.");
-        }
-        else if (playerData->team == eObservers) //Observers can't start matches
+        if (playerData->team == eObservers) //Observers can't start matches
         {
             bz_sendTextMessage(BZ_SERVER,playerID,"Observers are not allowed to start matches.");
         }
-        else if (!playerData->verified || !bz_hasPerm(playerID,"spawn")) //If they can't spawn, they aren't a league player so they can't start a match
+        else if (match || bz_isCountDownActive() || bz_isCountDownInProgress()) //There is already a countdown
         {
-            bz_sendTextMessage(BZ_SERVER,playerID,"Only registered league players may start an official match.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
         }
-        else if (!bz_isCountDownActive() && playerData->team != eObservers && bz_hasPerm(playerID,"spawn") && playerData->verified && !officialMatch)
+        else //They are verified, not an observer, there is no match so start one!
         {
-            funMatch = true; //It's a fun match
+            match.reset(TentativeMatch(false)); //It's a fun match
 
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Fun match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Fun match started by %s.", playerData->callsign.c_str());
 
+            int timeToStart = params->size() > 1 ? atoi(params->get(0).c_str()) : 10;
             if (timeToStart <= 120 && timeToStart > 5)
                 bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
             else
                 bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
         }
-        else
-            bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to run the /fm command.");
-
         return true;
     }
-    else if (command == "cancel")
+    else if (command == "cancel") //FIXME: You would think that maybe only the playing teams/players can /cancel. What about observers?
     {
-        if (bz_hasPerm(playerID,"spawn") && bz_isCountDownActive())
+        if (bz_isCountDownActive()) //Cannot cancel during countdown before match
         {
-            if (officialMatch)
-            {
-                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match ended by %s", playerData->callsign.c_str());
-                bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match ended by %s (%s).", playerData->callsign.c_str(),playerData->ipAddress.c_str());
-            }
-            else
-            {
-                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Fun match ended by %s", playerData->callsign.c_str());
-                bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match ended by %s (%s).", playerData->callsign.c_str(),playerData->ipAddress.c_str());
-            }
-
-            //Reset the server. Cleanly ends a match
-            officialMatch = false;
-            doNotReportMatch = true;
-            funMatch = false;
-            teamOnePoints = 0;
-            teamTwoPoints = 0;
-
-            //End the countdown
+            ASSERT(match);
+            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s match ended by %s", match->isOfficial ? "Official" : "Fun", playerData->callsign.c_str());
+            bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match ended by %s (%s).", playerData->callsign.c_str(),playerData->ipAddress.c_str());
+            
             if (bz_isCountDownActive())
                 bz_gameOver(253, eObservers);
         }
-        else if (!bz_isCountDownActive())
+        else if (match)
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "You can only cancel a match after it has started.");
+        }
+        else
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to cancel.");
-        else //Not a league player
-            bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to run the /cancel command.");
 
         return true;
     }
     else if (command == "finish")
     {
-        if (bz_hasPerm(playerID,"spawn") && bz_isCountDownActive() && officialMatch)
+        if (bz_isCountDownActive())
         {
-            bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: Match Over Seer :: Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
-            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match ended early by %s", playerData->callsign.c_str());
+            ASSERT(match);
+            if (match->isOfficial)
+            {
+                bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: Match Over Seer :: Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
+                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match ended early by %s", playerData->callsign.c_str());
 
-            doNotReportMatch = false; //To prevent reporting a canceled match, let plugin know the match was canceled
-
-            //End the countdown
-            if (bz_isCountDownActive())
-                bz_gameOver(253, eObservers);
+                if (bz_isCountDownActive())
+                    bz_gameOver(253, eObservers);
+            }
+            else
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "You cannot /finish a fun match. Use /cancel instead.");
+            }
         }
-        else if (!bz_isCountDownActive())
+        else if (match)
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "You can only cancel a match after it has started.");
+        }
+        else
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to end.");
-        else if (!officialMatch)
-            bz_sendTextMessage(BZ_SERVER, playerID, "You cannot /finish a fun match. Use /cancel instead.");
-        else //Not a league player
-            bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to run the /finish command.");
-
         return true;
     }
     else if (command == "pause")
     {
-        if (bz_isCountDownActive() && bz_hasPerm(playerID,"spawn") && playerData->verified)
+        if (bz_isCountDownActive()) //FIXME: This does nothing if game already paused, and there is no API to tell if paused.
             bz_pauseCountdown(playerData->callsign.c_str());
-        else if (!bz_isCountDownActive())
-            bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to pause right now.");
         else
-            bz_sendTextMessage(BZ_SERVER, playerID, "You are not have permission to run the /pause command.");
-
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to pause right now.");
         return true;
     }
     else if (command == "resume")
     {
-        if (bz_hasPerm(playerID,"spawn") && playerData->verified && bz_isCountDownActive())
+        if (bz_isCountDownActive()) //FIXME: This does nothing if game already paused, and there is no API to tell if paused.
             bz_resumeCountdown(playerData->callsign.c_str());
-        else if (!bz_isCountDownActive())
-            bz_sendTextMessage(BZ_SERVER, playerID, "The current match is not paused.");
         else
-            bz_sendTextMessage(BZ_SERVER, playerID, "You are not have permission to run the /resume command.");
-
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to resume right now.");
         return true;
     }
     else if (command == "spawn")
@@ -650,10 +641,11 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
                     bz_grantPerm(atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str()), "spawn");
                     bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", bz_getPlayerByIndex(playerID)->callsign.c_str(), bz_getPlayerByIndex(atoi(std::string(params->get(0).c_str()).substr(0, 1).c_str()))->callsign.c_str());
                 }
-                else if (isValidCallsign(callsignToLookup) >= 0)
+                else if (getPlayerByCallsign(callsignToLookup) >= 0)
                 {
-                    bz_grantPerm(isValidCallsign(callsignToLookup), "spawn");
-                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", bz_getPlayerByIndex(playerID)->callsign.c_str(), bz_getPlayerByIndex(isValidCallsign(callsignToLookup))->callsign.c_str());
+                    bz_grantPerm(getPlayerByCallsign(callsignToLookup), "spawn");
+                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s gave spawn perms to %s", bz_getPlayerByIndex(playerID)->callsign.c_str(),
+                    bz_getPlayerByIndex(getPlayerByCallsign(callsignToLookup))->callsign.c_str());
                 }
                 else
                     bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", params->get(0).c_str());
@@ -666,8 +658,6 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
 
         return true;
     }
-
-    bz_freePlayerRecord(playerData);
     return false;
 }
 
@@ -696,44 +686,6 @@ void leagueOverSeer::URLError(const char* /*URL*/, int errorCode, const char *er
     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Error code: %i - %s", errorCode, errorString);
 }
 
-/* ==== bool functions ==== */
-
-bool leagueOverSeer::isDigit(std::string myString)
-{
-    for (unsigned int i = 0; i < myString.size(); i++) //Go through entire string
-    {
-        if (!isdigit(myString[i])) //If one character is not a digit, then the string is not a digit
-            return false;
-    }
-    return true; //All characters are digits
-}
-
-bool leagueOverSeer::isValidPlayerID(int playerID)
-{
-    bz_APIIntList *playerList = bz_newIntList();
-    bz_getPlayerIndexList(playerList);
-
-    for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
-    {
-        if (playerList->get(i) == playerID)
-        {
-            bz_deleteIntList(playerList);
-            return true;
-        }
-    }
-
-    bz_deleteIntList(playerList);
-    return false;
-}
-
-bool leagueOverSeer::toBool(std::string var) //Turn std::string into a boolean value
-{
-    if (var == "true" || var == "TRUE" || var == "1") //If the value is true then the boolean is true
-        return true;
-    else //If it's not true, then it's false.
-        return false;
-}
-
 /* ==== const char* functions ==== */
 
 const char* leagueOverSeer::getMotto(const char* bzid)
@@ -753,27 +705,6 @@ const char* leagueOverSeer::getMotto(const char* bzid)
     return motto;
 }
 
-/* ==== int functions ==== */
-
-int leagueOverSeer::isValidCallsign(std::string callsign)
-{
-    bz_APIIntList *playerList = bz_newIntList();
-    bz_getPlayerIndexList(playerList);
-
-    for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
-    {
-        if (strcmp(bz_getPlayerByIndex(playerList->get(i))->callsign.c_str(), callsign.c_str()) == 0)
-        {
-            int playerID = playerList->get(i);
-            bz_deleteIntList(playerList);
-            return playerID;
-        }
-    }
-
-    bz_deleteIntList(playerList);
-    return -1;
-}
-
 /* ==== std::string functions ==== */
 
 std::string leagueOverSeer::buildBZIDString(bz_eTeamType team)
@@ -781,83 +712,16 @@ std::string leagueOverSeer::buildBZIDString(bz_eTeamType team)
     std::string teamString;
     bz_debugMessagef(DEBUG_LEVEL, "Match Data :: %s Team Players", formatTeam(team, false).c_str());
 
-    for (unsigned int i = 0; i < matchPlayers.size(); i++) //Add all the red players to the match report
+    for (unsigned int i = 0; i < match->matchPlayers.size(); i++) //Add all the red players to the match report
     {
-        if (matchPlayers.at(i).team == team)
+        if (match->matchPlayers.at(i).team == team)
         {
-            teamString += std::string(bz_urlEncode(matchPlayers.at(i).bzid.c_str())) + ",";
-            bz_debugMessagef(DEBUG_LEVEL, "Match Data ::  %s (%s)", matchPlayers.at(i).callsign.c_str(), matchPlayers.at(i).bzid.c_str());
+            teamString += std::string(bz_urlEncode(match->matchPlayers.at(i).bzid.c_str())) + ",";
+            bz_debugMessagef(DEBUG_LEVEL, "Match Data ::  %s (%s)", match->matchPlayers.at(i).callsign.c_str(), match->matchPlayers.at(i).bzid.c_str());
         }
     }
 
     return teamString.erase(teamString.size() - 1);
-}
-
-std::string leagueOverSeer::formatTeam(bz_eTeamType teamColor, bool addWhiteSpace)
-{
-    std::string color;
-
-    switch (teamColor)
-    {
-        case eBlueTeam:
-            color = "Blue";
-            break;
-
-        case eGreenTeam:
-            color = "Green";
-            break;
-
-        case ePurpleTeam:
-            color = "Purple";
-            break;
-
-        case eRedTeam:
-            color = "Red";
-            break;
-
-        default:
-            break;
-    }
-
-    if (addWhiteSpace)
-        while (color.length() < 7)
-          color += " ";
-
-    return color;
-}
-
-std::string leagueOverSeer::getTeam(bz_eTeamType teamColor)
-{
-    std::string teamName = "";
-    bz_APIIntList *playerList = bz_newIntList();
-    bz_getPlayerIndexList(playerList);
-
-    for (unsigned int i = 0; i < playerList->size(); i++) //Go through all the players
-    {
-        if (bz_getPlayerByIndex(playerList->get(i))->team == teamColor)
-        {
-            std::string myTeamName = getMotto(bz_getPlayerByIndex(playerList->get(i))->bzID.c_str());
-
-            if (teamName == "")
-                teamName = myTeamName;
-            else if (teamName != myTeamName)
-            {
-                teamName = ">Unknown<";
-                break;
-            }
-        }
-    }
-
-    bz_deleteIntList(playerList);
-    return teamName;
-}
-
-std::string leagueOverSeer::getString(int number) //Convert an integer into a string
-{
-    std::stringstream string;
-    string << number;
-
-    return string.str();
 }
 
 /* ==== sqlite3_stmt* functions ==== */
@@ -942,7 +806,7 @@ void leagueOverSeer::updateTeamNames(void)
 {
     int totaltanks = bz_getTeamCount(eRogueTeam) + bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam) + bz_getTeamCount(eObservers);
 
-    if (totaltanks > 0)
+    if (totaltanks > 0) //FIXME: Wut?
         return;
 
     // Build the POST data for the URL job

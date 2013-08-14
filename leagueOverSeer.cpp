@@ -39,6 +39,7 @@ const int MINOR = 0;
 const int REV = 0;
 const int BUILD = 159;
 
+// Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
 #define ASSERT(x) { if (!(x)) bz_debugMessagef(0, "DEBUG :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }
 
 //Custom functions

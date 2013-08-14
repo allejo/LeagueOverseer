@@ -10,8 +10,9 @@ Ned Anderson (mdskpr)
 ## Thanks to
 
 * <a href="https://github.com/kongr45gpen" target="_blank">alezakos</a>
+* <a href="https://github.com/achoopic" target="_blank">apeman</a>
 * <a href="https://github.com/blast007" target="_blank">blast</a>
-* BulletCatcher
+* <a href="https://github.com/JMakey" target="_blank">BulletCatcher</a>
 * <a href="https://github.com/JeffM2501" target="_blank">JeffM</a>
 * ... and all the beta testers
 

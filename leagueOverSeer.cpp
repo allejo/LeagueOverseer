@@ -37,7 +37,7 @@ League Over Seer Plug-in
 const int MAJOR = 1;
 const int MINOR = 0;
 const int REV = 0;
-const int BUILD = 159;
+const int BUILD = 171;
 
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
 #define ASSERT(x) { if (!(x)) bz_debugMessagef(0, "DEBUG :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }
@@ -152,12 +152,12 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
         std::string bzid;
         std::string callsign;
         bz_eTeamType team;
-        
+
         MatchPlayer(std::string _bzid, std::string _callsign, bz_eTeamType _team) : bzid(_bzid), callsign(_callsign), team(_team)
         {
         }
     };
-    
+
     //Keep the record of funmatches and finished matches until gameover (in case we want to store the statistics).
     //FIXME: Why even track FMs when the FMer list isn't kept?
     struct TentativeMatch
@@ -168,11 +168,11 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
         double duration;
         int teamOnePoints;
         int teamTwoPoints;
-        
+
         //Non-empty when match players have been recorded. It is crucial for a match to never have an empty team after this registration.
         //(Empty team means lost score, so there is no need to handle this case generously.)
         std::vector<MatchPlayer> matchPlayers;
-        
+
         TentativeMatch(bool _isOfficial)
         :
         isOfficial(_isOfficial),
@@ -185,10 +185,10 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
         {
         }
     };
-    
+
     //NULL if no match
     std::unique_ptr<TentativeMatch> match;
-    
+
     //All the variables that will be used in the plugin
     bool         matchParticipantsRecorded,
                  rotLeague;
@@ -253,7 +253,7 @@ void leagueOverSeer::Init (const char* commandLine)
 
     teamOne = eNoTeam;
     teamTwo = eNoTeam;
-    
+
     for (bz_eTeamType t = eRedTeam; t <= ePurpleTeam; t = (bz_eTeamType) (t + 1)) {
       if (bz_getTeamPlayerLimit(t) > 0) {
         if (teamOne == eNoTeam)
@@ -314,7 +314,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         {
             // Match is created by command before GameStart so it must still exist.
             ASSERT(match);
-        
+
             if (!match->shouldReport && match->isOfficial) //The match was canceled via /gameover or /superkill and we do not want to report these matches
             {
                 bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match was not reported.");
@@ -365,7 +365,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             }
             else
                 bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Fun match was not reported.");
-                
+
             match = NULL;
         }
         break;
@@ -379,7 +379,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
             // Reset scores in case Caps happened during countdown delay.
             match->teamOnePoints = match->teamTwoPoints = 0;
-            
+
             match->startTime = bz_getCurrentTime();
             match->duration = bz_getTimeLimit();
         }
@@ -443,7 +443,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             {
                 break;
             }
-            
+
             // Include observer count in case the match just started and they are just late to join in.
             int totaltanks = bz_getTeamCount(eObservers) + bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
 
@@ -500,7 +500,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     if (!playerData->verified || !bz_hasPerm(playerID,"spawn")) {
         bz_sendTextMessagef(BZ_SERVER, playerID, "You do not have permission to run the /%s command.", command.c_str());
     }
-    
+
     if (command == "official") //Someone used the /official command
     {
         if (playerData->team == eObservers) //Observers can't start matches
@@ -522,7 +522,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         else //They are verified non-observer with valid team sizes and no existing match. Start one!
         {
             match.reset(new TentativeMatch(true)); //It's an official match
-            
+
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match started by %s.", playerData->callsign.c_str());
 
@@ -546,7 +546,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         }
         else //They are verified, not an observer, there is no match so start one!
         {
-            match.reset(TentativeMatch(false)); //It's a fun match
+            match.reset(new TentativeMatch(false)); //It's a fun match
 
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Fun match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Fun match started by %s.", playerData->callsign.c_str());
@@ -566,7 +566,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
             ASSERT(match);
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s match ended by %s", match->isOfficial ? "Official" : "Fun", playerData->callsign.c_str());
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match ended by %s (%s).", playerData->callsign.c_str(),playerData->ipAddress.c_str());
-            
+
             if (bz_isCountDownActive())
                 bz_gameOver(253, eObservers);
         }

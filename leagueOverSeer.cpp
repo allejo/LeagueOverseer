@@ -184,7 +184,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     };
     
     //NULL if no match
-    unique_ptr<TentativeMatch> match;
+    std::unique_ptr<TentativeMatch> match;
     
     //All the variables that will be used in the plugin
     bool         matchParticipantsRecorded,
@@ -251,7 +251,7 @@ void leagueOverSeer::Init (const char* commandLine)
     teamOne = eNoTeam;
     teamTwo = eNoTeam;
     
-    for (bz_eTeamType t = eRedTeam; t <= ePurpleTeam; t++) {
+    for (bz_eTeamType t = eRedTeam; t <= ePurpleTeam; t = (bz_eTeamType) (t + 1)) {
       if (bz_getTeamPlayerLimit(t) > 0) {
         if (teamOne == eNoTeam)
           teamOne = t;
@@ -465,7 +465,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                     if (bz_getPlayerTeam(playerList->get(i)) != eObservers) //If player is not an observer
                     {
                         MatchPlayer currentPlayer(playerRecord->bzID.c_str(), playerRecord->callsign.c_str(), playerRecord->team);
-                        if (currentPlayer.bzID.empty())
+                        if (currentPlayer.bzid.empty())
                         {
                             invalidRollCall = true;
                             break;
@@ -569,7 +569,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         }
         else if (match)
         {
-            bz_sendTextmessage(BZ_SERVER, playerID, "You can only cancel a match after it has started.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "You can only cancel a match after it has started.");
         }
         else
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to cancel.");
@@ -711,7 +711,7 @@ std::string leagueOverSeer::buildBZIDString(bz_eTeamType team)
 
     for (unsigned int i = 0; i < match->matchPlayers.size(); i++) //Add all the red players to the match report
     {
-        if (matchPlayers.at(i).team == team)
+        if (match->matchPlayers.at(i).team == team)
         {
             teamString += std::string(bz_urlEncode(matchPlayers.at(i).bzid.c_str())) + ",";
             bz_debugMessagef(DEBUG_LEVEL, "Match Data ::  %s (%s)", matchPlayers.at(i).callsign.c_str(), matchPlayers.at(i).bzid.c_str());

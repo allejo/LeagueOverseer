@@ -39,6 +39,8 @@ const int MINOR = 0;
 const int REV = 0;
 const int BUILD = 159;
 
+#define ASSERT(x) { if (!(x)) bz_debugMessagef(0, "DEBUG :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }
+
 //Custom functions
 //Functions that don't use the class variables have no need to be in the class.
 
@@ -329,7 +331,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 //Keep references to values for quick reference
                 std::string teamOnePointsFinal = getString(match->teamOnePoints);
                 std::string teamTwoPointsFinal = getString(match->teamTwoPoints);
-                std::string matchTimeFinal     = getString(match->matchDuration/60);
+                std::string matchTimeFinal     = getString(match->duration/60);
 
                 // Store match data in the logs
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: League Over Seer Match Report");
@@ -518,7 +520,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         }
         else //They are verified non-observer with valid team sizes and no existing match. Start one!
         {
-            match = new TentativeMatch(true); //It's an official match
+            match.reset(new TentativeMatch(true)); //It's an official match
             
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match started by %s.", playerData->callsign.c_str());
@@ -561,7 +563,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         if (bz_isCountDownActive()) //Cannot cancel during countdown before match
         {
             ASSERT(match);
-            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s match ended by %s", match->official ? "Official" : "Fun", playerData->callsign.c_str());
+            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s match ended by %s", match->isOfficial ? "Official" : "Fun", playerData->callsign.c_str());
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match ended by %s (%s).", playerData->callsign.c_str(),playerData->ipAddress.c_str());
             
             if (bz_isCountDownActive())
@@ -713,8 +715,8 @@ std::string leagueOverSeer::buildBZIDString(bz_eTeamType team)
     {
         if (match->matchPlayers.at(i).team == team)
         {
-            teamString += std::string(bz_urlEncode(matchPlayers.at(i).bzid.c_str())) + ",";
-            bz_debugMessagef(DEBUG_LEVEL, "Match Data ::  %s (%s)", matchPlayers.at(i).callsign.c_str(), matchPlayers.at(i).bzid.c_str());
+            teamString += std::string(bz_urlEncode(match->matchPlayers.at(i).bzid.c_str())) + ",";
+            bz_debugMessagef(DEBUG_LEVEL, "Match Data ::  %s (%s)", match->matchPlayers.at(i).callsign.c_str(), matchPlayers.at(i).bzid.c_str());
         }
     }
 

@@ -21,6 +21,7 @@ Ned Anderson (mdskpr)
 
 * BZFS r22769 or higher (Bug fixes to API needed by this plugin)
 * libsqlite3-dev
+* C++11
 
 ### How to Compile
 1. Check out the BZFlag source code:<br>

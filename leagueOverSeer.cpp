@@ -37,7 +37,7 @@ League Over Seer Plug-in
 const int MAJOR = 1;
 const int MINOR = 0;
 const int REV = 0;
-const int BUILD = 172;
+const int BUILD = 173;
 
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
 #define ASSERT(x) { if (!(x)) bz_debugMessagef(0, "DEBUG :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }
@@ -318,7 +318,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             // Match is created by command before GameStart so it must still exist.
             ASSERT(match);
 
-            if (!match->shouldReport && match->isOfficial) //The match was canceled via /gameover or /superkill and we do not want to report these matches
+            if ((!match->shouldReport && match->isOfficial) || match->matchPlayers.empty()) //The match was canceled via /gameover or /superkill and we do not want to report these matches
             {
                 bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match was not reported.");
                 bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match was not reported.");
@@ -499,7 +499,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
 {
     std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
-    if (!playerData->verified || !bz_hasPerm(playerID,"spawn")) {
+    if (!playerData->verified || !bz_hasPerm(playerID,"spawn"))
+    {
         bz_sendTextMessagef(BZ_SERVER, playerID, "You do not have permission to run the /%s command.", command.c_str());
     }
 

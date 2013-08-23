@@ -37,7 +37,7 @@ League Over Seer Plug-in
 const int MAJOR = 1;
 const int MINOR = 0;
 const int REV = 0;
-const int BUILD = 171;
+const int BUILD = 172;
 
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
 #define ASSERT(x) { if (!(x)) bz_debugMessagef(0, "DEBUG :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }
@@ -254,13 +254,15 @@ void leagueOverSeer::Init (const char* commandLine)
     teamOne = eNoTeam;
     teamTwo = eNoTeam;
 
-    for (bz_eTeamType t = eRedTeam; t <= ePurpleTeam; t = (bz_eTeamType) (t + 1)) {
-      if (bz_getTeamPlayerLimit(t) > 0) {
-        if (teamOne == eNoTeam)
-          teamOne = t;
-        else if (teamTwo == eNoTeam)
-          teamTwo = t;
-      }
+    for (bz_eTeamType t = eRedTeam; t <= ePurpleTeam; t = (bz_eTeamType) (t + 1))
+    {
+        if (bz_getTeamPlayerLimit(t) > 0)
+        {
+            if (teamOne == eNoTeam)
+                teamOne = t;
+            else if (teamTwo == eNoTeam)
+                teamTwo = t;
+        }
     }
     ASSERT(teamOne != eNoTeam && teamTwo != eNoTeam);
 
@@ -303,7 +305,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
     {
         case bz_eCaptureEvent: //Someone caps
         {
-            if (match) {
+            if (match)
+            {
                 bz_CTFCaptureEventData_V1 *capData = (bz_CTFCaptureEventData_V1*)eventData;
                 (capData->teamCapping == teamOne) ? match->teamOnePoints++ : match->teamTwoPoints++;
             }
@@ -339,8 +342,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: -----------------------------");
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: Match Time      : %s", match_date);
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: Duration        : %s", matchTimeFinal.c_str());
-                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: %s   Score  : %s", formatTeam(teamOne, true).c_str(), teamOnePointsFinal.c_str());
-                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: %s   Score  : %s", formatTeam(teamTwo, true).c_str(), teamTwoPointsFinal.c_str());
+                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: %s  Score  : %s", formatTeam(teamOne, true).c_str(), teamOnePointsFinal.c_str());
+                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: %s  Score  : %s", formatTeam(teamTwo, true).c_str(), teamTwoPointsFinal.c_str());
 
                 // Start building POST data to be sent to the league website
                 std::string matchToSend = "query=reportMatch";
@@ -372,9 +375,10 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
         case bz_eGameStartEvent: //The countdown has started
         {
-            if (!match) { //Match wasn't started by the intended commands, but by the old /countdown
+            if (!match) //Match wasn't started by the intended commands, but by the old /countdown
+            {
                 bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match was started without plugin trigger.");
-                bz_shutdown();
+                bz_gameOver(253, eObservers);
             }
 
             // Reset scores in case Caps happened during countdown delay.
@@ -440,9 +444,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         case bz_eTickEvent: //Tick tock tick tock...
         {
             if (!match)
-            {
                 break;
-            }
 
             // Include observer count in case the match just started and they are just late to join in.
             int totaltanks = bz_getTeamCount(eObservers) + bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
@@ -564,6 +566,10 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         if (bz_isCountDownActive()) //Cannot cancel during countdown before match
         {
             ASSERT(match);
+
+            if (match->isOfficial)
+                match->shouldReport = false;
+
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s match ended by %s", match->isOfficial ? "Official" : "Fun", playerData->callsign.c_str());
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match ended by %s (%s).", playerData->callsign.c_str(),playerData->ipAddress.c_str());
 
@@ -584,6 +590,7 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
         if (bz_isCountDownActive())
         {
             ASSERT(match);
+
             if (match->isOfficial)
             {
                 bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: Match Over Seer :: Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());

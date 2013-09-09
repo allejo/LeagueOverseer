@@ -318,7 +318,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             // Match is created by command before GameStart so it must still exist.
             ASSERT(match);
 
-            if ((!match->shouldReport && match->isOfficial) || match->matchPlayers.empty()) //The match was canceled via /gameover or /superkill and we do not want to report these matches
+            if ((!match->shouldReport || match->matchPlayers.empty()) && match->isOfficial) //The match was canceled via /gameover or /superkill and we do not want to report these matches
             {
                 bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match was not reported.");
                 bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match was not reported.");

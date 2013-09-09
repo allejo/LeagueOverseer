@@ -37,7 +37,7 @@ League Over Seer Plug-in
 const int MAJOR = 1;
 const int MINOR = 0;
 const int REV = 0;
-const int BUILD = 173;
+const int BUILD = 176;
 
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
 #define ASSERT(x) { if (!(x)) bz_debugMessagef(0, "DEBUG :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }
@@ -529,8 +529,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match started by %s.", playerData->callsign.c_str());
 
-            int timeToStart = params->size() > 1 ? atoi(params->get(0).c_str()) : 10;
-            if (timeToStart <= 120 && timeToStart > 5)
+            int timeToStart = (params->size() == 1) ? atoi(params->get(0).c_str()) : 10;
+            if (timeToStart <= 120 && timeToStart >= 5)
                 bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
             else
                 bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
@@ -554,8 +554,8 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Fun match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Fun match started by %s.", playerData->callsign.c_str());
 
-            int timeToStart = params->size() > 1 ? atoi(params->get(0).c_str()) : 10;
-            if (timeToStart <= 120 && timeToStart > 5)
+            int timeToStart = (params->size() == 1) ? atoi(params->get(0).c_str()) : 10;
+            if (timeToStart <= 120 && timeToStart >= 5)
                 bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
             else
                 bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match

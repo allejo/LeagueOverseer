@@ -28,8 +28,10 @@ Ned Anderson (mdskpr)
 ```svn co svn://svn.code.sf.net/p/bzflag/code/trunk/bzflag ```
 2. Create a plugin in the source:<br>
 ```sh newplug.sh leagueOverSeer```
-3. Delete the newly created leagueOverSeer directory
-4. Run a git clone of this repository from within the plugins/ directory. This should have created a new leagueOverSeer directory within the plugins directory.
+3. Delete the newly created leagueOverSeer directory<br>
+```rm -rf leagueOverSeer```
+4. Run a git clone of this repository from within the plugins/ directory. This should have created a new leagueOverSeer directory within the plugins directory.<br>
+```git clone https://github.com/allejo/leagueOverSeer.git```
 5. Instruct the build system to generate a Makefile and then compile and install the plugin:<br>
 ```./autogen.sh; ./configure; make; make install;```
 

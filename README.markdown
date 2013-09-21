@@ -37,6 +37,13 @@ Ned Anderson (mdskpr)
 6. Instruct the build system to generate a Makefile and then compile and install the plugin:<br>
 ```./autogen.sh; ./configure; make; make install;```
 
+### Updating the Plugin
+1. Go into the leagueOverSeer folder located in your plugins folder.
+2. Pull the changes from Git.<br>
+```git pull origin master```
+3. Compile the changes.<br>
+```make; make install;```
+
 ## BZFS Details
 ### Slash Commands
 <pre>

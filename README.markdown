@@ -25,14 +25,16 @@ Ned Anderson (mdskpr)
 
 ### How to Compile
 1. Check out the BZFlag source code:<br>
-```svn co svn://svn.code.sf.net/p/bzflag/code/trunk/bzflag ```
-2. Create a plugin in the source:<br>
+```svn co svn://svn.code.sf.net/p/bzflag/code/trunk/bzflag```
+2. Go into the newly checked out source code and then the plugins directory<br>
+```cd plugins```
+3. Create a plugin in the source:<br>
 ```sh newplug.sh leagueOverSeer```
-3. Delete the newly created leagueOverSeer directory<br>
+4. Delete the newly created leagueOverSeer directory<br>
 ```rm -rf leagueOverSeer```
-4. Run a git clone of this repository from within the plugins/ directory. This should have created a new leagueOverSeer directory within the plugins directory.<br>
+5. Run a git clone of this repository from within the plugins/ directory. This should have created a new leagueOverSeer directory within the plugins directory.<br>
 ```git clone https://github.com/allejo/leagueOverSeer.git```
-5. Instruct the build system to generate a Makefile and then compile and install the plugin:<br>
+6. Instruct the build system to generate a Makefile and then compile and install the plugin:<br>
 ```./autogen.sh; ./configure; make; make install;```
 
 ## BZFS Details

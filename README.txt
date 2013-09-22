@@ -1,3 +1,6 @@
+Notice: This branch has been abandoned in favor of a large rewrite for better organization and different features.
+
+
 -- Match Over Seer --
 
 ### Author ###

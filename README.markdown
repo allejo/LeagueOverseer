@@ -1,3 +1,5 @@
+__Notice:__ *This branch has been abandoned in favor of using C++11.*
+
 # League Over Seer
 
 This is a BZFlag plug-in that allows official league servers to communicate with the league website to automatically transmit match reports and handle team data.

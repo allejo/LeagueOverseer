@@ -35,9 +35,9 @@ League Over Seer Plug-in
 
 //Define plugin version numbering
 const int MAJOR = 1;
-const int MINOR = 0;
+const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 182;
+const int BUILD = 183;
 
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
 #define ASSERT(x) { if (!(x)) bz_debugMessagef(0, "DEBUG :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }
@@ -186,6 +186,39 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
         }
     };
 
+    struct MatchParticipant
+    {
+        std::string bzID;
+        std::string callsign;
+        std::string teamName;
+        bz_eTeamType teamColor;
+
+        MatchParticipant(std::string _bzID, std::string _callsign, std::string _teamName, bz_eTeamType _teamColor) :
+            bzID(_bzid),
+            callsign(_callsign),
+            teamName(_teamName),
+            teamColor(_teamColor)
+    };
+
+    struct OfficialMatch
+    {
+        bool reportToSite;
+        double startTime;
+        double duration;
+        int teamOnePoints;
+        int teamTwoPoints;
+
+        std::vector<MatchParticipant> matchParticipants;
+
+        OfficialMatch() :
+            reportToSite(true),
+            startTime(-1.0f),
+            duration(-1.0f),
+            teamOnePoints(0),
+            teamTwoPoints(0),
+            matchParticipants() {}
+    };
+
     //NULL if no match
     std::unique_ptr<TentativeMatch> match;
 
@@ -204,6 +237,10 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 
     bz_eTeamType teamOne,
                  teamTwo;
+
+    // Handle team names for players
+    typedef std::map<std::string, std::string> TeamNameMottoMap;
+    TeamNameMottoMap teamMottos;
 
     typedef std::map<std::string, sqlite3_stmt*> PreparedStatementMap; // Define the type as a shortcut
     PreparedStatementMap preparedStatements; // Create the object to store prepared statements

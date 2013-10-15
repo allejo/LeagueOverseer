@@ -21,7 +21,6 @@ League Over Seer Plug-in
 #include <fstream>
 #include <iostream>
 #include <cmath>
-#include <sqlite3.h>
 #include <sstream>
 #include <stdexcept>
 #include <cstdio>
@@ -121,8 +120,6 @@ bool toBool(std::string var) //Turn std::string into a boolean value
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
-    sqlite3* db; //sqlite database we'll be using
-
     virtual const char* Name ()
     {
         char buffer[100];
@@ -141,50 +138,8 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 
     virtual std::string buildBZIDString(bz_eTeamType team);
 
-    virtual sqlite3_stmt* prepareQuery(std::string sql);
-
-    virtual void doQuery(std::string query);
     virtual void loadConfig(const char *cmdLine);
     virtual void updateTeamNames(void);
-
-    struct MatchPlayer //Maintains the players that started the match
-    {
-        std::string bzid;
-        std::string callsign;
-        bz_eTeamType team;
-
-        MatchPlayer(std::string _bzid, std::string _callsign, bz_eTeamType _team) : bzid(_bzid), callsign(_callsign), team(_team)
-        {
-        }
-    };
-
-    //Keep the record of funmatches and finished matches until gameover (in case we want to store the statistics).
-    //FIXME: Why even track FMs when the FMer list isn't kept?
-    struct TentativeMatch
-    {
-        bool isOfficial;
-        bool shouldReport;
-        double startTime; // Negative when the official start event hasn't occurred
-        double duration;
-        int teamOnePoints;
-        int teamTwoPoints;
-
-        //Non-empty when match players have been recorded. It is crucial for a match to never have an empty team after this registration.
-        //(Empty team means lost score, so there is no need to handle this case generously.)
-        std::vector<MatchPlayer> matchPlayers;
-
-        TentativeMatch(bool _isOfficial)
-        :
-        isOfficial(_isOfficial),
-        shouldReport(true),
-        startTime(-1.0f),
-        duration(-1.0f),
-        teamOnePoints(0),
-        teamTwoPoints(0),
-        matchPlayers()
-        {
-        }
-    };
 
     struct MatchParticipant
     {
@@ -219,33 +174,27 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
             matchParticipants() {}
     };
 
-    //NULL if no match
-    std::unique_ptr<TentativeMatch> match;
-
     //All the variables that will be used in the plugin
     bool         matchParticipantsRecorded,
                  rotLeague;
 
     int          DEBUG_LEVEL;
 
-    double       matchRollCall;
+    double       MATCH_ROLLCALL;
 
     std::string  LEAGUE_URL,
                  map,
-                 mapchangePath,
-                 SQLiteDB;
+                 mapchangePath;
 
     bz_eTeamType teamOne,
                  teamTwo;
 
+    // NULL if a fun match
+    std::unique_ptr<OfficialMatch> officialMatch;
+
     // Handle team names for players
     typedef std::map<std::string, std::string> TeamNameMottoMap;
     TeamNameMottoMap teamMottos;
-
-    typedef std::map<std::string, sqlite3_stmt*> PreparedStatementMap; // Define the type as a shortcut
-    PreparedStatementMap preparedStatements; // Create the object to store prepared statements
-
-    sqlite3_stmt *getPlayerMotto;
 };
 
 BZ_PLUGIN(leagueOverSeer)
@@ -271,7 +220,7 @@ void leagueOverSeer::Init (const char* commandLine)
 
     //Set all boolean values for the plugin to false
     matchParticipantsRecorded = false;
-    matchRollCall             = 90;
+    MATCH_ROLLCALL            = 90;
 
     loadConfig(commandLine); //Load the configuration data when the plugin is loaded
 
@@ -303,17 +252,6 @@ void leagueOverSeer::Init (const char* commandLine)
     }
     ASSERT(teamOne != eNoTeam && teamTwo != eNoTeam);
 
-    bz_debugMessagef(0, "DEBUG :: League Over Seer :: Using the following database: %s", SQLiteDB.c_str());
-    sqlite3_open(SQLiteDB.c_str(), &db);
-
-    if (db == 0) //we couldn't read the database provided
-        bz_debugMessagef(0, "DEBUG :: League Over Seer :: Error! Could not connect to: %s", SQLiteDB.c_str());
-    else //if the database connection succeed and the database is empty, let's create the tables needed
-        doQuery("CREATE TABLE IF NOT EXISTS [Players] (BZID INTEGER NOT NULL PRIMARY KEY DEFAULT 0, TEAM TEXT NOT NULL DEFAULT Teamless, SQUAD TEXT);");
-
-    // Prepare the SQL query to get the team names based on a BZID
-    getPlayerMotto = prepareQuery("SELECT team FROM players WHERE bzid = ?");
-
     updateTeamNames();
 }
 
@@ -322,9 +260,6 @@ void leagueOverSeer::Cleanup (void)
     bz_debugMessagef(0, "League Over Seer %i.%i.%i (%i) unloaded.", MAJOR, MINOR, REV, BUILD);
 
     Flush(); // Clean up all the events
-
-    // Remove the prepared SQLite statement from memory
-    sqlite3_finalize(getPlayerMotto);
 
     // Remove all the slash commands
     bz_removeCustomSlashCommand("official");
@@ -342,10 +277,10 @@ void leagueOverSeer::Event(bz_EventData *eventData)
     {
         case bz_eCaptureEvent: //Someone caps
         {
-            if (match)
+            if (officialMatch != NULL)
             {
                 bz_CTFCaptureEventData_V1 *capData = (bz_CTFCaptureEventData_V1*)eventData;
-                (capData->teamCapping == teamOne) ? match->teamOnePoints++ : match->teamTwoPoints++;
+                (capData->teamCapping == teamOne) ? officialMatch->teamOnePoints++ : officialMatch->teamTwoPoints++;
             }
         }
         break;
@@ -353,14 +288,26 @@ void leagueOverSeer::Event(bz_EventData *eventData)
         case bz_eGameEndEvent: //A /gameover or a match has ended
         {
             // Match is created by command before GameStart so it must still exist.
-            ASSERT(match);
+            ASSERT(officialMatch);
 
-            if ((!match->shouldReport || match->matchPlayers.empty()) && match->isOfficial) //The match was canceled via /gameover or /superkill and we do not want to report these matches
+            // If an FM do nothing...
+            if (officialMatch == NULL)
             {
-                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match was not reported.");
-                bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match was not reported.");
+                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Fun match was not reported.");
+                break;
             }
-            else if (match->isOfficial)
+
+            if (!officialMatch->reportToSite)
+            {
+                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match was ended early and not reported.");
+                bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match was ended early and not reported.");
+            }
+            else if (officialMatch->matchParticipants.empty())
+            {
+                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: No recorded players for this official match.");
+                bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match could not be reported due to not having a list of valid match participants.");
+            }
+            else
             {
                 bz_Time standardTime;
                 bz_getUTCtime(&standardTime);
@@ -370,9 +317,9 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 sprintf(match_date, "%02d-%02d-%02d %02d:%02d:%02d", standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute, standardTime.second);
 
                 //Keep references to values for quick reference
-                std::string teamOnePointsFinal = getString(match->teamOnePoints);
-                std::string teamTwoPointsFinal = getString(match->teamTwoPoints);
-                std::string matchTimeFinal     = getString(match->duration/60);
+                std::string teamOnePointsFinal = getString(officialMatch->teamOnePoints);
+                std::string teamTwoPointsFinal = getString(officialMatch->teamTwoPoints);
+                std::string matchTimeFinal     = getString(officialMatch->duration/60);
 
                 // Store match data in the logs
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: League Over Seer Match Report");
@@ -403,26 +350,26 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 //Send the match data to the league website
                 bz_addURLJob(LEAGUE_URL.c_str(), this, matchToSend.c_str());
             }
-            else
-                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Fun match was not reported.");
 
-            match = NULL;
+            officialMatch = NULL;
         }
         break;
 
         case bz_eGameStartEvent: //The countdown has started
         {
-            if (!match) //Match wasn't started by the intended commands, but by the old /countdown
+            if (!officialMatch) //Match wasn't started by the intended commands, but by the old /countdown
             {
                 bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match was started without plugin trigger.");
                 bz_gameOver(253, eObservers);
             }
 
-            // Reset scores in case Caps happened during countdown delay.
-            match->teamOnePoints = match->teamTwoPoints = 0;
-
-            match->startTime = bz_getCurrentTime();
-            match->duration = bz_getTimeLimit();
+            if (officialMatch != NULL)
+            {
+                // Reset scores in case Caps happened during countdown delay.
+                officialMatch->teamOnePoints = officialMatch->teamTwoPoints = 0;
+                officialMatch->startTime = bz_getCurrentTime();
+                officialMatch->duration = bz_getTimeLimit();
+            }
         }
         break;
 
@@ -440,10 +387,10 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             if (!joinData)
                 return;
 
-            if ((match || bz_isCountDownActive() || bz_isCountDownInProgress()) && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
+            if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
             {
                 bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** There is currently %s match in progress, please be respectful. ***",
-                                    match->isOfficial ? "an official" : "a fun");
+                                    (officialMatch != NULL ? "an official" : "a fun");
             }
 
             if (joinData->record->verified)
@@ -480,22 +427,26 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
         case bz_eTickEvent: //Tick tock tick tock...
         {
-            if (!match)
+            if (!officialMatch)
                 break;
 
-            // Include observer count in case the match just started and they are just late to join in.
-            int totaltanks = bz_getTeamCount(eObservers) + bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
+            int totaltanks = bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
 
-            if (totaltanks == 0 && match->shouldReport)
+            if (totaltanks == 0)
             {
-                // Effectively /cancel the match, because both teams empty is worse than either team going missing, and any missing team loses their score.
-                match->shouldReport = false;
+                if (officialMatch != NULL)
+                {
+                    officialMatch->reportToSite = false;
+                }
 
                 if (bz_isCountDownActive())
+                {
                     bz_gameOver(253, eObservers);
+                }
             }
-            // FIX ME: work around avoid segfaults when everyone leaves an FM
-            else if (match->isOfficial && match->startTime >= 0.0f && match->startTime + matchRollCall < bz_getCurrentTime() && match->matchPlayers.empty())
+
+
+            if (match->isOfficial && match->startTime >= 0.0f && match->startTime + MATCH_ROLLCALL < bz_getCurrentTime() && match->matchPlayers.empty())
             {
                 bool invalidRollCall = false;
                 std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
@@ -517,10 +468,10 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                     }
                 }
 
-                if (invalidRollCall && matchRollCall < match->duration)
+                if (invalidRollCall && MATCH_ROLLCALL < match->duration)
                 {
-                    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Invalid player found on field at %i:%i.", (int)(matchRollCall/60), (int)(fmod(matchRollCall,60.0)));
-                    matchRollCall += 30;
+                    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Invalid player found on field at %i:%i.", (int)(MATCH_ROLLCALL/60), (int)(fmod(MATCH_ROLLCALL,60.0)));
+                    MATCH_ROLLCALL += 30;
                     match->matchPlayers.clear();
                 }
             }

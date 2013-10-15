@@ -37,7 +37,7 @@ League Over Seer Plug-in
 const int MAJOR = 1;
 const int MINOR = 0;
 const int REV = 0;
-const int BUILD = 176;
+const int BUILD = 182;
 
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
 #define ASSERT(x) { if (!(x)) bz_debugMessagef(0, "DEBUG :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }
@@ -457,8 +457,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 if (bz_isCountDownActive())
                     bz_gameOver(253, eObservers);
             }
-
-            if (match->isOfficial && match->startTime >= 0.0f && match->startTime + matchRollCall < bz_getCurrentTime() && match->matchPlayers.empty())
+            // FIX ME: work around avoid segfaults when everyone leaves an FM
+            else if (match->isOfficial && match->startTime >= 0.0f && match->startTime + matchRollCall < bz_getCurrentTime() && match->matchPlayers.empty())
             {
                 bool invalidRollCall = false;
                 std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());

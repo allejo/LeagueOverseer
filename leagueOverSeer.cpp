@@ -18,16 +18,17 @@ League Over Seer Plug-in
 
 #include <algorithm>
 #include <cctype>
-#include <fstream>
-#include <iostream>
 #include <cmath>
-#include <sstream>
-#include <stdexcept>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <string>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
 #include <memory>
+#include <sstream>
+#include <stdexcept>
+#include <string>
 
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
@@ -49,11 +50,15 @@ const int BUILD = 183;
 int getPlayerByCallsign(std::string callsign)
 {
     std::unique_ptr<bz_APIIntList> list(bz_getPlayerIndexList());
+
     for (unsigned int i = 0; i < list->size(); i++) //Go through all the players
     {
-      if (bz_getPlayerCallsign(list->get(i)) == callsign)
-        return list->get(i);
+        if (bz_getPlayerCallsign(list->get(i)) == callsign)
+        {
+            return list->get(i);
+        }
     }
+
     return -1;
 }
 
@@ -101,21 +106,30 @@ static std::string formatTeam(bz_eTeamType teamColor, bool addWhiteSpace)
 bool isValidPlayerID(int playerID)
 {
     std::unique_ptr<bz_APIIntList> list(bz_getPlayerIndexList());
+
     for (unsigned int i = 0; i < list->size(); i++)
     {
-      if (list->get(i) == playerID) {
-        return true;
-      }
+        if (list->get(i) == playerID)
+        {
+            return true;
+        }
     }
+
     return false;
 }
 
 bool toBool(std::string var) //Turn std::string into a boolean value
 {
-    if (var == "true" || var == "TRUE" || var == "1") //If the value is true then the boolean is true
+    if (str == "1")
+    {
         return true;
-    else //If it's not true, then it's false.
-        return false;
+    }
+
+    std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+    std::istringstream is(str);
+    bool b;
+    is >> std::boolalpha >> b;
+    return b;
 }
 
 class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler

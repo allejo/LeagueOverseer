@@ -116,15 +116,15 @@ static bool isValidPlayerID(int playerID)
     return false;
 }
 
-static bool toBool(std::string var) //Turn std::string into a boolean value
+static bool toBool(std::string value)
 {
-    if (str == "1")
+    if (value == "1")
     {
         return true;
     }
 
-    std::transform(str.begin(), str.end(), str.begin(), ::tolower);
-    std::istringstream is(str);
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+    std::istringstream is(value);
     bool b;
     is >> std::boolalpha >> b;
     return b;
@@ -165,6 +165,7 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
             callsign(_callsign),
             teamName(_teamName),
             teamColor(_teamColor)
+        {}
     };
 
     struct OfficialMatch
@@ -190,7 +191,8 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
             duration(-1.0f),
             teamOnePoints(0),
             teamTwoPoints(0),
-            matchParticipants() {}
+            matchParticipants()
+        {}
     };
 
     //All the variables that will be used in the plugin

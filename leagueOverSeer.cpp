@@ -717,13 +717,19 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
                     bz_getPlayerByIndex(getPlayerByCallsign(callsignToLookup))->callsign.c_str());
                 }
                 else
+                {
                     bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", params->get(0).c_str());
+                }
             }
             else
+            {
                 bz_sendTextMessage(BZ_SERVER, playerID, "/spawn <player id or callsign>");
+            }
         }
         else if (!playerData->admin)
+        {
             bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to use the /spawn command.");
+        }
 
         return true;
     }
@@ -758,21 +764,9 @@ void leagueOverSeer::URLError(const char* /*URL*/, int errorCode, const char *er
 
 /* ==== const char* functions ==== */
 
-const char* leagueOverSeer::getMotto(const char* bzid)
+const char* leagueOverSeer::getMotto(const char* bzID)
 {
-    const char* motto;
-
-    // Prepare the SQL query with the BZID of the player
-    sqlite3_bind_text(getPlayerMotto, 1, bzid, -1, SQLITE_TRANSIENT);
-
-    if (sqlite3_step(getPlayerMotto) == SQLITE_ROW) // If returns a team name, use it
-        motto = (const char*)sqlite3_column_text(getPlayerMotto, 0);
-    else
-        motto = "";
-
-    sqlite3_reset(getPlayerMotto); //Clear the prepared statement so it can be reused
-
-    return motto;
+    return teamMottos[bzID];
 }
 
 /* ==== std::string functions ==== */
@@ -794,56 +788,7 @@ std::string leagueOverSeer::buildBZIDString(bz_eTeamType team)
     return teamString.erase(teamString.size() - 1);
 }
 
-/* ==== sqlite3_stmt* functions ==== */
-
-sqlite3_stmt* leagueOverSeer::prepareQuery(std::string sql)
-{
-    /*
-        Thanks to blast for this function
-    */
-
-    // Search our std::map for this statement
-    PreparedStatementMap::iterator itr = preparedStatements.find(sql);
-
-    // If it doesn't exist, create it
-    if (itr == preparedStatements.end())
-    {
-        sqlite3_stmt* newStatement;
-
-        if (sqlite3_prepare_v2(db, sql.c_str(), -1, &newStatement, 0) != SQLITE_OK)
-        {
-            bz_debugMessagef(2, "DEBUG :: League Over Seer :: SQLite :: Failed to generate prepared statement for '%s' :: Error #%i: %s", sql.c_str(), sqlite3_errcode(db), sqlite3_errmsg(db));
-            return NULL;
-        }
-        else
-        {
-            preparedStatements[sql] = newStatement;
-        }
-    }
-
-    return preparedStatements[sql];
-}
-
 /* ==== void functions ==== */
-
-void leagueOverSeer::doQuery(std::string query)
-{
-    /*
-        Execute a SQL query without the need of any return values
-    */
-
-    bz_debugMessage(2, "DEBUG :: League Over Seer :: Executing following SQL query...");
-    bz_debugMessagef(2, "DEBUG :: League Over Seer :: %s", query.c_str());
-
-    char* db_err = 0; //a place to store the error
-    sqlite3_exec(db, query.c_str(), NULL, 0, &db_err); //execute
-
-    if (db_err != 0) //print out any errors
-    {
-        bz_debugMessage(2, "DEBUG :: League Over Seer :: SQL ERROR!");
-        bz_debugMessagef(2, "DEBUG :: League Over Seer :: %s", db_err);
-    }
-}
 
 void leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configuration file
 {
@@ -874,11 +819,6 @@ void leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configura
 
 void leagueOverSeer::updateTeamNames(void)
 {
-    int totaltanks = bz_getTeamCount(eRogueTeam) + bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam) + bz_getTeamCount(eObservers);
-
-    if (totaltanks > 0) //FIXME: Wut?
-        return;
-
     // Build the POST data for the URL job
     std::string teamNameDump = "query=teamDump";
     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Updating Team name database...");

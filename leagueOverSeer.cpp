@@ -157,16 +157,23 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 
     struct OfficialMatch
     {
-        bool reportToSite;
-        double startTime;
-        double duration;
-        int teamOnePoints;
-        int teamTwoPoints;
+        bool        playersRecorded,
+                    canceled;
+
+        std::string cancelationReason;
+
+        double      startTime,
+                    duration;
+
+        int         teamOnePoints,
+                    teamTwoPoints;
 
         std::vector<MatchParticipant> matchParticipants;
 
         OfficialMatch() :
-            reportToSite(true),
+            canceled(false),
+            cancelationReason(""),
+            playersRecorded(false),
             startTime(-1.0f),
             duration(-1.0f),
             teamOnePoints(0),
@@ -175,19 +182,18 @@ class leagueOverSeer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
     };
 
     //All the variables that will be used in the plugin
-    bool         matchParticipantsRecorded,
-                 rotLeague;
+    bool         ROTATION_LEAGUE;
 
     int          DEBUG_LEVEL;
 
     double       MATCH_ROLLCALL;
 
     std::string  LEAGUE_URL,
-                 map,
-                 mapchangePath;
+                 MAP_NAME,
+                 MAPCHANGE_PATH;
 
-    bz_eTeamType teamOne,
-                 teamTwo;
+    bz_eTeamType TEAM_ONE,
+                 TEAM_TWO;
 
     // NULL if a fun match
     std::unique_ptr<OfficialMatch> officialMatch;
@@ -218,39 +224,40 @@ void leagueOverSeer::Init (const char* commandLine)
     bz_registerCustomSlashCommand("resume", this);
     bz_registerCustomSlashCommand("pause", this);
 
-    //Set all boolean values for the plugin to false
-    matchParticipantsRecorded = false;
-    MATCH_ROLLCALL            = 90;
+    //Set some default values
+    MATCH_ROLLCALL = 90;
+    officialMatch = NULL;
 
     loadConfig(commandLine); //Load the configuration data when the plugin is loaded
 
-    if (mapchangePath != "" && rotLeague) //Check to see if the plugin is for a rotational league
+    if (MAPCHANGE_PATH != "" && ROTATION_LEAGUE) //Check to see if the plugin is for a rotational league
     {
         //Open the mapchange.out file to see what map is being used
         std::ifstream infile;
-        infile.open(mapchangePath.c_str());
-        getline(infile,map);
+        infile.open(MAPCHANGE_PATH.c_str());
+        getline(infile, MAP_NAME);
         infile.close();
 
-        map = map.substr(0, map.length() - 5); //Remove the '.conf' from the mapchange.out file
+        MAP_NAME = MAP_NAME.substr(0, MAP_NAME.length() - 5); //Remove the '.conf' from the mapchange.out file
 
-        bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Current map being played: %s", map.c_str());
+        bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Current map being played: %s", MAP_NAME.c_str());
     }
 
-    teamOne = eNoTeam;
-    teamTwo = eNoTeam;
+    TEAM_ONE = eNoTeam;
+    TEAM_TWO = eNoTeam;
 
     for (bz_eTeamType t = eRedTeam; t <= ePurpleTeam; t = (bz_eTeamType) (t + 1))
     {
         if (bz_getTeamPlayerLimit(t) > 0)
         {
-            if (teamOne == eNoTeam)
-                teamOne = t;
-            else if (teamTwo == eNoTeam)
-                teamTwo = t;
+            if (TEAM_ONE == eNoTeam)
+                TEAM_ONE = t;
+            else if (TEAM_TWO == eNoTeam)
+                TEAM_TWO = t;
         }
     }
-    ASSERT(teamOne != eNoTeam && teamTwo != eNoTeam);
+
+    ASSERT(TEAM_ONE != eNoTeam && TEAM_TWO != eNoTeam);
 
     updateTeamNames();
 }
@@ -280,7 +287,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             if (officialMatch != NULL)
             {
                 bz_CTFCaptureEventData_V1 *capData = (bz_CTFCaptureEventData_V1*)eventData;
-                (capData->teamCapping == teamOne) ? officialMatch->teamOnePoints++ : officialMatch->teamTwoPoints++;
+                (capData->teamCapping == TEAM_ONE) ? officialMatch->teamOnePoints++ : officialMatch->teamTwoPoints++;
             }
         }
         break;
@@ -297,10 +304,10 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 break;
             }
 
-            if (!officialMatch->reportToSite)
+            if (officialMatch->canceled)
             {
-                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match was ended early and not reported.");
-                bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match was ended early and not reported.");
+                bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: %s", officialMatch->cancelationReason.c_str());
+                bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, officialMatch->cancelationReason.c_str());
             }
             else if (officialMatch->matchParticipants.empty())
             {
@@ -326,8 +333,8 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: -----------------------------");
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: Match Time      : %s", match_date);
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: Duration        : %s", matchTimeFinal.c_str());
-                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: %s  Score  : %s", formatTeam(teamOne, true).c_str(), teamOnePointsFinal.c_str());
-                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: %s  Score  : %s", formatTeam(teamTwo, true).c_str(), teamTwoPointsFinal.c_str());
+                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: %s  Score  : %s", formatTeam(TEAM_ONE, true).c_str(), teamOnePointsFinal.c_str());
+                bz_debugMessagef(DEBUG_LEVEL, "Match Data :: %s  Score  : %s", formatTeam(TEAM_TWO, true).c_str(), teamTwoPointsFinal.c_str());
 
                 // Start building POST data to be sent to the league website
                 std::string matchToSend = "query=reportMatch";
@@ -336,11 +343,11 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                             matchToSend += "&duration="    + std::string(bz_urlEncode(matchTimeFinal.c_str()));
                             matchToSend += "&matchTime="   + std::string(bz_urlEncode(match_date));
 
-                if (rotLeague) //Only add this parameter if it's a rotational league such as Open League
-                    matchToSend += "&mapPlayed=" + std::string(bz_urlEncode(map.c_str()));
+                if (ROTATION_LEAGUE) //Only add this parameter if it's a rotational league such as Open League
+                    matchToSend += "&mapPlayed=" + std::string(bz_urlEncode(MAP_NAME.c_str()));
 
-                matchToSend += "&teamOnePlayers=" + buildBZIDString(teamOne);
-                matchToSend += "&teamTwoPlayers=" + buildBZIDString(teamTwo);
+                matchToSend += "&teamOnePlayers=" + buildBZIDString(TEAM_ONE);
+                matchToSend += "&teamTwoPlayers=" + buildBZIDString(TEAM_TWO);
 
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: -----------------------------");
                 bz_debugMessagef(DEBUG_LEVEL, "Match Data :: End of Match Report");
@@ -357,12 +364,6 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
         case bz_eGameStartEvent: //The countdown has started
         {
-            if (!officialMatch) //Match wasn't started by the intended commands, but by the old /countdown
-            {
-                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match was started without plugin trigger.");
-                bz_gameOver(253, eObservers);
-            }
-
             if (officialMatch != NULL)
             {
                 // Reset scores in case Caps happened during countdown delay.
@@ -390,7 +391,7 @@ void leagueOverSeer::Event(bz_EventData *eventData)
             if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
             {
                 bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** There is currently %s match in progress, please be respectful. ***",
-                                    (officialMatch != NULL ? "an official" : "a fun");
+                                    ((officialMatch != NULL) ? "an official" : "a fun"));
             }
 
             if (joinData->record->verified)
@@ -427,16 +428,14 @@ void leagueOverSeer::Event(bz_EventData *eventData)
 
         case bz_eTickEvent: //Tick tock tick tock...
         {
-            if (!officialMatch)
-                break;
-
             int totaltanks = bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
 
             if (totaltanks == 0)
             {
                 if (officialMatch != NULL)
                 {
-                    officialMatch->reportToSite = false;
+                    officialMatch->canceled = true;
+                    officialMatch->cancelationReason = "Official match automatically canceled due to all players leaving the match.";
                 }
 
                 if (bz_isCountDownActive())
@@ -445,28 +444,38 @@ void leagueOverSeer::Event(bz_EventData *eventData)
                 }
             }
 
+            if (officialMatch != NULL)
+            {
+                if (officialMatch->startTime >= 0.0f &&
+                    officialMatch->startTime + MATCH_ROLLCALL < bz_getCurrentTime() &&
+                    officialMatch->matchParticipants.empty())
+                {
+                    bool invalidateRollcall = false;
+                    std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+
+                    for (unsigned int i = 0; i < playerList->size(); i++)
+                    {
+                        std::unique_ptr<bz_BasePlayerRecord> playerRecord((bz_PlayerRecordV2)bz_getPlayerByIndex(playerList->get(i)));
+
+                        if (bz_getPlayerTeam(playerList->get(i)) != eObservers) //If player is not an observer
+                        {
+                            MatchParticipant currentPlayer(playerRecord->bzID.c_str(), playerRecord->callsign.c_str(), playerRecord->motto.c_str(), playerRecord->team);
+
+                            if (currentPlayer.bzid.empty())
+                            {
+                                invalidateRollcall = true;
+                                break;
+                            }
+
+                            officialMatch->matchParticipants.push_back(currentPlayer);
+                        }
+                    }
+                }
+            }
+
 
             if (match->isOfficial && match->startTime >= 0.0f && match->startTime + MATCH_ROLLCALL < bz_getCurrentTime() && match->matchPlayers.empty())
             {
-                bool invalidRollCall = false;
-                std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
-
-                for (unsigned int i = 0; i < playerList->size(); i++)
-                {
-                    std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
-
-                    if (bz_getPlayerTeam(playerList->get(i)) != eObservers) //If player is not an observer
-                    {
-                        MatchPlayer currentPlayer(playerRecord->bzID.c_str(), playerRecord->callsign.c_str(), playerRecord->team);
-                        if (currentPlayer.bzid.empty())
-                        {
-                            invalidRollCall = true;
-                            break;
-                        }
-
-                        match->matchPlayers.push_back(currentPlayer);
-                    }
-                }
 
                 if (invalidRollCall && MATCH_ROLLCALL < match->duration)
                 {
@@ -779,7 +788,7 @@ void leagueOverSeer::loadConfig(const char* cmdLine) //Load the plugin configura
     if (config.errors) bz_shutdown(); //Shutdown the server
 
     //Extract all the data in the configuration file and assign it to plugin variables
-    rotLeague = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
+    ROTATION_LEAGUE = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
     mapchangePath = config.item(section, "MAPCHANGE_PATH");
     SQLiteDB = config.item(section, "SQLITE_DB");
     LEAGUE_URL = config.item(section, "LEAGUE_OVER_SEER_URL");

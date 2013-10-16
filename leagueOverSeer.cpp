@@ -45,9 +45,7 @@ const int BUILD = 183;
 //Custom functions
 //Functions that don't use the class variables have no need to be in the class.
 
-/* ==== int functions ==== */
-
-int getPlayerByCallsign(std::string callsign)
+static int getPlayerByCallsign(std::string callsign)
 {
     std::unique_ptr<bz_APIIntList> list(bz_getPlayerIndexList());
 
@@ -103,7 +101,7 @@ static std::string formatTeam(bz_eTeamType teamColor, bool addWhiteSpace)
     return color;
 }
 
-bool isValidPlayerID(int playerID)
+static bool isValidPlayerID(int playerID)
 {
     std::unique_ptr<bz_APIIntList> list(bz_getPlayerIndexList());
 
@@ -118,7 +116,7 @@ bool isValidPlayerID(int playerID)
     return false;
 }
 
-bool toBool(std::string var) //Turn std::string into a boolean value
+static bool toBool(std::string var) //Turn std::string into a boolean value
 {
     if (str == "1")
     {

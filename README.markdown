@@ -4,16 +4,16 @@ This is a BZFlag plug-in that allows official league servers to communicate with
 
 ## Authors
 
-Vlad Jimenez (allejo)<br>
+Vlad Jimenez (allejo)  
 Ned Anderson (mdskpr)
 
 ## Thanks to
 
-* <a href="https://github.com/kongr45gpen" target="_blank">alezakos</a>
-* <a href="https://github.com/achoopic" target="_blank">apeman</a>
-* <a href="https://github.com/blast007" target="_blank">blast</a>
-* <a href="https://github.com/JMakey" target="_blank">BulletCatcher</a>
-* <a href="https://github.com/JeffM2501" target="_blank">JeffM</a>
+* [alezakos][1]
+* [apeman][2]
+* [blast][3]
+* [BulletCatcher][4]
+* [JeffM][5]
 * ... and all the beta testers
 
 ## Compiling
@@ -46,18 +46,17 @@ Ned Anderson (mdskpr)
 
 ## BZFS Details
 ### Slash Commands
-<pre>
-/cancel
-/finish
-/fm
-/official
-/spawn
-/pause
-/resume
-</pre>
+
+    /cancel
+    /finish
+    /fm
+    /official
+    /spawn
+    /pause
+    /resume
 
 ### Parameters
-<pre>/path/to/leagueOverSeer.so,/path/to/leagueOverSeer.cfg</pre>
+    /path/to/leagueOverSeer.so,/path/to/leagueOverSeer.cfg
 
 ### Redundant Permissions
 
@@ -91,7 +90,7 @@ DEBUG_LEVEL
 * Description: The debug level that will be used by the plugin to report some information on who started a match, who canceled a match, what teams played, etc
 
 ## Web Hosting Details
-If you are hosting a league website using the <a href="https://code.google.com/p/bz-owl/" target="_blank">bz-owl</a> project, make sure you follow these requirements:
+If you are hosting a league website using the [bz-owl][6] project, make sure you follow these requirements:
 
 1. Upload leagueOverSeer.php to the root of your league website directory.
 2. Add the IPs of the official match servers to the $ips array located on line 26 of leagueOverSeer.php. This is a precaution so only official match servers can report and access data.
@@ -100,4 +99,16 @@ If you are hosting a league website using the <a href="https://code.google.com/p
 5. Since all leagues have different scoring systems, lines 124-137 have GU and Duc points for the ELO fractions. Uncomment and comment which fractions you'd use respectively. By default GU's ```2/3*ELO``` for 20 minute matches and ```1*ELO``` for 30 minute matches is set.
 
 ## License
-<a href="https://github.com/allejo/leagueOverSeer/blob/master/LICENSE.markdown">GNU General Public License 3.0</a>
+[GNU General Public License 3.0][7]
+
+## Appendix
+
+The code for this plug-in can be found both on GitHub and BitBucket in order to satisfy any preferences a person may have and to have a backup in the case one service would have downtime; both services are synced and have the same code. GitHub is the official code repository so please direct all issues and pull requests there; anything submitted to BitBucket will be ignored.
+
+[1]:https://github.com/kongr45gpen
+[2]:https://github.com/achoopic
+[3]:https://github.com/blast007
+[4]:https://github.com/JMakey
+[5]:https://github.com/JeffM2501
+[6]:https://code.google.com/p/bz-owl/
+[7]:https://github.com/allejo/leagueOverSeer/blob/master/LICENSE.markdown

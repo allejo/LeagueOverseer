@@ -103,7 +103,7 @@ If you are hosting a league website using the [bz-owl][6] project, make sure you
 
 ## Appendix
 
-The code for this plug-in can be found both on GitHub and BitBucket in order to satisfy any preferences a person may have and to have a backup in the case one service would have downtime; both services are synced and have the same code. GitHub is the official code repository so please direct all issues and pull requests there; anything submitted to BitBucket will be ignored.
+The code for this plug-in can be found both on [GitHub][8] and [BitBucket][9] in order to satisfy any preferences a person may have and to have a backup in the case one service would have downtime; both services are synced and have the same code. GitHub is the official code repository so please direct all issues and pull requests there; anything submitted to BitBucket will be ignored.
 
 [1]:https://github.com/kongr45gpen
 [2]:https://github.com/achoopic
@@ -112,3 +112,5 @@ The code for this plug-in can be found both on GitHub and BitBucket in order to 
 [5]:https://github.com/JeffM2501
 [6]:https://code.google.com/p/bz-owl/
 [7]:https://github.com/allejo/leagueOverSeer/blob/master/LICENSE.markdown
+[8]:https://github.com/allejo/leagueOverSeer
+[9]:https://bitbucket.org/allejo/leagueoverseer

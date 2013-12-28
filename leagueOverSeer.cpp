@@ -624,38 +624,236 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
 bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiString /*message*/, bz_APIStringList *params)
 {
+    std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
+
+    if (!playerData->verified || !bz_hasPerm(playerID, "spawn"))
+    {
+        bz_sendTextMessagef(BZ_SERVER, playerID, "You do not have permission to run the /%s command.", command.c_str());
+        return true;
+    }
+
     if (command == "cancel")
     {
+        if (playerData->team == eObservers) //Observers can't cancel matches
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to cancel matches.");
+        }
+        else if (bz_isCountDownInProgress())
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "You may only cancel a match after it has started.");
+        }
+        else if (bz_isCountDownActive()) //Cannot cancel during countdown before match
+        {
+            ASSERT(officialMatch);
+
+            if (officialMatch != NULL)
+            {
+                officialMatch->canceled = true;
+                officialMatch->cancelationReason = "Official match cancellation requested by " + std::string(playerData->callsign.c_str());
+            }
+            else
+            {
+                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Fun match ended by %s", playerData->callsign.c_str());
+            }
+
+            bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match ended by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
+            bz_gameOver(253, eObservers);
+        }
+        else
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to cancel.");
+        }
 
         return true;
     }
     else if (command == "finish")
     {
+        if (playerData->team == eObservers) //Observers can't cancel matches
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to cancel matches.");
+        }
+        else if (bz_isCountDownInProgress())
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "You may only cancel a match after it has started.");
+        }
+        else if (bz_isCountDownActive())
+        {
+            ASSERT(officialMatch);
+
+            if (officialMatch != NULL)
+            {
+                if (officialMatch->startTime >= 0.0f && officialMatch->startTime + (officialMatch->duration/2) < bz_getCurrentTime())
+                {
+                    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: Match Over Seer :: Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
+                    bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match ended early by %s", playerData->callsign.c_str());
+
+                    bz_gameOver(253, eObservers);
+                }
+                else
+                {
+                    bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, I cannot automatically report a match less than half way through.");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "Please use the /cancel command and message a referee for review of this match.");
+                }
+            }
+            else
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "You cannot /finish a fun match. Use /cancel instead.");
+            }
+        }
+        else
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to end.");
+        }
 
         return true;
     }
     else if (command == "fm")
     {
+        if (playerData->team == eObservers) //Observers can't start matches
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
+        }
+        else if (match || bz_isCountDownActive() || bz_isCountDownInProgress()) //There is already a countdown
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
+        }
+        else //They are verified, not an observer, there is no match so start one!
+        {
+            officialMatch = NULL;
+
+            bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Fun match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
+            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Fun match started by %s.", playerData->callsign.c_str());
+
+            int timeToStart = (params->size() == 1) ? atoi(params->get(0).c_str()) : 10;
+
+            if (timeToStart <= 120 && timeToStart >= 5)
+            {
+                bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
+            }
+            else
+            {
+                bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
+            }
+        }
 
         return true;
     }
     else if (command == "official")
     {
+        if (playerData->team == eObservers) //Observers can't start matches
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
+        }
+        else if (bz_getTeamCount(teamOne) < 2 || bz_getTeamCount(teamTwo) < 2) //An official match cannot be 1v1 or 2v1
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "You may not have an official match with less than 2 players per team.");
+        }
+        else if (officialMatch != NULL || bz_isCountDownActive() || bz_isCountDownInProgress()) //A countdown is in progress already
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
+        }
+        else //They are verified non-observer with valid team sizes and no existing match. Start one!
+        {
+            officialMatch.reset(new OfficialMatch()); //It's an official match
 
-        return true;
-    }
-    else if (command == "spawn")
-    {
+            bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
+            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match started by %s.", playerData->callsign.c_str());
+
+            int timeToStart = (params->size() == 1) ? atoi(params->get(0).c_str()) : 10;
+
+            if (timeToStart <= 120 && timeToStart >= 5)
+            {
+                bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
+            }
+            else
+            {
+                bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
+            }
+        }
 
         return true;
     }
     else if (command == "pause")
     {
+        if (bz_isCountDownPaused())
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "The match is already paused!");
+        }
+        else if (bz_isCountDownActive())
+        {
+            bz_pauseCountdown(playerData->callsign.c_str());
+        }
+        else
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to pause right now.");
+        }
 
         return true;
     }
     else if (command == "resume")
     {
+        if (!bz_isCountDownPaused())
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "The match is not paused!");
+        }
+        else if (bz_isCountDownActive())
+        {
+            bz_resumeCountdown(playerData->callsign.c_str());
+        }
+        else
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to resume right now.");
+        }
+
+        return true;
+    }
+    else if (command == "spawn")
+    {
+        if (bz_hasPerm(playerID, "ban"))
+        {
+            if (params->size() > 0)
+            {
+                std::string callsignToLookup; // Store the callsign we're going to search for
+
+                for (unsigned int i = 0; i < params->size(); i++) // Piece together the callsign from the slash command parameters
+                {
+                    callsignToLookup += params->get(i).c_str();
+
+                    if (i != params->size() - 1) // So we don't stick a whitespace on the end
+                    {
+                        callsignToLookup += " "; // Add a whitespace between each chat text parameter
+                    }
+                }
+
+                if (std::string::npos != std::string(params->get(0).c_str()).find("#") && isValidPlayerID(atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str())))
+                {
+                    int victimPlayerID = atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str());
+                    std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByIndex(victimPlayerID));
+
+                    bz_grantPerm(victim->playerID, "spawn");
+                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), victim->callsign.c_str());
+                }
+                else if (bz_getPlayerByCallsign(callsignToLookup) != NULL)
+                {
+                    std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByCallsign(callsignToLookup));
+
+                    bz_grantPerm(victim->playerID, "spawn");
+                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), victim->callsign.c_str());
+                }
+                else
+                {
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", params->get(0).c_str());
+                }
+            }
+            else
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "/spawn <player id or callsign>");
+            }
+        }
+        else if (!playerData->admin)
+        {
+            bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to use the /spawn command.");
+        }
 
         return true;
     }

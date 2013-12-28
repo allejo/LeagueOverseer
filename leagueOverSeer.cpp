@@ -634,7 +634,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
     if (command == "cancel")
     {
-        if (playerData->team == eObservers) //Observers can't cancel matches
+        if (playerData->team == eObservers) // Observers can't cancel matches
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to cancel matches.");
         }
@@ -642,10 +642,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You may only cancel a match after it has started.");
         }
-        else if (bz_isCountDownActive()) //Cannot cancel during countdown before match
+        else if (bz_isCountDownActive()) // Cannot cancel during countdown before match
         {
-            ASSERT(officialMatch);
-
             if (officialMatch != NULL)
             {
                 officialMatch->canceled = true;
@@ -668,7 +666,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "finish")
     {
-        if (playerData->team == eObservers) //Observers can't cancel matches
+        if (playerData->team == eObservers) // Observers can't cancel matches
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to cancel matches.");
         }
@@ -678,10 +676,11 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         }
         else if (bz_isCountDownActive())
         {
-            ASSERT(officialMatch);
-
+            // We can only '/finish' official matches because I wanted to have a command only dedicated to
+            // reporting partially completed matches
             if (officialMatch != NULL)
             {
+                // Let's check if we can report the match, in other words, at least half of the match has been reported
                 if (officialMatch->startTime >= 0.0f && officialMatch->startTime + (officialMatch->duration/2) < bz_getCurrentTime())
                 {
                     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: Match Over Seer :: Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
@@ -859,9 +858,39 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
 }
 
+// Everything went fine with the report
+void LeagueOverSeer::URLDone(const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/)
+{
+    std::string siteData = (const char*)(data); // Convert the data to a std::string
+    bz_debugMessagef(DEBUG_LEVEL, "URL Job Successful! Data returned: %s", siteData.c_str());
+
+    if (/* check for proper JSON */)
+    {
+        // TODO: Handle JSON stuff
+    }
+    else if (siteData.find("<html>") == std::string::npos)
+    {
+        bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s", siteData.c_str());
+        bz_debugMessagef(DEBUG_LEVEL, "%s", siteData.c_str());
+    }
+}
+
+// The league website is down or is not responding, the request timed out
+void LeagueOverSeer::URLTimeout(const char* /*URL*/, int /*errorCode*/)
+{
+    bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: The request to the league site has timed out.");
+}
+
+// The server owner must have set up the URLs wrong because this shouldn't happen
+void LeagueOverSeer::URLError(const char* /*URL*/, int errorCode, const char *errorString)
+{
+    bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match report failed with the following error:");
+    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Error code: %i - %s", errorCode, errorString);
+}
+
 // We are building a string of BZIDs from the people who matched in the match that just occurred
 // and we're also writing the player information to the server logs while we're at it. Efficiency!
-std::string leagueOverSeer::buildBZIDString (bz_eTeamType team)
+std::string LeagueOverSeer::buildBZIDString (bz_eTeamType team)
 {
     // The string of BZIDs separated by commas
     std::string teamString;
@@ -891,8 +920,37 @@ std::string leagueOverSeer::buildBZIDString (bz_eTeamType team)
     return teamString.erase(teamString.size() - 1);
 }
 
+// Load the plugin configuration file
+void LeagueOverSeer::loadConfig(const char* cmdLine)
+{
+    PluginConfig config = PluginConfig(cmdLine);
+    std::string section = "leagueOverSeer";
+
+    // Shutdown the server if the configuration file has errors because we can't do anything
+    // with a broken config
+    if (config.errors) { bz_shutdown(); }
+
+    // Extract all the data in the configuration file and assign it to plugin variables
+    ROTATION_LEAGUE = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
+    mapchangePath   = config.item(section, "MAPCHANGE_PATH");
+    LEAGUE_URL      = config.item(section, "LEAGUE_OVER_SEER_URL");
+    DEBUG_LEVEL     = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
+
+    // Check for errors in the configuration data. If there is an error, shut down the server
+    if (strcmp(LEAGUE_URL.c_str(), "") == 0)
+    {
+        bz_debugMessage(0, "*** DEBUG :: League Over Seer :: No URLs were choosen to report matches or query teams. ***");
+        bz_shutdown();
+    }
+    if (DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0)
+    {
+        bz_debugMessage(0, "*** DEBUG :: League Over Seer :: Invalid debug level in the configuration file. ***");
+        bz_shutdown();
+    }
+}
+
 // Request a team name update for all the members of a team
-void leagueOverSeer::requestTeamName (bz_eTeamType team)
+void LeagueOverSeer::requestTeamName (bz_eTeamType team)
 {
     std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
@@ -908,7 +966,7 @@ void leagueOverSeer::requestTeamName (bz_eTeamType team)
 }
 
 // Because there will be different times where we request a team name motto, let's make into a function
-void leagueOverSeer::requestTeamName (std::string callsign, std::string bzID)
+void LeagueOverSeer::requestTeamName (std::string callsign, std::string bzID)
 {
     // Build the POST data for the URL job
     std::string teamMotto = "query=teamNameQuery";
@@ -921,7 +979,7 @@ void leagueOverSeer::requestTeamName (std::string callsign, std::string bzID)
 }
 
 // Check if there is any need to invalidate a roll call team
-void leagueOverSeer::validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team)
+void LeagueOverSeer::validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team)
 {
     // Check if the player is a part of team one
     if (currentPlayer.teamColor == team)

@@ -276,7 +276,7 @@ void LeagueOverseer::Init (const char* commandLine)
         getline(infile, MAP_NAME);
         infile.close();
 
-        //Remove the '.conf' from the mapchange.out file
+        // Remove the '.conf' from the mapchange.out file
         MAP_NAME = MAP_NAME.substr(0, MAP_NAME.length() - 5);
 
         bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Current map being played: %s", MAP_NAME.c_str());
@@ -303,7 +303,7 @@ void LeagueOverseer::Init (const char* commandLine)
             else if (TEAM_TWO == eNoTeam)
             {
                 TEAM_TWO = t;
-                break;
+                break; // After we've found the second team, there's no need to continue so break out of here
             }
         }
     }
@@ -510,6 +510,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             int         playerID = slashCommandData->from;
             std::string command  = slashCommandData->message.c_str();
 
+            // Because players have quick keys and players of habit, send them a notification in the case they
+            // use a deprecated slash command
             if (strncmp("/gameover", command.c_str(), 9) == 0)
             {
                 bz_sendTextMessagef(BZ_SERVER, playerID, "** '/gameover' is disabled, please use /finish or /cancel instead **");

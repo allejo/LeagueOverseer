@@ -632,8 +632,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                         if (teamOneError) { requestTeamName(TEAM_ONE); }
                         if (teamTwoError) { requestTeamName(TEAM_TWO); }
 
-                        // Delay the next roll call by 30 seconds
-                        MATCH_ROLLCALL += 30;
+                        // Delay the next roll call by 60 seconds
+                        MATCH_ROLLCALL += 60;
 
                         // Clear the struct because it's useless data
                         officialMatch->matchParticipants.clear();

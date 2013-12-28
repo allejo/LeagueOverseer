@@ -634,18 +634,19 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to cancel matches.");
         }
-        else if (bz_isCountDownInProgress())
+        else if (bz_isCountDownInProgress()) // There's no way to stop a countdown so let's not cancel during a countdown
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You may only cancel a match after it has started.");
         }
-        else if (bz_isCountDownActive()) // Cannot cancel during countdown before match
+        else if (bz_isCountDownActive()) // We can only cancel a match if the countdown is active
         {
+            // We're canceling an official match
             if (officialMatch != NULL)
             {
                 officialMatch->canceled = true;
                 officialMatch->cancelationReason = "Official match cancellation requested by " + std::string(playerData->callsign.c_str());
             }
-            else
+            else // Cancel the fun match like normal
             {
                 bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Fun match ended by %s", playerData->callsign.c_str());
             }
@@ -666,11 +667,11 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to cancel matches.");
         }
-        else if (bz_isCountDownInProgress())
+        else if (bz_isCountDownInProgress()) // There's no way to stop a countdown so let's not finish during a countdown
         {
-            bz_sendTextMessage(BZ_SERVER, playerID, "You may only cancel a match after it has started.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "You may only finish a match after it has started.");
         }
-        else if (bz_isCountDownActive())
+        else if (bz_isCountDownActive()) // Only finish if the countdown is active
         {
             // We can only '/finish' official matches because I wanted to have a command only dedicated to
             // reporting partially completed matches
@@ -704,30 +705,35 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "fm")
     {
-        if (playerData->team == eObservers) //Observers can't start matches
+        if (playerData->team == eObservers) // Observers can't start matches
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
         }
-        else if (officialMatch != NULL || bz_isCountDownActive() || bz_isCountDownInProgress()) //There is already a countdown
+        else if (officialMatch != NULL || bz_isCountDownActive() || bz_isCountDownInProgress()) // There is already a countdown
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
         }
-        else //They are verified, not an observer, there is no match so start one!
+        else // They are verified, not an observer, there is no match. So start one
         {
+            // We signify an FM whenever the 'officialMatch' variable is set to NULL so set it to null
             officialMatch = NULL;
 
+            // Log the actions
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Fun match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Fun match started by %s.", playerData->callsign.c_str());
 
+            // The amount of seconds the countdown should take
             int timeToStart = (params->size() == 1) ? atoi(params->get(0).c_str()) : 10;
 
-            if (timeToStart <= 120 && timeToStart >= 5)
+            // Sanity check...
+            if (timeToStart <= 60 && timeToStart >= 5)
             {
-                bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
+                bz_startCountdown(timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
             }
             else
             {
-                bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
+                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds.");
+                bz_startCountdown(10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
             }
         }
 
@@ -735,34 +741,38 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "official")
     {
-        if (playerData->team == eObservers) //Observers can't start matches
+        if (playerData->team == eObservers) // Observers can't start matches
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
         }
-        else if (bz_getTeamCount(TEAM_ONE) < 2 || bz_getTeamCount(TEAM_TWO) < 2) //An official match cannot be 1v1 or 2v1
+        else if (bz_getTeamCount(TEAM_ONE) < 2 || bz_getTeamCount(TEAM_TWO) < 2) // An official match cannot be 1v1 or 2v1
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You may not have an official match with less than 2 players per team.");
         }
-        else if (officialMatch != NULL || bz_isCountDownActive() || bz_isCountDownInProgress()) //A countdown is in progress already
+        else if (officialMatch != NULL || bz_isCountDownActive() || bz_isCountDownInProgress()) // A countdown is in progress already
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
         }
-        else //They are verified non-observer with valid team sizes and no existing match. Start one!
+        else // They are verified non-observer with valid team sizes and no existing match. Start one!
         {
-            officialMatch.reset(new OfficialMatch()); //It's an official match
+            officialMatch.reset(new OfficialMatch()); // It's an official match
 
+            // Log the actions so admins can bug brad to look at detailed information
             bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Official match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match started by %s.", playerData->callsign.c_str());
 
+            // The amount of seconds the countdown should take
             int timeToStart = (params->size() == 1) ? atoi(params->get(0).c_str()) : 10;
 
-            if (timeToStart <= 120 && timeToStart >= 5)
+            // Sanity check...
+            if (timeToStart <= 60 && timeToStart >= 5)
             {
-                bz_startCountdown (timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
+                bz_startCountdown(timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
             }
             else
             {
-                bz_startCountdown (10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
+                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds.");
+                bz_startCountdown(10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
             }
         }
 
@@ -820,15 +830,17 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                     }
                 }
 
+                // We have a pound sign followed by a valid player index
                 if (std::string::npos != std::string(params->get(0).c_str()).find("#") && isValidPlayerID(atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str())))
                 {
+                    // Let's make some easy reference variables
                     int victimPlayerID = atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str());
                     std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByIndex(victimPlayerID));
 
                     bz_grantPerm(victim->playerID, "spawn");
                     bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), victim->callsign.c_str());
                 }
-                else if (bz_getPlayerByCallsign(callsignToLookup.c_str()) != NULL)
+                else if (bz_getPlayerByCallsign(callsignToLookup.c_str()) != NULL) // It's a valid callsign
                 {
                     std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByCallsign(callsignToLookup.c_str()));
 
@@ -847,7 +859,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         }
         else if (!playerData->admin)
         {
-            bz_sendTextMessage(BZ_SERVER,playerID,"You do not have permission to use the /spawn command.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /spawn command.");
         }
 
         return true;

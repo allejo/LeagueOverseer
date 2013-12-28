@@ -44,7 +44,7 @@ const int BUILD = 187;
 }
 
 // A function that will get the player record by their callsign
-static bz_BasePlayerRecord* bz_getPlayerByCallsign(const char* callsign)
+static bz_BasePlayerRecord* bz_getPlayerByCallsign (const char* callsign)
 {
     // Use a smart pointer so we don't have to worry about freeing up the memory
     // when we're done. In other words, laziness.
@@ -65,18 +65,9 @@ static bz_BasePlayerRecord* bz_getPlayerByCallsign(const char* callsign)
     return NULL;
 }
 
-// Convert an int to a string
-static std::string intToString(int number)
-{
-    std::stringstream string;
-    string << number;
-
-    return string.str();
-}
-
 // Convert a bz_eTeamType value into a string literal with the option
 // of adding whitespace to format the string to return
-static std::string formatTeam(bz_eTeamType teamColor, bool addWhiteSpace)
+static std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace)
 {
     // Because we may have to format the string with white space padding, we need to store
     // the value somewhere
@@ -119,8 +110,17 @@ static std::string formatTeam(bz_eTeamType teamColor, bool addWhiteSpace)
     return color;
 }
 
+// Convert an int to a string
+static std::string intToString (int number)
+{
+    std::stringstream string;
+    string << number;
+
+    return string.str();
+}
+
 // Return whether or not a specified player ID exists or not
-static bool isValidPlayerID(int playerID)
+static bool isValidPlayerID (int playerID)
 {
     // Use another smart pointer so we don't forget about freeing up memory
     std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
@@ -130,7 +130,7 @@ static bool isValidPlayerID(int playerID)
 }
 
 // Convert a string representation of a boolean to a boolean
-static bool to_bool(std::string str)
+static bool toBool (std::string str)
 {
     std::transform(str.begin(), str.end(), str.begin(), ::tolower);
     std::istringstream is(str);
@@ -154,12 +154,12 @@ public:
 
     virtual bool SlashCommand (int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
 
-    virtual void URLDone(const char* URL, const void* data, unsigned int size, bool complete);
-    virtual void URLTimeout(const char* URL, int errorCode);
-    virtual void URLError(const char* URL, int errorCode, const char *errorString);
+    virtual void URLDone (const char* URL, const void* data, unsigned int size, bool complete);
+    virtual void URLTimeout (const char* URL, int errorCode);
+    virtual void URLError (const char* URL, int errorCode, const char *errorString);
 
-    virtual std::string buildBZIDString(bz_eTeamType team);
-    virtual void loadConfig(const char *cmdLine);
+    virtual std::string buildBZIDString (bz_eTeamType team);
+    virtual void loadConfig (const char *cmdLine);
 
     // We will be storing information about the players who participated in a match so we will
     // be storing that information inside a struct
@@ -167,12 +167,14 @@ public:
     {
         std::string bzID;
         std::string callsign;
+        std::string ipAddress;
         std::string teamName;
-        bz_eTeamType team;
+        bz_eTeamType teamColor;
 
-        MatchParticipant(std::string _bzID, std::string _callsign, std::string _teamName, bz_eTeamType _teamColor) :
+        MatchParticipant (std::string _bzID, std::string _callsign, std::string _ipAddress, std::string _teamName, bz_eTeamType _teamColor) :
             bzID(_bzid),
             callsign(_callsign),
+            ipAddress(_ipAddress),
             teamName(_teamName),
             teamColor(_teamColor)
         {}
@@ -185,7 +187,9 @@ public:
         bool        playersRecorded,   // Whether or not the players participating in the match have been recorded or not
                     canceled;          // Whether or not the official match was canceled
 
-        std::string cancelationReason; // If the match was canceled, store the reason as to why it was canceled
+        std::string cancelationReason, // If the match was canceled, store the reason as to why it was canceled
+                    teamOneName,       // We'll be doing our best to store the team names of who's playing so store the names for
+                    teamTwoName;       //     each team respectively
 
         double      startTime,         // The time of the the match was started (in server seconds). Used to calculate roll call
                     duration;          // The length of the match in seconds. Used when reporting a match to the server
@@ -199,7 +203,7 @@ public:
         std::vector<MatchParticipant> matchParticipants;
 
         // Set the default values for this struct
-        OfficialMatch() :
+        OfficialMatch () :
             canceled(false),
             cancelationReason(""),
             playersRecorded(false),
@@ -212,7 +216,8 @@ public:
     };
 
     // All the variables that will be used in the plugin
-    bool         ROTATION_LEAGUE; // Whether or not we are watching a league that uses different maps
+    bool         ROTATION_LEAGUE, // Whether or not we are watching a league that uses different maps
+                 RECORDING;       // Whether or not we are recording a match
 
     int          DEBUG_LEVEL;     // The DEBUG level the server owner wants the plugin to use for its messages
 
@@ -223,7 +228,7 @@ public:
                  MAPCHANGE_PATH;  // The path to the file that contains the name of current map being played
 
     bz_eTeamType TEAM_ONE,        // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
-                 TEAM_TWO;        // ONE and TWO
+                 TEAM_TWO;        //     ONE and TWO
 
     // This is the only pointer of the struct for the official match that we will be using. If this
     // variable is set to NULL, that means that there is currently no official match occurring.
@@ -322,44 +327,152 @@ void LeagueOverseer::Cleanup (void)
     bz_removeCustomSlashCommand('resume');
 }
 
-void LeagueOverseer::Event(bz_EventData *eventData)
+void LeagueOverseer::Event (bz_EventData *eventData)
 {
     switch (eventData->eventType)
     {
         case bz_eCaptureEvent: // This event is called each time a team's flag has been captured
         {
-            bz_CTFCaptureEventData_V1* captureData = (bz_CTFCaptureEventData_V1*)eventData;
-
-            // Data
-            // ---
-            //    (bz_eTeamType)  teamCapped    - The team whose flag was captured.
-            //    (bz_eTeamType)  teamCapping   - The team who did the capturing.
-            //    (int)           playerCapping - The player who captured the flag.
-            //    (float[3])      pos           - The world position(X,Y,Z) where the flag has been captured
-            //    (float)         rot           - The rotational orientation of the capturing player
-            //    (double)        time          - This value is the local server time of the event.
+            // We only need to keep track of the store if it's an official match
+            if (officialMatch != NULL)
+            {
+                bz_CTFCaptureEventData_V1* captureData = (bz_CTFCaptureEventData_V1*)eventData;
+                (captureData->teamCapping == TEAM_ONE) ? officialMatch->teamOnePoints++ : officialMatch->teamTwoPoints++;
+            }
         }
         break;
 
         case bz_eGameEndEvent: // This event is called each time a game ends
         {
-            bz_GameStartEndEventData_V1* gameEndData = (bz_GameStartEndEventData_V1*)eventData;
+            // Get the current standard UTC time
+            bz_Time standardTime;
+            bz_getUTCtime(&standardTime);
 
-            // Data
-            // ---
-            //    (double) duration  - The duration (in seconds) of the game.
-            //    (double) eventTime - The server time the event occurred (in seconds).
+            if (officialMatch == NULL)
+            {
+                // It was a fun match, so there is no need to do anything
+
+                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Fun match has completed.");
+            }
+            else if (officialMatch->canceled)
+            {
+                // The match was canceled for some reason so output the reason to both the players and the server logs
+
+                bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: %s", officialMatch->cancelationReason.c_str());
+                bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, officialMatch->cancelationReason.c_str());
+            }
+            else if (officialMatch->matchParticipants.empty())
+            {
+                // Oops... I darn goofed. Somehow the players were not recorded properly
+
+                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: No recorded players for this official match.");
+                bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match could not be reported due to not having a list of valid match participants.");
+            }
+            else
+            {
+                // This was an official match, so let's report it
+
+                // Format the date to -> year-month-day hour:minute:second
+                char matchDate[20];
+                sprintf(matchDate, "%02d-%02d-%02d %02d:%02d:%02d", standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute, standardTime.second);
+
+                // Keep references to values for quick reference
+                std::string teamOnePointsFinal = intToString(officialMatch->teamOnePoints);
+                std::string teamTwoPointsFinal = intToString(officialMatch->teamTwoPoints);
+                std::string matchDuration      = intToString(officialMatch->duration/60);
+
+                // Store match data in the logs
+                bz_debugMessagef(0, "Match Data :: League Over Seer Match Report");
+                bz_debugMessagef(0, "Match Data :: -----------------------------");
+                bz_debugMessagef(0, "Match Data :: Match Time      : %s", matchDate);
+                bz_debugMessagef(0, "Match Data :: Duration        : %s", matchDuration.c_str());
+                bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_ONE, true).c_str(), teamOnePointsFinal.c_str());
+                bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_TWO, true).c_str(), teamTwoPointsFinal.c_str());
+
+                // Start building POST data to be sent to the league website
+                std::string matchToSend = "query=reportMatch";
+                            matchToSend += "&teamOneWins=" + std::string(bz_urlEncode(teamOnePointsFinal.c_str()));
+                            matchToSend += "&teamTwoWins=" + std::string(bz_urlEncode(teamTwoPointsFinal.c_str()));
+                            matchToSend += "&duration="    + std::string(bz_urlEncode(matchDuration.c_str()));
+                            matchToSend += "&matchTime="   + std::string(bz_urlEncode(matchDate));
+                            matchToSend += "&server="      + std::string(bz_urlEncode(bz_getPublicAddr().c_str()));
+                            matchToSend += "&port="        + std::string(bz_urlEncode(bz_getPublicPort().c_str()));
+
+                // Only add this parameter if it's a rotational league such as OpenLeague
+                if (ROTATION_LEAGUE)
+                {
+                    matchToSend += "&mapPlayed=" + std::string(bz_urlEncode(MAP_NAME.c_str()));
+                }
+
+                // Build a string of BZIDs and also output the BZIDs to the server logs while we're at it
+                matchToSend += "&teamOnePlayers=" + buildBZIDString(TEAM_ONE);
+                matchToSend += "&teamTwoPlayers=" + buildBZIDString(TEAM_TWO);
+
+                // Finish prettifying the server logs
+                bz_debugMessagef(0, "Match Data :: -----------------------------");
+                bz_debugMessagef(0, "Match Data :: End of Match Report");
+                bz_debugMessagef(0, "DEBUG :: League Over Seer :: Reporting match data...");
+                bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Reporting match...");
+
+                //Send the match data to the league website
+                bz_addURLJob(LEAGUE_URL.c_str(), this, matchToSend.c_str());
+            }
+
+            // Only save the recording buffer if we actually started recording when the match started
+            if (RECORDING)
+            {
+                // We'll be formatting the file name, so create a variable to store it
+                char tempRecordingFileName[512];
+                std::string recordingFileName;
+
+                // Let's get started with formatting
+                if (officialMatch != NULL)
+                {
+                    // If the official match was finished, then mark it as canceled
+                    std::string matchCanceled = (officialMatch->canceled) ? "-Canceled" : "";
+
+                    sprintf(tempRecordingFileName, "Official-%d%02d%02d-%s-vs-%s-%02d%02d%s.rec",
+                        standardTime.year, standardTime.month, standardTime.day,
+                        officialMatch->teamOneName, officialMatch->teamTwoName,
+                        standardTime.hour, standardTime.minute, matchCanceled.c_str());
+                }
+                else
+                {
+                    sprintf(tempRecordingFileName, "Fun_Match-%d%02d%02d-%02d%02d.rec",
+                        standardTime.year, standardTime.month, standardTime.day,
+                        standardTime.hour, standardTime.minute);
+                }
+
+                // Move the char[] into a string to handle it better
+                recordingFileName = tempRecordingFileName;
+
+                // Save the recording buffer and stop recording
+                bz_saveRecBuf(recordingFileName.c_str(), 0);
+                bz_stopRecBuf();
+
+                // We're no longer recording, so set the boolean and announce to players that the file has been saved
+                RECORDING = false;
+                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Match saved as: %s", recordingFileName.c_str());
+            }
+
+            // We're done with the struct, so make it NULL until the next official match
+            officialMatch = NULL;
         }
         break;
 
         case bz_eGameStartEvent: // This event is triggered when a timed game begins
         {
-            bz_GameStartEndEventData_V1* gameStartData = (bz_GameStartEndEventData_V1*)eventData;
+            // We started recording a match, so save the status
+            RECORDING = bz_startRecBuf();
 
-            // Data
-            // ---
-            //    (double) duration  - The duration (in seconds) of the game.
-            //    (double) eventTime - The server time the event occurred (in seconds).
+            // Check if this is an official match
+            if (officialMatch != NULL)
+            {
+                // Reset scores in case Caps happened during countdown delay.
+                officialMatch->teamOnePoints = officialMatch->teamTwoPoints = 0;
+                officialMatch->startTime = bz_getCurrentTime();
+                officialMatch->duration = bz_getTimeLimit();
+            }
         }
         break;
 
@@ -401,7 +514,7 @@ void LeagueOverseer::Event(bz_EventData *eventData)
     }
 }
 
-bool LeagueOverseer::SlashCommand(int playerID, bz_ApiString command, bz_ApiString /*message*/, bz_APIStringList *params)
+bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiString /*message*/, bz_APIStringList *params)
 {
     if (command == "cancel")
     {
@@ -438,4 +551,36 @@ bool LeagueOverseer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
 
         return true;
     }
+}
+
+// We are building a string of BZIDs from the people who matched in the match that just occurred
+// and we're also writing the player information to the server logs while we're at it. Efficiency!
+std::string leagueOverSeer::buildBZIDString (bz_eTeamType team)
+{
+    // The string of BZIDs separated by commas
+    std::string teamString;
+
+    // Send a debug message of the players on the specified team
+    bz_debugMessagef(0, "Match Data :: %s Team Players", formatTeam(team, false).c_str());
+
+    // Add all the players from the specified team to the match report
+    for (unsigned int i = 0; i < officialMatch->matchParticipants.size(); i++)
+    {
+        // If the player current player is part of the team we're formatting
+        if (officialMatch->matchParticipants.at(i).teamColor == team)
+        {
+            // Add the BZID of the player to string with a comma at the end
+            teamString += std::string(bz_urlEncode(officialMatch->matchParticipants.at(i).bzid.c_str())) + ",";
+
+            // Output their information to the server logs
+            bz_debugMessagef(0, "Match Data ::  %s [%s] (%s)", officialMatch->matchParticipants.at(i).callsign.c_str(),
+                                                               officialMatch->matchParticipants.at(i).bzid.c_str(),
+                                                               officialMatch->matchParticipants.at(i).ipAddress.c_str());
+        }
+    }
+
+    // Return the comma separated string minus the last character because the loop will always
+    // add an extra comma at the end. If we leave it, it will cause issues with the PHP counterpart
+    // which tokenizes the BZIDs by commas and we don't want an empty BZID
+    return teamString.erase(teamString.size() - 1);
 }

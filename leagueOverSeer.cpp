@@ -160,6 +160,7 @@ public:
 
     virtual std::string buildBZIDString (bz_eTeamType team);
     virtual void loadConfig (const char *cmdLine);
+    virtual void requestTeamName (std::string callsign, std::string bzID);
 
     // We will be storing information about the players who participated in a match so we will
     // be storing that information inside a struct
@@ -206,6 +207,8 @@ public:
         OfficialMatch () :
             canceled(false),
             cancelationReason(""),
+            teamOneName("Team-A"),
+            teamTwoName("Team-B"),
             playersRecorded(false),
             startTime(-1.0f),
             duration(-1.0f),
@@ -499,14 +502,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // Only send a URL job if the user is verified
             if (joinData->record->verified)
             {
-                // Build the POST data for the URL job
-                std::string teamMotto = "query=teamNameQuery";
-                teamMotto += "&teamPlayers=" + std::string(joinData->record->bzID.c_str());
-
-                bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Getting motto for %s...", joinData->record->callsign.c_str());
-
-                // Send the team update request to the league website
-                bz_addURLJob(LEAGUE_URL.c_str(), this, teamMotto.c_str());
+                requestTeamName(joinData->record->callsign, joinData->record->bzID);
             }
         }
         break;
@@ -527,7 +523,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             {
                 bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown pause' is disabled, please use /pause instead **");
             }
-            else if (strncmp("/countdown resume", command.c_str(), 17 ) == 0)
+            else if (strncmp("/countdown resume", command.c_str(), 17) == 0)
             {
                 bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown resume' is disabled, please use /resume instead **");
             }
@@ -540,11 +536,104 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
         case bz_eTickEvent: // This event is called once for each BZFS main loop
         {
-            bz_TickEventData_V1* tickData = (bz_TickEventData_V1*)eventData;
+            // Get the total number of tanks playing
+            int totaltanks = bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
 
-            // Data
-            // ---
-            //    (double)  eventTime - Local Server time of the event (in seconds)
+            // If there are no tanks playing, then we need to do some clean up
+            if (totaltanks == 0)
+            {
+                // If there is an official match and no tanks playing, we need to cancel it
+                if (officialMatch != NULL)
+                {
+                    officialMatch->canceled = true;
+                    officialMatch->cancelationReason = "Official match automatically canceled due to all players leaving the match.";
+                }
+
+                // If there is a countdown active an no tanks are playing, then cancel it
+                if (bz_isCountDownActive())
+                {
+                    bz_gameOver(253, eObservers);
+                }
+            }
+
+            // Let's get the roll call only if there is an official match
+            if (officialMatch != NULL)
+            {
+                // Check if the start time is not negative since our default value for the startTime is -1. Also check
+                // if it's time to do a roll call, which is defined as 90 seconds after the start of the match by default,
+                // and make sure we don't have any match participants recorded
+                if (officialMatch->startTime >= 0.0f &&
+                    officialMatch->startTime + MATCH_ROLLCALL < bz_getCurrentTime() &&
+                    officialMatch->matchParticipants.empty())
+                {
+                    std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+                    bool invalidateRollcall = teamOneError = teamTwoError = false;
+                    std::string teamOneMotto = teamTwoMotto = "";
+
+                    for (unsigned int i = 0; i < playerList->size(); i++)
+                    {
+                        std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
+
+                        if (bz_getPlayerTeam(playerList->get(i)) != eObservers) //If player is not an observer
+                        {
+                            MatchParticipant currentPlayer(playerRecord->bzID.c_str(), playerRecord->callsign.c_str(),
+                                                           playerRecord->ipAddress.c_str(), teamMottos[mottoData->record->bzID.c_str()],
+                                                           playerRecord->team);
+
+                            // Check if the player is a part of team one
+                            if (currentPlayer.team == TEAM_ONE)
+                            {
+                                // Check if the team name of team one has been set yet, if it hasn't then set it
+                                // and we'll be able to set it so we can conclude that we have the same team for
+                                // all of the players
+                                if (teamOneMotto == "")
+                                {
+                                    teamOneMotto = currentPlayer.teamName;
+                                }
+                                // We found someone with a different team name, therefore we need invalidate the
+                                // roll call and check all of the member's team names for sanity
+                                else if (teamOneMotto != currentPlayer.teamName)
+                                {
+                                    invalidateRollcall = true; // Invalidate the roll call
+                                    teamOneError = true;       // We need to check team one's members for their teams
+                                }
+                            }
+                            else if (currentPlayer.team == TEAM_TWO)
+                            {
+                                if (teamTwoMotto == "")
+                                {
+                                    teamTwoMotto = currentPlayer.teamName;
+                                }
+                                else if (teamTwoMotto != currentPlayer.teamName)
+                                {
+                                    invalidateRollcall = true;
+                                    teamTwoError = true;
+                                }
+                            }
+                            else if (currentPlayer.bzid.empty()) // Someone is playing without a BZID, how did this happen?
+                            {
+                                invalidateRollcall = true;
+                            }
+
+                            // Add the player to the struct of participants
+                            officialMatch->matchParticipants.push_back(currentPlayer);
+                        }
+                    }
+
+                    // We were asked to invalidate the roll call because of some issue so let's check if there is still time for
+                    // another roll call
+                    if (invalidateRollcall && MATCH_ROLLCALL + 30 < officialMatch->duration)
+                    {
+                        bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Invalid player found on field at %i:%i.", (int)(MATCH_ROLLCALL/60), (int)(fmod(MATCH_ROLLCALL,60.0)));
+
+                        // Delay the next roll call by 30 seconds
+                        MATCH_ROLLCALL += 30;
+
+                        // Clear the struct because it's useless data
+                        officialMatch->matchParticipants.clear();
+                    }
+                }
+            }
         }
         break;
 
@@ -621,4 +710,17 @@ std::string leagueOverSeer::buildBZIDString (bz_eTeamType team)
     // add an extra comma at the end. If we leave it, it will cause issues with the PHP counterpart
     // which tokenizes the BZIDs by commas and we don't want an empty BZID
     return teamString.erase(teamString.size() - 1);
+}
+
+// Because there will be different times where we request a team name motto, let's make into a function
+void leagueOverSeer::requestTeamName (std::string callsign, std::string bzID)
+{
+    // Build the POST data for the URL job
+    std::string teamMotto = "query=teamNameQuery";
+    teamMotto += "&teamPlayers=" + std::string(bzID.c_str());
+
+    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Getting motto for %s...", callsign.c_str());
+
+    // Send the team update request to the league website
+    bz_addURLJob(LEAGUE_URL.c_str(), this, teamMotto.c_str());
 }

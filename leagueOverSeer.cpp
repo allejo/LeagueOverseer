@@ -250,6 +250,7 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_eGameStartEvent);
     Register(bz_eGetPlayerMotto);
     Register(bz_ePlayerJoinEvent);
+    Register(bz_eSlashCommandEvent);
     Register(bz_eTickEvent);
 
     // Register our custom slash commands
@@ -506,6 +507,33 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 // Send the team update request to the league website
                 bz_addURLJob(LEAGUE_URL.c_str(), this, teamMotto.c_str());
+            }
+        }
+        break;
+
+        case bz_eSlashCommandEvent: // This event is called each time a player sends a slash command
+        {
+            bz_SlashCommandEventData_V1* slashCommandData = (bz_SlashCommandEventData_V1*)eventData;
+
+            // Store the information in variables for quick reference
+            int         playerID = slashCommandData->from;
+            std::string command  = slashCommandData->message.c_str();
+
+            if (strncmp("/gameover", command.c_str(), 9) == 0)
+            {
+                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/gameover' is disabled, please use /finish or /cancel instead **");
+            }
+            else if (strncmp("/countdown pause", command.c_str(), 16) == 0)
+            {
+                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown pause' is disabled, please use /pause instead **");
+            }
+            else if (strncmp("/countdown resume", command.c_str(), 17 ) == 0)
+            {
+                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown resume' is disabled, please use /resume instead **");
+            }
+            else if (isdigit(atoi(command.c_str()) + 12))
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown TIME' is disabled, please use /official or /fm instead **");
             }
         }
         break;

@@ -162,6 +162,7 @@ public:
     virtual void loadConfig (const char *cmdLine);
     virtual void requestTeamName (bz_eTeamType team);
     virtual void requestTeamName (std::string callsign, std::string bzID);
+    virtual void validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team);
 
     // We will be storing information about the players who participated in a match so we will
     // be storing that information inside a struct
@@ -581,37 +582,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                                                            playerRecord->ipAddress.c_str(), teamMottos[mottoData->record->bzID.c_str()],
                                                            playerRecord->team);
 
-                            // Check if the player is a part of team one
-                            if (currentPlayer.team == TEAM_ONE)
-                            {
-                                // Check if the team name of team one has been set yet, if it hasn't then set it
-                                // and we'll be able to set it so we can conclude that we have the same team for
-                                // all of the players
-                                if (teamOneMotto == "")
-                                {
-                                    teamOneMotto = currentPlayer.teamName;
-                                }
-                                // We found someone with a different team name, therefore we need invalidate the
-                                // roll call and check all of the member's team names for sanity
-                                else if (teamOneMotto != currentPlayer.teamName)
-                                {
-                                    invalidateRollcall = true; // Invalidate the roll call
-                                    teamOneError = true;       // We need to check team one's members for their teams
-                                }
-                            }
-                            else if (currentPlayer.team == TEAM_TWO)
-                            {
-                                if (teamTwoMotto == "")
-                                {
-                                    teamTwoMotto = currentPlayer.teamName;
-                                }
-                                else if (teamTwoMotto != currentPlayer.teamName)
-                                {
-                                    invalidateRollcall = true;
-                                    teamTwoError = true;
-                                }
-                            }
-                            else if (currentPlayer.bzid.empty()) // Someone is playing without a BZID, how did this happen?
+                            // Check if there is any need to invalidate a roll call from a team
+                            validateTeamName(invalidateRollcall, teamOneError, currentPlayer, teamOneMotto, TEAM_ONE);
+                            validateTeamName(invalidateRollcall, teamTwoError, currentPlayer, teamTwoMotto, TEAM_TWO);
+
+                            if (currentPlayer.bzid.empty()) // Someone is playing without a BZID, how did this happen?
                             {
                                 invalidateRollcall = true;
                             }
@@ -745,4 +720,27 @@ void leagueOverSeer::requestTeamName (std::string callsign, std::string bzID)
 
     // Send the team update request to the league website
     bz_addURLJob(LEAGUE_URL.c_str(), this, teamMotto.c_str());
+}
+
+// Check if there is any need to invalidate a roll call team
+void leagueOverSeer::validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team)
+{
+    // Check if the player is a part of team one
+    if (currentPlayer.teamColor == team)
+    {
+        // Check if the team name of team one has been set yet, if it hasn't then set it
+        // and we'll be able to set it so we can conclude that we have the same team for
+        // all of the players
+        if (teamName == "")
+        {
+            teamName = currentPlayer.teamName;
+        }
+        // We found someone with a different team name, therefore we need invalidate the
+        // roll call and check all of the member's team names for sanity
+        else if (teamName != currentPlayer.teamName)
+        {
+            invalidate = true; // Invalidate the roll call
+            teamError = true;  // We need to check team one's members for their teams
+        }
+    }
 }

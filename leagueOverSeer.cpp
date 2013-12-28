@@ -480,11 +480,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_GetPlayerMottoData_V2* mottoData = (bz_GetPlayerMottoData_V2*)eventData;
 
-            // Data
-            // ---
-            //    (bz_ApiString)         motto     - The motto of the joining player. This value may ve overwritten to change the motto of a player.
-            //    (bz_BasePlayerRecord)  record    - The player record for the player using the motto.
-            //    (double)               eventTime - The server time the event occurred (in seconds).
+            mottoData->motto = teamMottos[mottoData->record->bzID.c_str()];
         }
         break;
 
@@ -492,11 +488,25 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_PlayerJoinPartEventData_V1* joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
 
-            // Data
-            // ---
-            //    (int)                   playerID  - The player ID that is joining
-            //    (bz_BasePlayerRecord*)  record    - The player record for the joining player
-            //    (double)                eventTime - Time of event.
+            // Only notify a player if they exist, have joined the observer team, and there is a match in progress
+            if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
+            {
+                bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** There is currently %s match in progress, please be respectful. ***",
+                                    ((officialMatch != NULL) ? "an official" : "a fun"));
+            }
+
+            // Only send a URL job if the user is verified
+            if (joinData->record->verified)
+            {
+                // Build the POST data for the URL job
+                std::string teamMotto = "query=teamNameQuery";
+                teamMotto += "&teamPlayers=" + std::string(joinData->record->bzID.c_str());
+
+                bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Getting motto for %s...", joinData->record->callsign.c_str());
+
+                // Send the team update request to the league website
+                bz_addURLJob(LEAGUE_URL.c_str(), this, teamMotto.c_str());
+            }
         }
         break;
 

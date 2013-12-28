@@ -18,12 +18,14 @@ League Overseer
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
@@ -35,13 +37,7 @@ const int REV = 0;
 const int BUILD = 187;
 
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
-#define ASSERT(x)
-{
-    if (!(x)) // If the condition is not true, then send a debug message
-    {
-        bz_debugMessagef(0, "ERROR :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__);
-    }
-}
+#define ASSERT(x) { if (!(x)) { bz_debugMessagef(0, "ERROR :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }}
 
 // A function that will get the player record by their callsign
 static bz_BasePlayerRecord* bz_getPlayerByCallsign (const char* callsign)
@@ -158,12 +154,6 @@ public:
     virtual void URLTimeout (const char* URL, int errorCode);
     virtual void URLError (const char* URL, int errorCode, const char *errorString);
 
-    virtual std::string buildBZIDString (bz_eTeamType team);
-    virtual void loadConfig (const char *cmdLine);
-    virtual void requestTeamName (bz_eTeamType team);
-    virtual void requestTeamName (std::string callsign, std::string bzID);
-    virtual void validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team);
-
     // We will be storing information about the players who participated in a match so we will
     // be storing that information inside a struct
     struct MatchParticipant
@@ -175,7 +165,7 @@ public:
         bz_eTeamType teamColor;
 
         MatchParticipant (std::string _bzID, std::string _callsign, std::string _ipAddress, std::string _teamName, bz_eTeamType _teamColor) :
-            bzID(_bzid),
+            bzID(_bzID),
             callsign(_callsign),
             ipAddress(_ipAddress),
             teamName(_teamName),
@@ -220,6 +210,12 @@ public:
         {}
     };
 
+    virtual std::string buildBZIDString (bz_eTeamType team);
+    virtual void loadConfig (const char *cmdLine);
+    virtual void requestTeamName (bz_eTeamType team);
+    virtual void requestTeamName (std::string callsign, std::string bzID);
+    virtual void validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team);
+
     // All the variables that will be used in the plugin
     bool         ROTATION_LEAGUE, // Whether or not we are watching a league that uses different maps
                  RECORDING;       // Whether or not we are recording a match
@@ -259,13 +255,13 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_eTickEvent);
 
     // Register our custom slash commands
-    bz_registerCustomSlashCommand('cancel', this);
-    bz_registerCustomSlashCommand('finish', this);
-    bz_registerCustomSlashCommand('fm', this);
-    bz_registerCustomSlashCommand('official', this);
-    bz_registerCustomSlashCommand('spawn', this);
-    bz_registerCustomSlashCommand('pause', this);
-    bz_registerCustomSlashCommand('resume', this);
+    bz_registerCustomSlashCommand("cancel", this);
+    bz_registerCustomSlashCommand("finish", this);
+    bz_registerCustomSlashCommand("fm", this);
+    bz_registerCustomSlashCommand("official", this);
+    bz_registerCustomSlashCommand("spawn", this);
+    bz_registerCustomSlashCommand("pause", this);
+    bz_registerCustomSlashCommand("resume", this);
 
     // Set some default values
     MATCH_ROLLCALL = 90;
@@ -324,13 +320,13 @@ void LeagueOverseer::Cleanup (void)
     Flush(); // Clean up all the events
 
     // Clean up our custom slash commands
-    bz_removeCustomSlashCommand('cancel');
-    bz_removeCustomSlashCommand('finish');
-    bz_removeCustomSlashCommand('fm');
-    bz_removeCustomSlashCommand('official');
-    bz_removeCustomSlashCommand('spawn');
-    bz_removeCustomSlashCommand('pause');
-    bz_removeCustomSlashCommand('resume');
+    bz_removeCustomSlashCommand("cancel");
+    bz_removeCustomSlashCommand("finish");
+    bz_removeCustomSlashCommand("fm");
+    bz_removeCustomSlashCommand("official");
+    bz_removeCustomSlashCommand("spawn");
+    bz_removeCustomSlashCommand("pause");
+    bz_removeCustomSlashCommand("resume");
 }
 
 void LeagueOverseer::Event (bz_EventData *eventData)
@@ -402,7 +398,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                             matchToSend += "&duration="    + std::string(bz_urlEncode(matchDuration.c_str()));
                             matchToSend += "&matchTime="   + std::string(bz_urlEncode(matchDate));
                             matchToSend += "&server="      + std::string(bz_urlEncode(bz_getPublicAddr().c_str()));
-                            matchToSend += "&port="        + std::string(bz_urlEncode(bz_getPublicPort().c_str()));
+                            matchToSend += "&port="        + std::string(bz_urlEncode(intToString(bz_getPublicPort()).c_str()));
 
                 // Only add this parameter if it's a rotational league such as OpenLeague
                 if (ROTATION_LEAGUE)
@@ -439,7 +435,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                     sprintf(tempRecordingFileName, "Official-%d%02d%02d-%s-vs-%s-%02d%02d%s.rec",
                         standardTime.year, standardTime.month, standardTime.day,
-                        officialMatch->teamOneName, officialMatch->teamTwoName,
+                        officialMatch->teamOneName.c_str(), officialMatch->teamTwoName.c_str(),
                         standardTime.hour, standardTime.minute, matchCanceled.c_str());
                 }
                 else
@@ -504,7 +500,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // Only send a URL job if the user is verified
             if (joinData->record->verified)
             {
-                requestTeamName(joinData->record->callsign, joinData->record->bzID);
+                requestTeamName(joinData->record->callsign.c_str(), joinData->record->bzID.c_str());
             }
         }
         break;
@@ -579,14 +575,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                         if (bz_getPlayerTeam(playerList->get(i)) != eObservers) //If player is not an observer
                         {
                             MatchParticipant currentPlayer(playerRecord->bzID.c_str(), playerRecord->callsign.c_str(),
-                                                           playerRecord->ipAddress.c_str(), teamMottos[mottoData->record->bzID.c_str()],
+                                                           playerRecord->ipAddress.c_str(), teamMottos[playerRecord->bzID.c_str()],
                                                            playerRecord->team);
 
                             // Check if there is any need to invalidate a roll call from a team
                             validateTeamName(invalidateRollcall, teamOneError, currentPlayer, teamOneMotto, TEAM_ONE);
                             validateTeamName(invalidateRollcall, teamTwoError, currentPlayer, teamTwoMotto, TEAM_TWO);
 
-                            if (currentPlayer.bzid.empty()) // Someone is playing without a BZID, how did this happen?
+                            if (currentPlayer.bzID.empty()) // Someone is playing without a BZID, how did this happen?
                             {
                                 invalidateRollcall = true;
                             }
@@ -712,7 +708,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
         }
-        else if (match || bz_isCountDownActive() || bz_isCountDownInProgress()) //There is already a countdown
+        else if (officialMatch != NULL || bz_isCountDownActive() || bz_isCountDownInProgress()) //There is already a countdown
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
         }
@@ -743,7 +739,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
         }
-        else if (bz_getTeamCount(teamOne) < 2 || bz_getTeamCount(teamTwo) < 2) //An official match cannot be 1v1 or 2v1
+        else if (bz_getTeamCount(TEAM_ONE) < 2 || bz_getTeamCount(TEAM_TWO) < 2) //An official match cannot be 1v1 or 2v1
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You may not have an official match with less than 2 players per team.");
         }
@@ -832,9 +828,9 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                     bz_grantPerm(victim->playerID, "spawn");
                     bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), victim->callsign.c_str());
                 }
-                else if (bz_getPlayerByCallsign(callsignToLookup) != NULL)
+                else if (bz_getPlayerByCallsign(callsignToLookup.c_str()) != NULL)
                 {
-                    std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByCallsign(callsignToLookup));
+                    std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByCallsign(callsignToLookup.c_str()));
 
                     bz_grantPerm(victim->playerID, "spawn");
                     bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), victim->callsign.c_str());
@@ -859,12 +855,12 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 }
 
 // Everything went fine with the report
-void LeagueOverSeer::URLDone(const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/)
+void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/)
 {
     std::string siteData = (const char*)(data); // Convert the data to a std::string
     bz_debugMessagef(DEBUG_LEVEL, "URL Job Successful! Data returned: %s", siteData.c_str());
 
-    if (/* check for proper JSON */)
+    if (true/* check for proper JSON */)
     {
         // TODO: Handle JSON stuff
     }
@@ -876,13 +872,13 @@ void LeagueOverSeer::URLDone(const char* /*URL*/, const void* data, unsigned int
 }
 
 // The league website is down or is not responding, the request timed out
-void LeagueOverSeer::URLTimeout(const char* /*URL*/, int /*errorCode*/)
+void LeagueOverseer::URLTimeout(const char* /*URL*/, int /*errorCode*/)
 {
     bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: The request to the league site has timed out.");
 }
 
 // The server owner must have set up the URLs wrong because this shouldn't happen
-void LeagueOverSeer::URLError(const char* /*URL*/, int errorCode, const char *errorString)
+void LeagueOverseer::URLError(const char* /*URL*/, int errorCode, const char *errorString)
 {
     bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Match report failed with the following error:");
     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Error code: %i - %s", errorCode, errorString);
@@ -890,7 +886,7 @@ void LeagueOverSeer::URLError(const char* /*URL*/, int errorCode, const char *er
 
 // We are building a string of BZIDs from the people who matched in the match that just occurred
 // and we're also writing the player information to the server logs while we're at it. Efficiency!
-std::string LeagueOverSeer::buildBZIDString (bz_eTeamType team)
+std::string LeagueOverseer::buildBZIDString (bz_eTeamType team)
 {
     // The string of BZIDs separated by commas
     std::string teamString;
@@ -905,11 +901,11 @@ std::string LeagueOverSeer::buildBZIDString (bz_eTeamType team)
         if (officialMatch->matchParticipants.at(i).teamColor == team)
         {
             // Add the BZID of the player to string with a comma at the end
-            teamString += std::string(bz_urlEncode(officialMatch->matchParticipants.at(i).bzid.c_str())) + ",";
+            teamString += std::string(bz_urlEncode(officialMatch->matchParticipants.at(i).bzID.c_str())) + ",";
 
             // Output their information to the server logs
             bz_debugMessagef(0, "Match Data ::  %s [%s] (%s)", officialMatch->matchParticipants.at(i).callsign.c_str(),
-                                                               officialMatch->matchParticipants.at(i).bzid.c_str(),
+                                                               officialMatch->matchParticipants.at(i).bzID.c_str(),
                                                                officialMatch->matchParticipants.at(i).ipAddress.c_str());
         }
     }
@@ -921,7 +917,7 @@ std::string LeagueOverSeer::buildBZIDString (bz_eTeamType team)
 }
 
 // Load the plugin configuration file
-void LeagueOverSeer::loadConfig(const char* cmdLine)
+void LeagueOverseer::loadConfig(const char* cmdLine)
 {
     PluginConfig config = PluginConfig(cmdLine);
     std::string section = "leagueOverSeer";
@@ -932,7 +928,7 @@ void LeagueOverSeer::loadConfig(const char* cmdLine)
 
     // Extract all the data in the configuration file and assign it to plugin variables
     ROTATION_LEAGUE = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
-    mapchangePath   = config.item(section, "MAPCHANGE_PATH");
+    MAPCHANGE_PATH  = config.item(section, "MAPCHANGE_PATH");
     LEAGUE_URL      = config.item(section, "LEAGUE_OVER_SEER_URL");
     DEBUG_LEVEL     = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
 
@@ -950,7 +946,7 @@ void LeagueOverSeer::loadConfig(const char* cmdLine)
 }
 
 // Request a team name update for all the members of a team
-void LeagueOverSeer::requestTeamName (bz_eTeamType team)
+void LeagueOverseer::requestTeamName (bz_eTeamType team)
 {
     std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
@@ -960,13 +956,13 @@ void LeagueOverSeer::requestTeamName (bz_eTeamType team)
 
         if (playerRecord->team == team) // Only request a new team name for the players of a certain team
         {
-            requestTeamName(playerRecord->callsign, playerRecord->bzID);
+            requestTeamName(playerRecord->callsign.c_str(), playerRecord->bzID.c_str());
         }
     }
 }
 
 // Because there will be different times where we request a team name motto, let's make into a function
-void LeagueOverSeer::requestTeamName (std::string callsign, std::string bzID)
+void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 {
     // Build the POST data for the URL job
     std::string teamMotto = "query=teamNameQuery";
@@ -979,7 +975,7 @@ void LeagueOverSeer::requestTeamName (std::string callsign, std::string bzID)
 }
 
 // Check if there is any need to invalidate a roll call team
-void LeagueOverSeer::validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team)
+void LeagueOverseer::validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team)
 {
     // Check if the player is a part of team one
     if (currentPlayer.teamColor == team)

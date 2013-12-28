@@ -160,6 +160,7 @@ public:
 
     virtual std::string buildBZIDString (bz_eTeamType team);
     virtual void loadConfig (const char *cmdLine);
+    virtual void requestTeamName (bz_eTeamType team);
     virtual void requestTeamName (std::string callsign, std::string bzID);
 
     // We will be storing information about the players who participated in a match so we will
@@ -626,6 +627,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     {
                         bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Invalid player found on field at %i:%i.", (int)(MATCH_ROLLCALL/60), (int)(fmod(MATCH_ROLLCALL,60.0)));
 
+                        // There was an error with one of the members of either team, so request a team name update for all of
+                        // the team members to try to fix any inconsistencies of different team names
+                        if (teamOneError) { requestTeamName(TEAM_ONE); }
+                        if (teamTwoError) { requestTeamName(TEAM_TWO); }
+
                         // Delay the next roll call by 30 seconds
                         MATCH_ROLLCALL += 30;
 
@@ -710,6 +716,22 @@ std::string leagueOverSeer::buildBZIDString (bz_eTeamType team)
     // add an extra comma at the end. If we leave it, it will cause issues with the PHP counterpart
     // which tokenizes the BZIDs by commas and we don't want an empty BZID
     return teamString.erase(teamString.size() - 1);
+}
+
+// Request a team name update for all the members of a team
+void leagueOverSeer::requestTeamName (bz_eTeamType team)
+{
+    std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+
+    for (unsigned int i = 0; i < playerList->size(); i++)
+    {
+        std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
+
+        if (playerRecord->team == team) // Only request a new team name for the players of a certain team
+        {
+            requestTeamName(playerRecord->callsign, playerRecord->bzID);
+        }
+    }
 }
 
 // Because there will be different times where we request a team name motto, let's make into a function

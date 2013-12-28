@@ -22,6 +22,7 @@ League Overseer
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <json/json.h>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -128,11 +129,7 @@ static bool isValidPlayerID (int playerID)
 // Convert a string representation of a boolean to a boolean
 static bool toBool (std::string str)
 {
-    std::transform(str.begin(), str.end(), str.begin(), ::tolower);
-    std::istringstream is(str);
-    bool b;
-    is >> std::boolalpha >> b;
-    return b;
+    return !str.empty() && (strcasecmp(str.c_str (), "true") == 0 || atoi(str.c_str ()) != 0);
 }
 
 class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
@@ -565,8 +562,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     officialMatch->matchParticipants.empty())
                 {
                     std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
-                    bool invalidateRollcall = teamOneError = teamTwoError = false;
-                    std::string teamOneMotto = teamTwoMotto = "";
+                    bool invalidateRollcall, teamOneError, teamTwoError;
+                    std::string teamOneMotto, teamTwoMotto;
+
+                    invalidateRollcall = teamOneError = teamTwoError = false;
+                    teamOneMotto = teamTwoMotto = "";
 
                     for (unsigned int i = 0; i < playerList->size(); i++)
                     {

@@ -48,6 +48,24 @@ League Over Seer Plug-in
         //   Duc League: array(15 => .75, 20 => 1, 30 => 1.5)
         $DURATION = array(20 => 2/3, 30 => 1);
 
+///  ========================================= Advanced Debug Options =================================================
+
+        // Unless you know what you are doing, do NOT change any of these variables as they will disable any security
+        // checks that are put in place. I'm looking at you brad, don't change these values.
+        //
+        // Really. Do. Not. Change. These. Values.
+        //
+
+        // This option should remain false on any production server. When this option is set to true, it will ignore
+        // official servers and accept match reports from any IP at all therefore allowing abuse. This option only
+        // exists for debugging the script.
+        $DISABLE_IP_CHECK = false;
+
+        // This variable should remain as $_POST on any production server. This option only exists as a method to debug
+        // the queries via a browser using $_GET, which allows you to write the URL with the desired parameters. This
+        // option may allow for heavy abuse and a lot of errors if changed from the default value.
+        $REPORT_METHOD = $_POST;
+
 ///
 ///  =========================================== Configuration End ====================================================
 ///
@@ -60,7 +78,7 @@ League Over Seer Plug-in
 
 // To prevent abuse of the automated system, we need to make sure that the IP making the request is one of the IPs we
 // allowed in the $ALLOWED_IPS array.
-if (!in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS))
+if (!$DISABLE_IP_CHECK && !in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS))
 {
     // If server making the request isn't an official server, then log the unauthorized attempt and kill the script
 
@@ -75,28 +93,28 @@ $dbc = $site->connect_to_db();
 
 // After the first major rewrite of the league overseer plugin, the API was introduced in order to provided backwards
 // compatibility for servers that have not updated to the latest version of the plugin.
-$API_VERSION = (isset($_POST['apiVersion'])) ? $_POST['apiVersion'] : 0;
+$API_VERSION = (isset($REPORT_METHOD['apiVersion'])) ? $REPORT_METHOD['apiVersion'] : 0;
 
 // The server would like to report a match
-if ($_POST['query'] == 'reportMatch')
+if ($REPORT_METHOD['query'] == 'reportMatch')
 {
     writeToDebug("Match data received from " . $_SERVER['REMOTE_ADDR']);
     writeToDebug("--------------------------------------");
 
     // Clean up user input and store it in variables [I'm using whatever bz-owl is using, sqlSafeString()]
-    $teamOneWins    = sqlSafeString($_POST['teamOneWins']);
-    $teamTwoWins    = sqlSafeString($_POST['teamTwoWins']);
-    $timestamp      = sqlSafeString($_POST['matchTime']);
-    $duration       = sqlSafeString($_POST['duration']);
-    $teamOnePlayers = sqlSafeString($_POST['teamOnePlayers']);
-    $teamTwoPlayers = sqlSafeString($_POST['teamTwoPlayers']);
+    $teamOneWins    = sqlSafeString($REPORT_METHOD['teamOneWins']);
+    $teamTwoWins    = sqlSafeString($REPORT_METHOD['teamTwoWins']);
+    $timestamp      = sqlSafeString($REPORT_METHOD['matchTime']);
+    $duration       = sqlSafeString($REPORT_METHOD['duration']);
+    $teamOnePlayers = sqlSafeString($REPORT_METHOD['teamOnePlayers']);
+    $teamTwoPlayers = sqlSafeString($REPORT_METHOD['teamTwoPlayers']);
 
     // These variables were introduced in API Version 1 so we need to set default values for servers still using the
     // old version of the league overseer plugin.
-    $mapPlayed      = (isset($_POST['mapPlayed'])) ? sqlSafeString($_POST['mapPlayed']) : null;
-    $server         = ($API_VERSION >= 1) ? $_POST['server'] : null;
-    $port           = ($API_VERSION >= 1) ? $_POST['port'] : null;
-    $replayFile     = ($API_VERSION >= 1) ? $_POST['replayFile'] : null;
+    $mapPlayed      = (isset($REPORT_METHOD['mapPlayed'])) ? sqlSafeString($REPORT_METHOD['mapPlayed']) : null;
+    $server         = ($API_VERSION >= 1) ? $REPORT_METHOD['server'] : null;
+    $port           = ($API_VERSION >= 1) ? $REPORT_METHOD['port'] : null;
+    $replayFile     = ($API_VERSION >= 1) ? $REPORT_METHOD['replayFile'] : null;
 
     // This new information was introduced when the API was introduced so at version 1 so we can only handle it if our
     // API version is greater than 1
@@ -237,9 +255,9 @@ if ($_POST['query'] == 'reportMatch')
     require_once ('CMS/maintenance/index.php');
     ob_end_clean();
 }
-else if ($_POST['query'] == 'teamNameQuery') // We would like to get the team name for a user
+else if ($REPORT_METHOD['query'] == 'teamNameQuery') // We would like to get the team name for a user
 {
-    $player = sqlSafeString($_POST['teamPlayers']);
+    $player = sqlSafeString($REPORT_METHOD['teamPlayers']);
     $teamID = getTeamID($player);
 
     // We will only get -1 if a player did not belong to a team, so notify BZFS that they are teamless by sending it a
@@ -269,7 +287,7 @@ else if ($_POST['query'] == 'teamNameQuery') // We would like to get the team na
         echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $player . ", \"" . preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID))) . "\")";
     }
 }
-else if ($_POST['query'] == 'teamDump') // We are starting a server and need a database dump of all the team names
+else if ($REPORT_METHOD['query'] == 'teamDump') // We are starting a server and need a database dump of all the team names
 {
     // This option has been deprecated due to the heavy load on both BZFS and the web server. Because players join the
     // servers quite a lot, their initial join will be more than enough to get a team name saved. The new plugin will

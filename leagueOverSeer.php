@@ -42,17 +42,18 @@
         die('Error: 403 - Forbidden');
     }
 
-    //Create an object to access the database
+    // Create an object to access the database
     require_once 'CMS/siteinfo.php';
     $site = new siteinfo();
     $dbc = $site->connect_to_db();
+    $apiVersion = (isset($_POST['apiVersion'])) ? $_POST['apiVersion'] : 0;
 
-    if ($_POST['query'] == 'reportMatch') //We'll be reporting a match
+    if ($_POST['query'] == 'reportMatch') // We'll be reporting a match
     {
         writeToDebug("Match data received from " . $_SERVER['REMOTE_ADDR']);
         writeToDebug("--------------------------------------");
 
-        //Clean up user input [I'm using whatever ts is using, sqlSafeString()]
+        // Clean up user input [I'm using whatever ts is using, sqlSafeString()]
         $teamOneWins    = sqlSafeString($_POST['teamOneWins']);
         $teamTwoWins    = sqlSafeString($_POST['teamTwoWins']);
         $timestamp      = sqlSafeString($_POST['matchTime']);
@@ -60,7 +61,28 @@
         $teamOnePlayers = sqlSafeString($_POST['teamOnePlayers']);
         $teamTwoPlayers = sqlSafeString($_POST['teamTwoPlayers']);
 
-        //Check which team won
+        // Introduced in API Version 1
+        $mapPlayed      = (isset($_POST['mapPlayed'])) ? sqlSafeString($_POST['mapPlayed']) : null;
+        $server         = ($apiVersion >= 1) ? $_POST['server'] : null;
+        $port           = ($apiVersion >= 1) ? $_POST['port'] : null;
+        $replayFile     = ($apiVersion >= 1) ? $_POST['replayFile'] : null;
+
+        // This new information was introduced when the API was introduced so at version 1
+        // so we can only handle it if our API version is greater than 1
+        if ($apiVersion >= 1)
+        {
+            writeToDebug("Server          : " . $server);
+            writeToDebug("Port            : " . $port);
+            writeToDebug("Replay File     : " . $replayFile);
+        }
+
+        // If we're using a rotational league, then we'll have different maps so display what map was used
+        if ($mapPlayed != null)
+        {
+            writeToDebug("Map Played      : " . $mapPlayed);
+        }
+
+        // Check which team won
         if ($teamOneWins > $teamTwoWins)
         {
             $winningTeamID      = getTeamID($teamOnePlayers);
@@ -71,7 +93,7 @@
             $losingTeamPoints   = $teamTwoWins;
             $losingTeamPlayers  = $teamTwoPlayers;
         }
-        else //Team two won or it was a draw
+        else // Team two won or it was a draw
         {
             $winningTeamID      = getTeamID($teamTwoPlayers);
             $winningTeamPoints  = $teamTwoWins;
@@ -96,7 +118,7 @@
             die();
         }
 
-        //These variables aren't score dependant since the parameter has already been set
+        // These variables aren't score dependant since the parameter has already been set
         $winningTeamName    = getTeamName($winningTeamID);
         $winningTeamELO     = getTeamELO($winningTeamID);
         $losingTeamName     = getTeamName($losingTeamID);
@@ -142,7 +164,7 @@
         else
             $pointsForElo = 1;
 
-        //Do the math to figure out the point difference
+        // Do the math to figure out the point difference
         $eloDifference = floor($eloFraction * 50 * ($pointsForElo - (1 / (1 + pow(10, ($losingTeamELO - $winningTeamELO)/400)))));
         writeToDebug("ELO Difference  : +/- " . $eloDifference);
 
@@ -179,28 +201,60 @@
         writeToDebug("--------------------------------------");
         writeToDebug("End of Match Report");
 
-        //Output the match stats that will be sent back to BZFS
+        // Output the match stats that will be sent back to BZFS
         echo "(+/- " . $eloDifference . ") " . $winningTeamName . " [" . $winningTeamPoints . "] vs [" . $losingTeamPoints . "] " . $losingTeamName;
 
-        //Have the league site perform maintainence as it sees fit
+        // Have the league site perform maintainence as it sees fit
         ob_start();
         require_once ('CMS/maintenance/index.php');
         ob_end_clean();
     }
-    else if ($_POST['query'] == 'teamNameQuery') //We would like to get the team name for a user
+    else if ($_POST['query'] == 'teamNameQuery') // We would like to get the team name for a user
     {
         $player = sqlSafeString($_POST['teamPlayers']);
         $teamID = getTeamID($player);
 
-        if ($teamID < 0) //A player that didn't belong to the team ruined the match
+        if ($teamID < 0) // A player that didn't belong to the team ruined the match
         {
-            echo json_encode(array("bzid" => "$player", "team" => ""));
+            if ($apiVersion == 1)
+            {
+                echo json_encode(array("bzid" => "$player", "team" => ""));
+            }
+            else
+            {
+                echo "DELETE FROM players WHERE bzid = " . $player;
+            }
+
             die();
         }
 
-        echo json_encode(array("bzid" => "$player", "team" => preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID)))));
+        if ($apiVersion == 1)
+        {
+            echo json_encode(array("bzid" => "$player", "team" => preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID)))));
+        }
+        else
+        {
+            echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $player . ", \"" . preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID))) . "\")";
+        }
     }
-    else //Oh noes! Someone is trying to h4x0r us!
+    else if ($_POST['query'] == 'teamDump') // We are starting a server and need a database dump of all the team names
+    {
+        // We'll be deprecating this functionality after API version 1
+        if ($apiVersion >= 1)
+        {
+            echo "This functionality has been deprecated - You should not be seeing this message with the official release of League Overseer.";
+            die();
+        }
+
+        $getTeams = "SELECT players.external_id, teams.name FROM players, teams WHERE players.teamid = teams.id AND players.external_id != ''";
+        $getTeamsQuery = @$site->execute_query('players, teams', $getTeams);
+
+        while ($entry = mysql_fetch_array($getTeamsQuery)) //For each player, we'll output a SQLite query for BZFS to execute
+        {
+            echo "INSERT OR REPLACE INTO players(bzid, team) VALUES (" . $entry[0] . ",\"" . preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[1])) . "\");";
+        }
+    }
+    else // Oh noes! Someone is trying to h4x0r us!
     {
         echo "Error 404 - Page not found";
     }

@@ -38,6 +38,9 @@ const int MINOR = 1;
 const int REV = 0;
 const int BUILD = 187;
 
+// The API number used to notify the PHP counterpart about how to handle the data
+const int API_VERSION = 1;
+
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
 #define ASSERT(x) { if (!(x)) { bz_debugMessagef(0, "ERROR :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }}
 
@@ -347,6 +350,43 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // Get the current standard UTC time
             bz_Time standardTime;
             bz_getUTCtime(&standardTime);
+            std::string recordingFileName;
+
+            // Only save the recording buffer if we actually started recording when the match started
+            if (RECORDING)
+            {
+                // We'll be formatting the file name, so create a variable to store it
+                char tempRecordingFileName[512];
+
+                // Let's get started with formatting
+                if (officialMatch != NULL)
+                {
+                    // If the official match was finished, then mark it as canceled
+                    std::string matchCanceled = (officialMatch->canceled) ? "-Canceled" : "";
+
+                    sprintf(tempRecordingFileName, "Official-%d%02d%02d-%s-vs-%s-%02d%02d%s.rec",
+                        standardTime.year, standardTime.month, standardTime.day,
+                        officialMatch->teamOneName.c_str(), officialMatch->teamTwoName.c_str(),
+                        standardTime.hour, standardTime.minute, matchCanceled.c_str());
+                }
+                else
+                {
+                    sprintf(tempRecordingFileName, "Fun_Match-%d%02d%02d-%02d%02d.rec",
+                        standardTime.year, standardTime.month, standardTime.day,
+                        standardTime.hour, standardTime.minute);
+                }
+
+                // Move the char[] into a string to handle it better
+                recordingFileName = tempRecordingFileName;
+
+                // Save the recording buffer and stop recording
+                bz_saveRecBuf(recordingFileName.c_str(), 0);
+                bz_stopRecBuf();
+
+                // We're no longer recording, so set the boolean and announce to players that the file has been saved
+                RECORDING = false;
+                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Match saved as: %s", recordingFileName.c_str());
+            }
 
             if (officialMatch == NULL)
             {
@@ -391,12 +431,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 // Start building POST data to be sent to the league website
                 std::string matchToSend = "query=reportMatch";
+                            matchToSend += "&apiVersion="  + std::string(bz_urlEncode(intToString(API_VERSION)));
                             matchToSend += "&teamOneWins=" + std::string(bz_urlEncode(teamOnePointsFinal.c_str()));
                             matchToSend += "&teamTwoWins=" + std::string(bz_urlEncode(teamTwoPointsFinal.c_str()));
                             matchToSend += "&duration="    + std::string(bz_urlEncode(matchDuration.c_str()));
                             matchToSend += "&matchTime="   + std::string(bz_urlEncode(matchDate));
                             matchToSend += "&server="      + std::string(bz_urlEncode(bz_getPublicAddr().c_str()));
                             matchToSend += "&port="        + std::string(bz_urlEncode(intToString(bz_getPublicPort()).c_str()));
+                            matchToSend += "&replayFile="  + std::string(bz_urlEncode(recordingFileName.c_str()));
 
                 // Only add this parameter if it's a rotational league such as OpenLeague
                 if (ROTATION_LEAGUE)
@@ -416,43 +458,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 //Send the match data to the league website
                 bz_addURLJob(LEAGUE_URL.c_str(), this, matchToSend.c_str());
-            }
-
-            // Only save the recording buffer if we actually started recording when the match started
-            if (RECORDING)
-            {
-                // We'll be formatting the file name, so create a variable to store it
-                char tempRecordingFileName[512];
-                std::string recordingFileName;
-
-                // Let's get started with formatting
-                if (officialMatch != NULL)
-                {
-                    // If the official match was finished, then mark it as canceled
-                    std::string matchCanceled = (officialMatch->canceled) ? "-Canceled" : "";
-
-                    sprintf(tempRecordingFileName, "Official-%d%02d%02d-%s-vs-%s-%02d%02d%s.rec",
-                        standardTime.year, standardTime.month, standardTime.day,
-                        officialMatch->teamOneName.c_str(), officialMatch->teamTwoName.c_str(),
-                        standardTime.hour, standardTime.minute, matchCanceled.c_str());
-                }
-                else
-                {
-                    sprintf(tempRecordingFileName, "Fun_Match-%d%02d%02d-%02d%02d.rec",
-                        standardTime.year, standardTime.month, standardTime.day,
-                        standardTime.hour, standardTime.minute);
-                }
-
-                // Move the char[] into a string to handle it better
-                recordingFileName = tempRecordingFileName;
-
-                // Save the recording buffer and stop recording
-                bz_saveRecBuf(recordingFileName.c_str(), 0);
-                bz_stopRecBuf();
-
-                // We're no longer recording, so set the boolean and announce to players that the file has been saved
-                RECORDING = false;
-                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Match saved as: %s", recordingFileName.c_str());
             }
 
             // We're done with the struct, so make it NULL until the next official match

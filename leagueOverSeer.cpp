@@ -24,6 +24,7 @@ League Overseer
 #include <iomanip>
 #include <json/json.h>
 #include <memory>
+#include <regex>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -872,11 +873,38 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/)
 {
     std::string siteData = (const char*)(data); // Convert the data to a std::string
+    std::regex teamNameRegex ("\\{\"bzid\":\"\\d+\",\"team\":\"[\\w\\s]+\"\\}"); // Let's store this regex since that's how we'll get our team name data
+
     bz_debugMessagef(DEBUG_LEVEL, "URL Job Successful! Data returned: %s", siteData.c_str());
 
-    if (true/* check for proper JSON */)
+    if (std::regex_match(siteData, teamNameRegex))
     {
-        // TODO: Handle JSON stuff
+        json_object* jobj = json_tokener_parse(siteData.c_str());
+        enum json_type type;
+        std::string urlJobBZID = "", urlJobTeamName = "";
+
+        json_object_object_foreach(jobj, key, val)
+        {
+            type = json_object_get_type(val);
+
+            switch (type)
+            {
+                case json_type_string:
+                {
+                    if (key == std::string("bzid").c_str())
+                    {
+                        urlJobBZID = json_object_get_string(val);
+                    }
+                    else if (key == std::string("team").c_str())
+                    {
+                        urlJobTeamName = json_object_get_string(val);
+                    }
+                }
+                break;
+
+                default: break;
+            }
+        }
     }
     else if (siteData.find("<html>") == std::string::npos)
     {

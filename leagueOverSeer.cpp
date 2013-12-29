@@ -24,7 +24,6 @@ League Overseer
 #include <iomanip>
 #include <json/json.h>
 #include <memory>
-#include <regex>
 #include <sstream>
 #include <string>
 #include <vector>

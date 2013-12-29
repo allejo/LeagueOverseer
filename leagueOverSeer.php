@@ -1,7 +1,7 @@
 <?php
 /*
 League Over Seer Plug-in
-    Copyright (C) 2013 Vladimir Jimenez & Ned Anderson
+    Copyright (C) 2013-2014 Vladimir Jimenez & Ned Anderson
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

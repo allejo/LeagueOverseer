@@ -735,7 +735,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             }
             else
             {
-                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds.");
+                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds or less than 5.");
                 bz_startCountdown(10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
             }
         }
@@ -774,7 +774,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             }
             else
             {
-                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds.");
+                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds or less than 5.");
                 bz_startCountdown(10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
             }
         }
@@ -872,25 +872,34 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 // Everything went fine with the report
 void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/)
 {
-    std::string siteData = (const char*)(data); // Convert the data to a std::string
-    std::regex teamNameRegex ("\\{\"bzid\":\"\\d+\",\"team\":\"[\\w\\s]+\"\\}"); // Let's store this regex since that's how we'll get our team name data
+    // Convert the data we get from the URL job to a std::string
+    std::string siteData = (const char*)(data);
+
+    // Let's store this regex since that's how we'll get our team name data
+    std::regex teamNameRegex ("\\{\"bzid\":\"\\d+\",\"team\":\"[\\w\\s]+\"\\}");
 
     bz_debugMessagef(DEBUG_LEVEL, "URL Job Successful! Data returned: %s", siteData.c_str());
 
+    // The data returned matches an expected regex syntax meaning we got team name information
     if (std::regex_match(siteData, teamNameRegex))
     {
         json_object* jobj = json_tokener_parse(siteData.c_str());
         enum json_type type;
         std::string urlJobBZID = "", urlJobTeamName = "";
 
+        // Because our JSON information has a BZID and a team name, we need to loop through them to get the information
         json_object_object_foreach(jobj, key, val)
         {
+            // Get the type of object, we need to make sure we only handle strings because that's all we should be expecting
             type = json_object_get_type(val);
 
+            // There are multiple JSON types so let's switch through them
             switch (type)
             {
+                // We've found a JSON string, which is what we're looking for, so it's perfect!
                 case json_type_string:
                 {
+                    // Store the respective information in other variables because we aren't done looping
                     if (key == std::string("bzid").c_str())
                     {
                         urlJobBZID = json_object_get_string(val);
@@ -904,6 +913,12 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
 
                 default: break;
             }
+        }
+
+        // We have both a BZID and a team name so let's update our team motto map
+        if (urlJobBZID != "" && urlJobTeamName != "")
+        {
+            teamMottos[urlJobTeamName] = urlJobTeamName;
         }
     }
     else if (siteData.find("<html>") == std::string::npos)
@@ -974,15 +989,18 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     LEAGUE_URL      = config.item(section, "LEAGUE_OVER_SEER_URL");
     DEBUG_LEVEL     = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
 
+    // Sanity check for our debug level, if it doesn't pass the check then set the debug level to 1
+    if (DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0)
+    {
+        bz_debugMessage(0, "*** DEBUG :: League Over Seer :: Invalid debug level in the configuration file. ***");
+        bz_debugMessage(0, "*** DEBUG :: League Over Seer :: Debug level set to the default: 1. ***");
+        DEBUG_LEVEL = 1;
+    }
+
     // Check for errors in the configuration data. If there is an error, shut down the server
     if (strcmp(LEAGUE_URL.c_str(), "") == 0)
     {
         bz_debugMessage(0, "*** DEBUG :: League Over Seer :: No URLs were choosen to report matches or query teams. ***");
-        bz_shutdown();
-    }
-    if (DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0)
-    {
-        bz_debugMessage(0, "*** DEBUG :: League Over Seer :: Invalid debug level in the configuration file. ***");
         bz_shutdown();
     }
 }

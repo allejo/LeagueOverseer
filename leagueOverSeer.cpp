@@ -874,19 +874,25 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
 }
 
-// Everything went fine with the report
+// We got a response from one of our URL jobs
 void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/)
 {
     // Convert the data we get from the URL job to a std::string
     std::string siteData = (const char*)(data);
-
-    // Let's store this regex since that's how we'll get our team name data
-    std::regex teamNameRegex ("\\{\"bzid\":\"\\d+\",\"team\":\"[\\w\\s]+\"\\}");
-
     bz_debugMessagef(DEBUG_LEVEL, "URL Job Successful! Data returned: %s", siteData.c_str());
 
-    // The data returned matches an expected regex syntax meaning we got team name information
-    if (std::regex_match(siteData, teamNameRegex))
+    /*
+        For whenever <regex> gets pushed out in the new version of GCC...
+
+        // Let's store this regex since that's how we'll get our team name data
+        std::regex teamNameRegex ("\\{\"bzid\":\"\\d+\",\"team\":\"[\\w\\s]+\"\\}");
+
+        // The data returned matches an expected regex syntax meaning we got team name information
+        if (std::regex_match(siteData, teamNameRegex))
+    */
+
+    // The returned data starts with a '{' and ends with a '}' so chances are it's JSON data
+    if (siteData.at(0) == '{' && siteData.at(siteData.length() - 1) == '}')
     {
         json_object* jobj = json_tokener_parse(siteData.c_str());
         enum json_type type;
@@ -1030,7 +1036,7 @@ void LeagueOverseer::requestTeamName (bz_eTeamType team)
 void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 {
     // Build the POST data for the URL job
-    std::string teamMotto = "query=teamNameQuery";
+    std::string teamMotto = "query=teamNameQuery&apiVersion=1";
     teamMotto += "&teamPlayers=" + std::string(bzID.c_str());
 
     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Over Seer :: Getting motto for %s...", callsign.c_str());

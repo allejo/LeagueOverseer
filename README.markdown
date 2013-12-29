@@ -4,16 +4,16 @@ This is a BZFlag plug-in that allows official league servers to communicate with
 
 ## Authors
 
-Vlad Jimenez (allejo)  
+Vlad Jimenez (allejo)<br>
 Ned Anderson (mdskpr)
 
 ## Thanks to
 
-* [alezakos][1]
-* [apeman][2]
-* [blast][3]
-* [BulletCatcher][4]
-* [JeffM][5]
+* <a href="https://github.com/kongr45gpen" target="_blank">alezakos</a>
+* <a href="https://github.com/achoopic" target="_blank">apeman</a>
+* <a href="https://github.com/blast007" target="_blank">blast</a>
+* <a href="https://github.com/JMakey" target="_blank">BulletCatcher</a>
+* <a href="https://github.com/JeffM2501" target="_blank">JeffM</a>
 * ... and all the beta testers
 
 ## Compiling
@@ -24,39 +24,40 @@ Ned Anderson (mdskpr)
 * C++11
 
 ### How to Compile
-1. Check out the BZFlag source code:  
+1. Check out the BZFlag source code:<br>
 ```svn co svn://svn.code.sf.net/p/bzflag/code/trunk/bzflag```
-2. Go into the newly checked out source code and then the plugins directory.  
+2. Go into the newly checked out source code and then the plugins directory<br>
 ```cd plugins```
-3. Create a plugin in the source:  
+3. Create a plugin in the source:<br>
 ```sh newplug.sh leagueOverSeer```
-4. Delete the newly created leagueOverSeer directory.  
+4. Delete the newly created leagueOverSeer directory<br>
 ```rm -rf leagueOverSeer```
-5. Run a git clone of this repository from within the plugins/ directory. This should have created a new leagueOverSeer directory within the plugins directory.  
+5. Run a git clone of this repository from within the plugins/ directory. This should have created a new leagueOverSeer directory within the plugins directory.<br>
 ```git clone https://github.com/allejo/leagueOverSeer.git```
-6. Instruct the build system to generate a Makefile and then compile and install the plugin:  
+6. Instruct the build system to generate a Makefile and then compile and install the plugin:<br>
 ```./autogen.sh; ./configure; make; make install;```
 
 ### Updating the Plugin
 1. Go into the leagueOverSeer folder located in your plugins folder.
-2. Pull the changes from Git.  
+2. Pull the changes from Git.<br>
 ```git pull origin master```
-3. Compile the changes.  
+3. Compile the changes.<br>
 ```make; make install;```
 
 ## BZFS Details
 ### Slash Commands
-
-    /cancel
-    /finish
-    /fm
-    /official
-    /spawn
-    /pause
-    /resume
+<pre>
+/cancel
+/finish
+/fm
+/official
+/spawn
+/pause
+/resume
+</pre>
 
 ### Parameters
-    /path/to/leagueOverSeer.so,/path/to/leagueOverSeer.cfg
+<pre>/path/to/leagueOverSeer.so,/path/to/leagueOverSeer.cfg</pre>
 
 ### Redundant Permissions
 
@@ -66,51 +67,37 @@ With this plugin loaded, there is no need for /countdown or /gameover and it is 
 
 ROTATIONAL_LEAGUE
 
-* Default: *false*
+* Default: <em>false</em>
 * Description:  If a league uses different maps for its matches (such as Open League) then make sure that this value is set to 'true' and if the league is GU or Ducati, then set the value to 'false'
 
 MAPCHANGE_PATH
 
-* Default: *N/A*
+* Default: <em>N/A</em>
 * Description: If this is a rotational league, then be sure to change the path to the mapchange.out file because that is where the name of the map file is stored. Whatever is located in this file is what will be submitted as the map played. If this is not a rotational, then this variable can be left with the current value or commented out.
 
 SQLITE_DB
 
-* Default: *N/A*
+* Default: <em>N/A</em>
 * Description: This is the SQLite database that will be used to store all the team names according to BZID
 
 LEAGUE_OVER_SEER_URL
 
-* Default: *N/A*
+* Default: <em>N/A</em>
 * Description: The URL of the main leagueOverSeer PHP script
 
 DEBUG_LEVEL
 
-* Default: *1*
+* Default: <em>1</em>
 * Description: The debug level that will be used by the plugin to report some information on who started a match, who canceled a match, what teams played, etc
 
 ## Web Hosting Details
-If you are hosting a league website using the [bz-owl][6] project, make sure you follow these requirements:
+If you are hosting a league website using the <a href="https://code.google.com/p/bz-owl/" target="_blank">bz-owl</a> project, make sure you follow these requirements:
 
 1. Upload leagueOverSeer.php to the root of your league website directory.
 2. Add the IPs of the official match servers to the $ips array located on line 26 of leagueOverSeer.php. This is a precaution so only official match servers can report and access data.
 3. Set $autoReportID on line 28 to the user ID of the person who will be reporting the matches. For instance, you may want to create an 'autoreport' account on the league website and use that ID.
-4. If you would like for the report handler to output match information received to a file, leave $keepLog (line 29) set to *true* and set the file location with the $pathToLogFile variable on line 30. If you do not wish to log, set $keepLog to false and leave $pathToLogFile as is.
+4. If you would like for the report handler to output match information received to a file, leave $keepLog (line 29) set to <em>true</em> and set the file location with the $pathToLogFile variable on line 30. If you do not wish to log, set $keepLog to false and leave $pathToLogFile as is.
 5. Since all leagues have different scoring systems, lines 124-137 have GU and Duc points for the ELO fractions. Uncomment and comment which fractions you'd use respectively. By default GU's ```2/3*ELO``` for 20 minute matches and ```1*ELO``` for 30 minute matches is set.
 
 ## License
-[GNU General Public License 3.0][7]
-
-## Appendix
-
-The code for this plug-in can be found both on [GitHub][8] and [BitBucket][9] in order to satisfy any preferences a person may have and to have a backup in the case one service would have downtime; both services are synced and have the same code. GitHub is the official code repository so please direct all issues and pull requests there; anything submitted to BitBucket will be ignored.
-
-[1]:https://github.com/kongr45gpen
-[2]:https://github.com/achoopic
-[3]:https://github.com/blast007
-[4]:https://github.com/JMakey
-[5]:https://github.com/JeffM2501
-[6]:https://code.google.com/p/bz-owl/
-[7]:https://github.com/allejo/leagueOverSeer/blob/master/LICENSE.markdown
-[8]:https://github.com/allejo/leagueOverSeer
-[9]:https://bitbucket.org/allejo/leagueoverseer
+<a href="https://github.com/allejo/leagueOverSeer/blob/master/LICENSE.markdown">GNU General Public License 3.0</a>

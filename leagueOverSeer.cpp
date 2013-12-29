@@ -502,7 +502,6 @@ bool leagueOverSeer::SlashCommand(int playerID, bz_ApiString command, bz_ApiStri
     if (!playerData->verified || !bz_hasPerm(playerID,"spawn"))
     {
         bz_sendTextMessagef(BZ_SERVER, playerID, "You do not have permission to run the /%s command.", command.c_str());
-        return true;
     }
 
     if (command == "official") //Someone used the /official command

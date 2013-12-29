@@ -431,7 +431,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 // Start building POST data to be sent to the league website
                 std::string matchToSend = "query=reportMatch";
-                            matchToSend += "&apiVersion="  + std::string(bz_urlEncode(intToString(API_VERSION)));
+                            matchToSend += "&apiVersion="  + std::string(bz_urlEncode(intToString(API_VERSION).c_str()));
                             matchToSend += "&teamOneWins=" + std::string(bz_urlEncode(teamOnePointsFinal.c_str()));
                             matchToSend += "&teamTwoWins=" + std::string(bz_urlEncode(teamTwoPointsFinal.c_str()));
                             matchToSend += "&duration="    + std::string(bz_urlEncode(matchDuration.c_str()));

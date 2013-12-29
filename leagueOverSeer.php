@@ -194,21 +194,11 @@
 
         if ($teamID < 0) //A player that didn't belong to the team ruined the match
         {
-            echo "DELETE FROM players WHERE bzid = " . $player;
+            echo json_encode(array("bzid" => "$player", "team" => ""));
             die();
         }
 
-        echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $player . ", \"" . preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID))) . "\")";
-    }
-    else if ($_POST['query'] == 'teamDump') //We are starting a server and need a database dump of all the team names
-    {
-        $getTeams = "SELECT players.external_id, teams.name FROM players, teams WHERE players.teamid = teams.id AND players.external_id != ''";
-        $getTeamsQuery = @$site->execute_query('players, teams', $getTeams);
-
-        while ($entry = mysql_fetch_array($getTeamsQuery)) //For each player, we'll output a SQLite query for BZFS to execute
-        {
-            echo "INSERT OR REPLACE INTO players(bzid, team) VALUES (" . $entry[0] . ",\"" . preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[1])) . "\");";
-        }
+        echo json_encode(array("bzid" => "$player", "team" => preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID)))));
     }
     else //Oh noes! Someone is trying to h4x0r us!
     {

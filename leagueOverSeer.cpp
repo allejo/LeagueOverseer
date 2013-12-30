@@ -67,7 +67,7 @@ static bz_BasePlayerRecord* bz_getPlayerByCallsign (const char* callsign)
 
 // Convert a bz_eTeamType value into a string literal with the option
 // of adding whitespace to format the string to return
-static std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace)
+static std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace = false)
 {
     // Because we may have to format the string with white space padding, we need to store
     // the value somewhere
@@ -177,15 +177,17 @@ public:
     // of a struct where the struct will be NULL if it is current a fun match
     struct OfficialMatch
     {
-        bool        playersRecorded,   // Whether or not the players participating in the match have been recorded or not
-                    canceled;          // Whether or not the official match was canceled
+        bool        playersRecorded,    // Whether or not the players participating in the match have been recorded or not
+                    canceled;           // Whether or not the official match was canceled
 
-        std::string cancelationReason, // If the match was canceled, store the reason as to why it was canceled
-                    teamOneName,       // We'll be doing our best to store the team names of who's playing so store the names for
-                    teamTwoName;       //     each team respectively
+        std::string cancelationReason,  // If the match was canceled, store the reason as to why it was canceled
+                    teamOneName,        // We'll be doing our best to store the team names of who's playing so store the names for
+                    teamTwoName;        //     each team respectively
 
-        double      startTime,         // The time of the the match was started (in server seconds). Used to calculate roll call
-                    duration;          // The length of the match in seconds. Used when reporting a match to the server
+        double      duration,           // The length of the match in seconds. Used when reporting a match to the server
+                    timePaused,         // The server seconds at which a game was paused at. This value is used to calculate the roll call time
+                    approxTimeProgress; // The approximate amount of seconds that have passed since the game start; this value is affected by
+                                        //     the time paused and the 5 second resume countdown. This value is only used for the roll call time
 
         // We keep the number of points scored in the case where all the members of a team leave and their team
         // score get reset to 0
@@ -202,8 +204,9 @@ public:
             teamOneName("Team-A"),
             teamTwoName("Team-B"),
             playersRecorded(false),
-            startTime(-1.0f),
+            approxTimeProgress(-1.0f),
             duration(-1.0f),
+            timePaused(0.0f),
             teamOnePoints(0),
             teamTwoPoints(0),
             matchParticipants()
@@ -340,12 +343,19 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             {
                 bz_CTFCaptureEventData_V1* captureData = (bz_CTFCaptureEventData_V1*)eventData;
                 (captureData->teamCapping == TEAM_ONE) ? officialMatch->teamOnePoints++ : officialMatch->teamTwoPoints++;
+
+                bz_debugMessagef(4, "DEBUG :: League Overseer :: %s team scored.", formatTeam(captureData->teamCapping).c_str());
+                bz_debugMessagef(4, "DEBUG :: Leauve Overseer :: Official Match Score %s [%i] vs %s [%i]",
+                    formatTeam(TEAM_ONE).c_str(), officialMatch->teamOnePoints,
+                    formatTeam(TEAM_TWO).c_str(), officialMatch->teamTwoPoints);
             }
         }
         break;
 
         case bz_eGameEndEvent: // This event is called each time a game ends
         {
+            bz_debugMessage(4, "DEBUG :: League Overseer :: A match has ended.");
+
             // Get the current standard UTC time
             bz_Time standardTime;
             bz_getUTCtime(&standardTime);
@@ -354,6 +364,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // Only save the recording buffer if we actually started recording when the match started
             if (RECORDING)
             {
+                bz_debugMessagef(4, "DEBUG :: League Overseer :: Recording was in progress during the match.");
+
                 // We'll be formatting the file name, so create a variable to store it
                 char tempRecordingFileName[512];
 
@@ -377,10 +389,12 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 // Move the char[] into a string to handle it better
                 recordingFileName = tempRecordingFileName;
+                bz_debugMessagef(4, "DEBUG :: League Overseer :: Replay file will be named: %s", recordingFileName.c_str());
 
                 // Save the recording buffer and stop recording
                 bz_saveRecBuf(recordingFileName.c_str(), 0);
                 bz_stopRecBuf();
+                bz_debugMessagef(4, "DEBUG :: League Overseer :: Replay file has been saved and recording has stopped.");
 
                 // We're no longer recording, so set the boolean and announce to players that the file has been saved
                 RECORDING = false;
@@ -466,15 +480,28 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
         case bz_eGameStartEvent: // This event is triggered when a timed game begins
         {
+            bz_debugMessage(4, "DEBUG :: League Overseer :: A match has started");
+
             // We started recording a match, so save the status
             RECORDING = bz_startRecBuf();
+
+            // We want to notify the logs if we couldn't start recording just in case an issue were to occur and the server
+            // owner needs to check to see if players were lying about there no replay
+            if (RECORDING)
+            {
+                bz_debugMessage(4, "DEBUG :: League Overseer :: Match recording has started successfully");
+            }
+            else
+            {
+                bz_debugMessage(0, "ERROR :: League Overseer :: This match could could not be recorded");
+            }
 
             // Check if this is an official match
             if (officialMatch != NULL)
             {
                 // Reset scores in case Caps happened during countdown delay.
                 officialMatch->teamOnePoints = officialMatch->teamTwoPoints = 0;
-                officialMatch->startTime = bz_getCurrentTime();
+                officialMatch->approxTimeProgress = bz_getCurrentTime();
                 officialMatch->duration = bz_getTimeLimit();
             }
         }
@@ -555,19 +582,23 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 if (bz_isCountDownActive())
                 {
                     bz_gameOver(253, eObservers);
+                    bz_debugMessage(4, "DEBUG :: League Overseer :: Game ended because no players were found playing with an active countdown.");
                 }
             }
 
             // Let's get the roll call only if there is an official match
             if (officialMatch != NULL)
             {
-                // Check if the start time is not negative since our default value for the startTime is -1. Also check
+                // Check if the start time is not negative since our default value for the approxTimeProgress is -1. Also check
                 // if it's time to do a roll call, which is defined as 90 seconds after the start of the match by default,
-                // and make sure we don't have any match participants recorded
-                if (officialMatch->startTime >= 0.0f &&
-                    officialMatch->startTime + MATCH_ROLLCALL < bz_getCurrentTime() &&
-                    officialMatch->matchParticipants.empty())
+                // and make sure we don't have any match participants recorded and the match isn't paused
+                if (officialMatch->approxTimeProgress >= 0.0f &&
+                    officialMatch->approxTimeProgress + MATCH_ROLLCALL < bz_getCurrentTime() &&
+                    officialMatch->matchParticipants.empty() &&
+                    !bz_isCountDownPaused())
                 {
+                    bz_debugMessagef(4, "DEBUG :: League Overseer :: Processing roll call...");
+
                     std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
                     bool invalidateRollcall, teamOneError, teamTwoError;
                     std::string teamOneMotto, teamTwoMotto;
@@ -579,11 +610,18 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     {
                         std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
 
-                        if (bz_getPlayerTeam(playerList->get(i)) != eObservers) //If player is not an observer
+                        if (bz_getPlayerTeam(playerList->get(i)) != eObservers) // If player is not an observer
                         {
                             MatchParticipant currentPlayer(playerRecord->bzID.c_str(), playerRecord->callsign.c_str(),
                                                            playerRecord->ipAddress.c_str(), teamMottos[playerRecord->bzID.c_str()],
                                                            playerRecord->team);
+
+                            // In order to see what is going wrong with the roll call if anything, display all of the player's information
+                            bz_debugMessagef(4, "DEBUG :: League Overseer :: Adding player '%s' to roll call...", currentPlayer.callsign.c_str());
+                            bz_debugMessagef(4, "DEBUG :: League Overseer ::   >  BZID       : %s", currentPlayer.bzID.c_str());
+                            bz_debugMessagef(4, "DEBUG :: League Overseer ::   >  IP Address : %s", currentPlayer.ipAddress.c_str());
+                            bz_debugMessagef(4, "DEBUG :: League Overseer ::   >  Team Name  : %s", currentPlayer.teamName.c_str());
+                            bz_debugMessagef(4, "DEBUG :: League Overseer ::   >  Team Color : %s", formatTeam(currentPlayer.teamColor).c_str());
 
                             // Check if there is any need to invalidate a roll call from a team
                             validateTeamName(invalidateRollcall, teamOneError, currentPlayer, teamOneMotto, TEAM_ONE);
@@ -592,10 +630,12 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                             if (currentPlayer.bzID.empty()) // Someone is playing without a BZID, how did this happen?
                             {
                                 invalidateRollcall = true;
+                                bz_debugMessagef(4, "ERROR :: League Overseer :: Roll call has been marked as invalid due to '%s' not having a valid BZID.", currentPlayer.callsign.c_str());
                             }
 
                             // Add the player to the struct of participants
                             officialMatch->matchParticipants.push_back(currentPlayer);
+                            bz_debugMessagef(4, "DEBUG :: League Overseer :: Player '%s' successfully added to the roll call.", currentPlayer.callsign.c_str());
                         }
                     }
 
@@ -612,9 +652,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                         // Delay the next roll call by 60 seconds
                         MATCH_ROLLCALL += 60;
+                        bz_debugMessagef(4, "DEBUG :: League Overseer :: Match roll call time has been delayed by 60 seconds.");
 
                         // Clear the struct because it's useless data
                         officialMatch->matchParticipants.clear();
+                        bz_debugMessagef(4, "DEBUG :: League Overseer :: Match participants have been cleared.");
                     }
                 }
             }
@@ -685,7 +727,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             if (officialMatch != NULL)
             {
                 // Let's check if we can report the match, in other words, at least half of the match has been reported
-                if (officialMatch->startTime >= 0.0f && officialMatch->startTime + (officialMatch->duration/2) < bz_getCurrentTime())
+                if (officialMatch->approxTimeProgress >= 0.0f && officialMatch->approxTimeProgress + (officialMatch->duration/2) < bz_getCurrentTime())
                 {
                     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: Match Over Seer :: Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
                     bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match ended early by %s", playerData->callsign.c_str());
@@ -733,14 +775,14 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             int timeToStart = (params->size() == 1) ? atoi(params->get(0).c_str()) : 10;
 
             // Sanity check...
-            if (timeToStart <= 60 && timeToStart >= 5)
+            if (timeToStart <= 60 && timeToStart >= 10)
             {
-                bz_startCountdown(timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
+                bz_startCountdown(timeToStart, bz_getTimeLimit(), "Server"); // Start the countdown with a custom countdown time limit under 1 minute
             }
             else
             {
-                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds or less than 5.");
-                bz_startCountdown(10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
+                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds or less than 10.");
+                bz_startCountdown(10, bz_getTimeLimit(), "Server"); // Start the countdown for the official match
             }
         }
 
@@ -772,14 +814,14 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             int timeToStart = (params->size() == 1) ? atoi(params->get(0).c_str()) : 10;
 
             // Sanity check...
-            if (timeToStart <= 60 && timeToStart >= 5)
+            if (timeToStart <= 60 && timeToStart >= 10)
             {
-                bz_startCountdown(timeToStart, bz_getTimeLimit(), "Server"); //Start the countdown with a custom countdown time limit under 2 minutes
+                bz_startCountdown(timeToStart, bz_getTimeLimit(), "Server"); // Start the countdown with a custom countdown time limit under 1 minute
             }
             else
             {
-                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds or less than 5.");
-                bz_startCountdown(10, bz_getTimeLimit(), "Server"); //Start the countdown for the official match
+                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds or less than 10.");
+                bz_startCountdown(10, bz_getTimeLimit(), "Server"); // Start the countdown for the official match
             }
         }
 
@@ -794,6 +836,13 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         else if (bz_isCountDownActive())
         {
             bz_pauseCountdown(playerData->callsign.c_str());
+
+            // We've paused an official match, so we need to delay the approxTimeProgress in order to calculate the roll call time properly
+            if (officialMatch != NULL)
+            {
+                officialMatch->timePaused = bz_getCurrentTime();
+                bz_debugMessagef(4, "DEBUG :: League Overseer :: Match paused at %d, in server seconds.", officialMatch->timePaused);
+            }
         }
         else
         {
@@ -811,6 +860,13 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         else if (bz_isCountDownActive())
         {
             bz_resumeCountdown(playerData->callsign.c_str());
+
+            // We've resumed an official match, so we need to properly edit the start time so we can calculate the roll call
+            if (officialMatch != NULL)
+            {
+                officialMatch->approxTimeProgress -= bz_getCurrentTime() - officialMatch->timePaused - 5;
+                bz_debugMessagef(4, "DEBUG :: League Overseer :: Match progress time set to %d, in server seconds.", officialMatch->approxTimeProgress);
+            }
         }
         else
         {
@@ -825,6 +881,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             if (params->size() > 0)
             {
+                bz_debugMessagef(4, "DEBUG :: League Overseer :: %s has executed the /spawn command.", playerData->callsign.c_str());
+
                 std::string callsignToLookup; // Store the callsign we're going to search for
 
                 for (unsigned int i = 0; i < params->size(); i++) // Piece together the callsign from the slash command parameters
@@ -836,6 +894,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                         callsignToLookup += " "; // Add a whitespace between each chat text parameter
                     }
                 }
+
+                bz_debugMessagef(4, "DEBUG :: League Overseer :: Callsign or Player slot to look for: %s", callsignToLookup.c_str());
 
                 // We have a pound sign followed by a valid player index
                 if (std::string::npos != std::string(params->get(0).c_str()).find("#") && isValidPlayerID(atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str())))
@@ -857,6 +917,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                 else
                 {
                     bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", params->get(0).c_str());
+                    bz_debugMessagef(4, "DEBUG :: League Overseer :: Player %s was not found.", callsignToLookup.c_str());
                 }
             }
             else
@@ -909,7 +970,7 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
                 // We've found a JSON string, which is what we're looking for, so it's perfect!
                 case json_type_string:
                 {
-                    bz_debugMessagef(4, "DEBUG :: League Overseer :: JSON key: %s", key);
+                    bz_debugMessagef(4, "DEBUG :: League Overseer :: JSON key  : %s", key);
                     bz_debugMessagef(4, "DEBUG :: League Overseer :: JSON value: %s", json_object_get_string(val));
 
                     // Store the respective information in other variables because we aren't done looping
@@ -964,7 +1025,7 @@ std::string LeagueOverseer::buildBZIDString (bz_eTeamType team)
     std::string teamString;
 
     // Send a debug message of the players on the specified team
-    bz_debugMessagef(0, "Match Data :: %s Team Players", formatTeam(team, false).c_str());
+    bz_debugMessagef(0, "Match Data :: %s Team Players", formatTeam(team).c_str());
 
     // Add all the players from the specified team to the match report
     for (unsigned int i = 0; i < officialMatch->matchParticipants.size(); i++)
@@ -1024,6 +1085,7 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
 // Request a team name update for all the members of a team
 void LeagueOverseer::requestTeamName (bz_eTeamType team)
 {
+    bz_debugMessagef(4, "DEBUG :: League Overseer :: A team name update for the %s team has been requested.", formatTeam(team).c_str());
     std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
     for (unsigned int i = 0; i < playerList->size(); i++)
@@ -1032,6 +1094,7 @@ void LeagueOverseer::requestTeamName (bz_eTeamType team)
 
         if (playerRecord->team == team) // Only request a new team name for the players of a certain team
         {
+            bz_debugMessagef(4, "DEBUG :: League Overseer :: Player '%s' is a part of the %s team.", playerRecord->callsign.c_str(), formatTeam(team).c_str());
             requestTeamName(playerRecord->callsign.c_str(), playerRecord->bzID.c_str());
         }
     }
@@ -1044,7 +1107,7 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
     std::string teamMotto = "query=teamNameQuery&apiVersion=" + intToString(API_VERSION);
     teamMotto += "&teamPlayers=" + std::string(bzID.c_str());
 
-    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Sending motto request for %s", callsign.c_str());
+    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Sending motto request for '%s'", callsign.c_str());
 
     // Send the team update request to the league website
     bz_addURLJob(LEAGUE_URL.c_str(), this, teamMotto.c_str());
@@ -1053,7 +1116,9 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 // Check if there is any need to invalidate a roll call team
 void LeagueOverseer::validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team)
 {
-    // Check if the player is a part of team one
+    bz_debugMessagef(4, "DEBUG :: League Overseer :: Starting validation of the %s team.", formatTeam(team).c_str());
+
+    // Check if the player is a part of the team we're validating
     if (currentPlayer.teamColor == team)
     {
         // Check if the team name of team one has been set yet, if it hasn't then set it
@@ -1062,13 +1127,17 @@ void LeagueOverseer::validateTeamName (bool &invalidate, bool &teamError, MatchP
         if (teamName == "")
         {
             teamName = currentPlayer.teamName;
+            bz_debugMessagef(4, "DEBUG :: League Overseer :: The team name for the %s team has been set to: %s", formatTeam(team).c_str(), teamName.c_str());
         }
         // We found someone with a different team name, therefore we need invalidate the
         // roll call and check all of the member's team names for sanity
         else if (teamName != currentPlayer.teamName)
         {
+            bz_debugMessagef(4, "ERROR :: League Overseer :: Player '%s' is not part of the '%s' team.", currentPlayer.callsign.c_str(), teamName.c_str());
             invalidate = true; // Invalidate the roll call
             teamError = true;  // We need to check team one's members for their teams
         }
     }
+
+    bz_debugMessagef(4, "DEBUG :: League Overseer :: Player '%s' belongs to the '%s' team.", currentPlayer.callsign.c_str(), currentPlayer.teamName.c_str());
 }

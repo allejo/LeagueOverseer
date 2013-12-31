@@ -13,7 +13,7 @@ EXTRA_DIST = \
 	LICENSE.markdown \
 	README.markdown \
 	leagueOverSeer.cfg \
-	leagueOverSeer.def \
+	leagueOverSeer.def
 
 MAINTAINERCLEANFILES =	\
 	Makefile.in

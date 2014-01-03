@@ -301,7 +301,7 @@ else if ($REPORT_METHOD['query'] == 'teamDump') // We are starting a server and 
         // Store the team name and member list in the array we just created
         while ($entry = mysql_fetch_array($getTeamsQuery))
         {
-            $teamArray[] = array("team" => $entry[0], "members" => $entry[1]);
+            $teamArray[] = array("team" => preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[0])), "members" => $entry[1]);
         }
 
         // Return the JSON

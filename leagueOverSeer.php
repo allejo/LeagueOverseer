@@ -289,23 +289,35 @@ else if ($REPORT_METHOD['query'] == 'teamNameQuery') // We would like to get the
 }
 else if ($REPORT_METHOD['query'] == 'teamDump') // We are starting a server and need a database dump of all the team names
 {
-    // This option has been deprecated due to the heavy load on both BZFS and the web server. Because players join the
-    // servers quite a lot, their initial join will be more than enough to get a team name saved. The new plugin will
-    // be caching the team names to a file when a server shuts down so this function will no longer be necessary.
-    if ($API_VERSION >= 1)
+    if ($API_VERSION == 1)
     {
-        echo "This functionality has been deprecated - You should not be seeing this message with the official release of League Overseer.";
-        die();
+        // Create an array to store all teams and the BZIDs
+        $teamArray = array();
+
+        // Create a merged table of team names and BZID list
+        $getTeams = "SELECT teams.name, GROUP_CONCAT(players.external_id separator ',') AS members FROM players, teams WHERE players.teamid = teams.id AND teams.leader_userid != 0 AND players.external_id != '' GROUP BY teams.name";
+        $getTeamsQuery = @$site->execute_query('players, teams', $getTeams);
+
+        // Store the team name and member list in the array we just created
+        while ($entry = mysql_fetch_array($getTeamsQuery))
+        {
+            $teamArray[] = array("team" => $entry[0], "members" => $entry[1]);
+        }
+
+        // Return the JSON
+        echo json_encode($teamArray);
     }
-
-    // Create a merged table of players' BZID and team names
-    $getTeams = "SELECT players.external_id, teams.name FROM players, teams WHERE players.teamid = teams.id AND players.external_id != ''";
-    $getTeamsQuery = @$site->execute_query('players, teams', $getTeams);
-
-    // For each player, we'll output a SQLite query for BZFS to execute
-    while ($entry = mysql_fetch_array($getTeamsQuery))
+    else
     {
-        echo "INSERT OR REPLACE INTO players(bzid, team) VALUES (" . $entry[0] . ",\"" . preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[1])) . "\");";
+        // Create a merged table of players' BZID and team names
+        $getTeams = "SELECT players.external_id, teams.name FROM players, teams WHERE players.teamid = teams.id AND players.external_id != ''";
+        $getTeamsQuery = @$site->execute_query('players, teams', $getTeams);
+
+        // For each player, we'll output a SQLite query for BZFS to execute
+        while ($entry = mysql_fetch_array($getTeamsQuery))
+        {
+            echo "INSERT OR REPLACE INTO players(bzid, team) VALUES (" . $entry[0] . ",\"" . preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[1])) . "\");";
+        }
     }
 }
 else // Oh noes! Someone is trying to h4x0r us!

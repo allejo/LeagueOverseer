@@ -199,14 +199,14 @@ public:
 
         // Set the default values for this struct
         OfficialMatch () :
+            playersRecorded(false),
             canceled(false),
             cancelationReason(""),
             teamOneName("Team-A"),
             teamTwoName("Team-B"),
-            playersRecorded(false),
-            approxTimeProgress(-1.0f),
             duration(-1.0f),
             timePaused(0.0f),
+            approxTimeProgress(-1.0f),
             teamOnePoints(0),
             teamTwoPoints(0),
             matchParticipants()

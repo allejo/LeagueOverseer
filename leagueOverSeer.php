@@ -168,11 +168,22 @@ if ($REPORT_METHOD['query'] == 'reportMatch')
         {
             writeToDebug("The BZIDs (" . $losingTeamPlayers . ") were not found on the same team. Match invalidated.");
         }
+        if ($winningTeamID == $losingTeamID)
+        {
+            writeToDebug("The '" . getTeamName($winningTeamID) . "' team played against each other in an official match. Match invalidated.");
+        }
 
         writeToDebug("--------------------------------------");
         writeToDebug("End of Match Report");
 
-        echo "An invalid player was found during the match. Please message a referee to manually report the match.";
+        if ($winningTeamID == $losingTeamID)
+        {
+            echo "Holy sanity check, Batman! The same team can't play against each other in an official match.";
+        }
+        else
+        {
+            echo "An invalid player was found during the match. Please message a referee to manually report the match.";
+        }
         die();
     }
 

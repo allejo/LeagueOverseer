@@ -35,7 +35,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 237;
+const int BUILD = 239;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -664,6 +664,13 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                         // Clear the struct because it's useless data
                         officialMatch->matchParticipants.clear();
                         bz_debugMessagef(4, "DEBUG :: League Overseer :: Match participants have been cleared.");
+                    }
+
+                    // There is no need to invalidate the roll call so the team names must be right so save them in the struct
+                    if (!invalidateRollcall)
+                    {
+                        officialMatch->teamOneName = teamOneMotto;
+                        officialMatch->teamTwoName = teamTwoMotto;
                     }
                 }
             }

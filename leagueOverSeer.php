@@ -316,7 +316,7 @@ else if ($REPORT_METHOD['query'] == 'teamDump') // We are starting a server and 
         }
 
         // Return the JSON
-        echo json_encode($teamArray);
+        echo json_encode(array("teamDump" => $teamArray));
     }
     else
     {

@@ -62,7 +62,7 @@ Compiling
 
 6.  Instruct the build system to generate a Makefile and then compile and install the plugin.
 
-    `cd ../..; ./autogen.sh; ./configure; make; make install;`
+    `cd ..; ./autogen.sh; ./configure; make; make install;`
 
 ### Updating the Plugin
 

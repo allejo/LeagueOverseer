@@ -1040,7 +1040,7 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
                                 {
                                     teamName = json_object_get_string(_value);
 
-                                    bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Team '%s' recorded. Getting team members...");
+                                    bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Team '%s' recorded. Getting team members...", teamName.c_str());
                                 }
                                 // Our second key is going to be the team members' BZIDs seperated by commas
                                 else if (strcmp(_key, "members") == 0)
@@ -1164,11 +1164,17 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     DEBUG_ALL       = atoi((config.item(section, "DEBUG_ALL")).c_str());
 
     // Sanity check for our debug level, if it doesn't pass the check then set the debug level to 1
-    if ((DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0) || (DEBUG_ALL > 4 || DEBUG_ALL < 0))
+    if (DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0)
     {
         bz_debugMessage(0, "WARNING :: League Overseer :: Invalid debug level in the configuration file.");
         bz_debugMessage(0, "WARNING :: League Overseer :: Debug level set to the default: 1.");
         DEBUG_LEVEL = 1;
+    }
+
+    // We don't need to advertise that DEBUG_ALL failed so let's set it to 4, which is the default
+    if (DEBUG_ALL > 4 || DEBUG_ALL < 0)
+    {
+        DEBUG_ALL = 4;
     }
 
     // Check for errors in the configuration data. If there is an error, shut down the server

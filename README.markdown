@@ -3,14 +3,49 @@ League Overseer
 
 This is a BZFlag plug-in that allows official league servers to communicate with the league website to automatically transmit match reports and handle team data.
 
+Table of Contents
+-----------------
+
+- [Authors](#authors)
+
+    - [Thanks to](#thanks-to)
+
+- [Compiling](#compiling)
+
+    - [Requirements](#requirements)
+
+    - [How to Compile](#how-to-compile)
+
+    - [Updating the Plugin](#updating-the-plugin)
+
+    - [Common Issues](#common-issues)
+
+- [Server Details](#server-details)
+
+    - [How to Use](#how-to-use)
+
+    - [Custom Slash Commands](#custom-slash-commands)
+
+    - [Deprecated Features](#deprecated-features)
+
+    - [Configuration File Options](#configuration-file-options)
+
+- [Web Hosting Details](#web-hosting-details)
+
+- [Code Hosting](#code-hosting)
+
+- [License](#license)
+
 Authors
 ------
 
-Vlad Jimenez (allejo)  
-Ned Anderson (mdskpr)
+- Vladimir "allejo" Jimenez
 
-Thanks to
-------
+- Ned "mdskpr" Anderson
+
+### Thanks to
+
+Thank you to all the amazing people who have contributed making this project possible.
 
 - [alezakos](https://github.com/kongr45gpen)
 
@@ -30,13 +65,13 @@ Compiling
 
 ### Requirements
 
-- BZFlag 2.4.3+ 
+- BZFlag 2.4.3+ (After Oct 16th 2013)
+
+- C++11
 
 - libjson0
 
 - libjson0-dev
-
-- C++11
 
 ### How to Compile
 
@@ -72,9 +107,29 @@ Compiling
 
     `git pull origin master`
 
-3.  Compile the changes.
+3.  (Optional) If you have made local changes to any of the files from this project, you may receive conflict errors where you may resolve the conflicts yourself or you may simply overwrite your changes with whatever is in the repository, which is recommended. *If you have a conflict every time you update because of your local change, submit a pull request and it will be accepted, provided it's a reasonable change.*
+
+    `git reset --hard origin/master; git pull`
+
+4.  Compile the changes.
 
     `make; make install;`
+
+### Common Issues
+
+Issues may be worded differently depending on the operating system or compiler but here are some common compiling or runtime issues. If your issue is not listed here, please report it so a fix can be added to this documentation.
+
+#### Symbol Lookup Error
+
+    bzfs: symbol lookup error: leagueOverSeer.so: undefined symbol: json_tokener_parse
+
+This error occurs when the plugin was not linked to the JSON library when it was compiled. If you are on Debian or Ubuntu, be sure you are using the provided "Makefile.am" file, which already links to the JSON library. If you are on another operating system, you need to link to the JSON library using the `-l` option in the `leagueOverSeer_la_LDFLAGS` section; for example, on Debian and Ubuntu, `-ljson` is used.
+
+#### Undeclared identifier
+
+    Use of undeclared identifier 'bz_isCountDownPaused'
+
+This error occurs because the build of BZFlag you are using is outdated and the *bz_isCountDownPaused()* function did not exist at the time you checked out/cloned your copy of BZFlag. If you are still using SVN, then a `svn pull` should do the trick as *bz_isCountDownPaused()* was the last change committed to SVN. If you have stayed up to date with development, a `git pull` in your BZFlag clone will update the necessary files to include this function.
 
 Server Details
 --------------
@@ -94,7 +149,7 @@ To use this plugin after it has been compiled, simply load the plugin via the co
     /pause
     /resume
     /spawn
-    
+
 /cancel
 
 - Permission Requirement: Spawn & Non-observer
@@ -139,7 +194,7 @@ To use this plugin after it has been compiled, simply load the plugin via the co
 
 ### Deprecated Features
 
-With this plugin loaded, there is no need for /countdown or /gameover and it is highly recommended that you remove these permissions from the group permissions file in order to avoid confusion. Any matches started with /countdown or ended with /gameover will not be handled by the plugin and therefore should not be allowed for matches.
+With this plugin loaded, there is no need for /countdown or /gameover and it is highly recommended that you remove these permissions from the group permissions file in order to avoid confusion. Any matches started with /countdown or ended with /gameover will not be handled by the plugin and therefore should not be allowed on match servers.
 
 This plugin also replaces the need for the RecordMatch plugin as this plugin already records all matches automatically and names the replays respectively.
 
@@ -147,26 +202,36 @@ This plugin also replaces the need for the RecordMatch plugin as this plugin alr
 
 ROTATIONAL_LEAGUE
 
-* Default: *false*
-* Description:  If a league uses different maps for its matches (such as Open League) then make sure that this value is set to 'true' and if the league is GU or Ducati, then set the value to 'false'
+- Default: *false*
+
+- Description:  If a league uses different maps for its matches (such as Open League) then make sure that this value is set to 'true' and if the league is GU or Ducati, then set the value to 'false'
 
 MAPCHANGE_PATH
 
-* Default: *N/A*
-* Description: If this is a rotational league, then be sure to change the path to the mapchange.out file because that is where the name of the map file is stored. Whatever is located in this file is what will be submitted as the map played. If this is not a rotational, then this variable can be left with the current value or commented out.
+- Default: *N/A*
+
+- Description: If this is a rotational league, then be sure to change the path to the mapchange.out file because that is where the name of the map file is stored. Whatever is located in this file is what will be submitted as the map played. If this is not a rotational, then this variable can be left with the current value or commented out.
 
 LEAGUE_OVER_SEER_URL
 
-* Default: *N/A*
-* Description: The URL of the main leagueOverSeer PHP script
+- Default: *N/A*
+
+- Description: The URL of the main leagueOverSeer PHP script
 
 DEBUG_LEVEL
 
-* Default: *1*
-* Description: The debug level that will be used by the plugin to report some information on who started a match, who canceled a match, what teams played, etc
+- Default: *1*
+
+- Description: The debug level that will be used by the plugin to report some information on who started a match, who canceled a match, what teams played, etc
+
+DEBUG_ALL
+
+- Default: *4*
+
+- Description: This option is not in the sample configuration and should not really be used on a live server as there is no need for it. This option only exists in need of debugging purposes where this is the debug level the plugin will use for __all__ of the extra information the plugin received and how it is handled; this value is separate and does __not__ overwrite the `DEBUG_LEVEL` value. *Warning:* Your log file will be much larger if this value is set appropriately.
 
 Web Hosting Details
-------
+-------------------
 
 If you are hosting a league website using the [bz-owl](https://code.google.com/p/bz-owl/) project, make sure you follow these requirements:
 
@@ -180,12 +245,12 @@ If you are hosting a league website using the [bz-owl](https://code.google.com/p
 
 5.  Since all leagues have different scoring systems, configure line 49 to use the respective fractions of ELOs with their match durations. By default, GU league uses the 2/3 of the ELO points for 20 minute matches and all of the ELO points for 30 minute matches. This looks like: `array(20 => 2/3, 30 => 1)`
 
-License
-------
-
-[GNU General Public License 3.0](https://github.com/allejo/leagueOverSeer/blob/master/LICENSE.markdown)
-
-Appendix
-------
+Code Hosting
+------------
 
 The code for this plug-in can be found both on [GitHub](https://github.com/allejo/leagueOverSeer) and [BitBucket](https://bitbucket.org/allejo/leagueoverseer) in order to satisfy any preferences a person may have and to have a backup in the case one service would have downtime; both services are synced and have the same code. GitHub is the official code repository so please direct all issues and pull requests there; anything submitted to BitBucket will be ignored.
+
+License
+-------
+
+[GNU General Public License Version 3.0](https://github.com/allejo/leagueOverSeer/blob/master/LICENSE.markdown)

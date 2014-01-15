@@ -36,7 +36,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 245;
+const int BUILD = 246;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1092,6 +1092,13 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
             teamMottos[urlJobBZID] = urlJobTeamName;
 
             bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Motto saved for BZID %s.", urlJobBZID.c_str());
+
+            // If the team name is equal to an empty string that means a player is teamless and if they are in our motto
+            // map, that means they recently left a team so remove their entry in the map
+            if (urlJobTeamName == "" && teamMottos.count(urlJobBZID))
+            {
+                teamMottos.erase(urlJobBZID);
+            }
         }
     }
     else if (siteData.find("<html>") == std::string::npos)

@@ -36,7 +36,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 242;
+const int BUILD = 245;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1087,7 +1087,7 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
         }
 
         // We have both a BZID and a team name so let's update our team motto map
-        if (urlJobBZID != "" && urlJobTeamName != "")
+        if (urlJobBZID != "")
         {
             teamMottos[urlJobBZID] = urlJobTeamName;
 

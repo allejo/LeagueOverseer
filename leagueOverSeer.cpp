@@ -883,7 +883,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             if (officialMatch != NULL)
             {
                 officialMatch->timePaused = bz_getCurrentTime();
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match paused at %d, in server seconds.", officialMatch->timePaused);
+                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match paused at %f, in server seconds.", officialMatch->timePaused);
             }
         }
         else
@@ -907,7 +907,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             if (officialMatch != NULL)
             {
                 officialMatch->approxTimeProgress -= bz_getCurrentTime() - officialMatch->timePaused - 5;
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match progress time set to %d, in server seconds.", officialMatch->approxTimeProgress);
+                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match progress time set to %f, in server seconds.", officialMatch->approxTimeProgress);
             }
         }
         else

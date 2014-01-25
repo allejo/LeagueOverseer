@@ -36,7 +36,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 246;
+const int BUILD = 248;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -161,9 +161,13 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 public:
     virtual const char* Name ()
     {
-        char buffer[100];
-        sprintf(buffer, "League Overseer %i.%i.%i (%i)", MAJOR, MINOR, REV, BUILD);
-        return std::string(buffer).c_str();
+        std::string        pluginBuild;
+        std::ostringstream pluginBuildStream;
+
+        pluginBuildStream << "League Overseer " << MAJOR << "." << MINOR << "." << REV << " (" << BUILD << ")";
+        pluginBuild = pluginBuildStream.str();
+
+        return pluginBuild.c_str();
     }
     virtual void Init (const char* config);
     virtual void Event (bz_EventData *eventData);

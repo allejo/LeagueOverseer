@@ -36,7 +36,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 249;
+const int BUILD = 250;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -251,6 +251,7 @@ public:
 
     // All the variables that will be used in the plugin
     bool         ROTATION_LEAGUE, // Whether or not we are watching a league that uses different maps
+                 MATCH_INFO_SENT, // Whether or not the information returned by a URL job pertains to a match report
                  RECORDING;       // Whether or not we are recording a match
 
     int          DEBUG_LEVEL,     // The DEBUG level the server owner wants the plugin to use for its messages
@@ -511,6 +512,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 //Send the match data to the league website
                 bz_addURLJob(LEAGUE_URL.c_str(), this, matchToSend.c_str());
+                MATCH_INFO_SENT = true;
             }
 
             // We're done with the struct, so make it NULL until the next official match
@@ -987,6 +989,9 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 // We got a response from one of our URL jobs
 void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/)
 {
+    // This variable will only be set to true for the duration of one URL job, so just set it back to false regardless
+    MATCH_INFO_SENT = false;
+
     // Convert the data we get from the URL job to a std::string
     std::string siteData = (const char*)(data);
     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: URL Job returned: %s", siteData.c_str());
@@ -1120,6 +1125,13 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
 void LeagueOverseer::URLTimeout(const char* /*URL*/, int /*errorCode*/)
 {
     bz_debugMessage(DEBUG_LEVEL, "WARNING :: League Overseer :: The request to the league site has timed out.");
+
+    if (MATCH_INFO_SENT)
+    {
+        MATCH_INFO_SENT = false;
+        bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "The match could not be reported due to the connection to the league site timing out.");
+        bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "If the league site is not down, please notify the server owner to reconfigure this plugin.");
+    }
 }
 
 // The server owner must have set up the URLs wrong because this shouldn't happen
@@ -1127,6 +1139,12 @@ void LeagueOverseer::URLError(const char* /*URL*/, int errorCode, const char *er
 {
     bz_debugMessage(DEBUG_LEVEL, "ERROR :: League Overseer :: Match report failed with the following error:");
     bz_debugMessagef(DEBUG_LEVEL, "ERROR :: League Overseer :: Error code: %i - %s", errorCode, errorString);
+
+    if (MATCH_INFO_SENT)
+    {
+        MATCH_INFO_SENT = false;
+        bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "An unknown error has occurred, please notify the server owner to reconfigure this plugin.");
+    }
 }
 
 // We are building a string of BZIDs from the people who matched in the match that just occurred
@@ -1204,7 +1222,7 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
 // Request a team name update for all the members of a team
 void LeagueOverseer::requestTeamName (bz_eTeamType team)
 {
-    bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: A team name update for the %s team has been requested.", formatTeam(team).c_str());
+    bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: A team name update for the '%s' team has been requested.", formatTeam(team).c_str());
     std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
     for (unsigned int i = 0; i < playerList->size(); i++)
@@ -1213,7 +1231,7 @@ void LeagueOverseer::requestTeamName (bz_eTeamType team)
 
         if (playerRecord->team == team) // Only request a new team name for the players of a certain team
         {
-            bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Player '%s' is a part of the %s team.", playerRecord->callsign.c_str(), formatTeam(team).c_str());
+            bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Player '%s' is a part of the '%s' team.", playerRecord->callsign.c_str(), formatTeam(team).c_str());
             requestTeamName(playerRecord->callsign.c_str(), playerRecord->bzID.c_str());
         }
     }
@@ -1258,7 +1276,10 @@ void LeagueOverseer::validateTeamName (bool &invalidate, bool &teamError, MatchP
         }
     }
 
-    bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Player '%s' belongs to the '%s' team.", currentPlayer.callsign.c_str(), currentPlayer.teamName.c_str());
+    if (!teamError)
+    {
+        bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Player '%s' belongs to the '%s' team.", currentPlayer.callsign.c_str(), currentPlayer.teamName.c_str());
+    }
 }
 
 void LeagueOverseer::updateTeamNames ()

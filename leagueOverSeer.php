@@ -259,7 +259,7 @@ if ($REPORT_METHOD['query'] == 'reportMatch')
     writeToDebug("End of Match Report");
 
     // Output the match stats that will be sent back to BZFS
-    echo "(+/- " . $eloDifference . ") " . $winningTeamName . " [" . $winningTeamPoints . "] vs [" . $losingTeamPoints . "] " . $losingTeamName;
+    echo "(+/- " . abs($eloDifference) . ") " . $winningTeamName . " [" . $winningTeamPoints . "] vs [" . $losingTeamPoints . "] " . $losingTeamName;
 
     // Have the league site perform maintainence as it sees fit
     ob_start();

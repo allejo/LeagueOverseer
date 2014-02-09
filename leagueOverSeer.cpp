@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 253;
+const int BUILD = 255;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -413,16 +413,21 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     // If the official match was finished, then mark it as canceled
                     std::string matchCanceled = (officialMatch->canceled) ? "-Canceled" : "",
                                 _teamOneName  = officialMatch->teamOneName.c_str(),
-                                _teamTwoName  = officialMatch->teamTwoName.c_str();
+                                _teamTwoName  = officialMatch->teamTwoName.c_str(),
+                                _matchTeams   = "";
 
                     // We want to standardize the names, so replace all spaces with underscores and
                     // any weird HTML symbols should have been stripped already by the PHP script
                     std::replace(_teamOneName.begin(), _teamOneName.end(), ' ', '_');
                     std::replace(_teamTwoName.begin(), _teamTwoName.end(), ' ', '_');
 
-                    sprintf(tempRecordingFileName, "offi-%d%02d%02d-%s-vs-%s-%02d%02d%s.rec",
-                        standardTime.year, standardTime.month, standardTime.day,
-                        _teamOneName.c_str(), _teamTwoName.c_str(),
+                    if (!officialMatch->matchParticipants.empty())
+                    {
+                        _matchTeams = _teamOneName + "-vs-" + _teamTwoName + "-";
+                    }
+
+                    sprintf(tempRecordingFileName, "offi-%d%02d%02d-%s%02d%02d%s.rec",
+                        standardTime.year, standardTime.month, standardTime.day, _matchTeams.c_str(),
                         standardTime.hour, standardTime.minute, matchCanceled.c_str());
                 }
                 else

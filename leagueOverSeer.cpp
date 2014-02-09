@@ -364,6 +364,7 @@ void LeagueOverseer::Cleanup (void)
     bz_removeCustomSlashCommand("cancel");
     bz_removeCustomSlashCommand("finish");
     bz_removeCustomSlashCommand("fm");
+    bz_removeCustomSlashCommand("offi");
     bz_removeCustomSlashCommand("official");
     bz_removeCustomSlashCommand("spawn");
     bz_removeCustomSlashCommand("pause");

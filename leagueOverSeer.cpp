@@ -24,9 +24,11 @@ League Overseer
 #include <iostream>
 #include <iomanip>
 #include <json/json.h>
+#include <math.h>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <time.h>
 #include <vector>
 
 #include "bzfsAPI.h"
@@ -36,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 250;
+const int BUILD = 253;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -214,14 +216,15 @@ public:
                     teamTwoName;        //     each team respectively
 
         double      duration,           // The length of the match in seconds. Used when reporting a match to the server
-                    timePaused,         // The server seconds at which a game was paused at. This value is used to calculate the roll call time
-                    approxTimeProgress; // The approximate amount of seconds that have passed since the game start; this value is affected by
-                                        //     the time paused and the 5 second resume countdown. This value is only used for the roll call time
+                    matchRollCall;      // The amount of seconds that need to pass in a match before the first roll call
 
         // We keep the number of points scored in the case where all the members of a team leave and their team
         // score get reset to 0
         int         teamOnePoints,
                     teamTwoPoints;
+
+        time_t      matchStart,         // The timestamp of when a match was started in order to calculate the timer
+                    matchPaused;        // If the match is paused, it will be stored here in order to update matchStart appropriately for the timer
 
         // We will be storing all of the match participants in this vector
         std::vector<MatchParticipant> matchParticipants;
@@ -234,15 +237,18 @@ public:
             teamOneName("Team-A"),
             teamTwoName("Team-B"),
             duration(-1.0f),
-            timePaused(0.0f),
-            approxTimeProgress(-1.0f),
+            matchRollCall(0.0),
             teamOnePoints(0),
             teamTwoPoints(0),
+            matchStart(time(NULL)),
+            matchPaused(time(NULL)),
             matchParticipants()
         {}
     };
 
     virtual std::string buildBZIDString (bz_eTeamType team);
+    virtual int getMatchProgress();
+    virtual std::string getMatchTime();
     virtual void loadConfig (const char *cmdLine);
     virtual void requestTeamName (bz_eTeamType team);
     virtual void requestTeamName (std::string callsign, std::string bzID);
@@ -300,7 +306,7 @@ void LeagueOverseer::Init (const char* commandLine)
 
     // Set some default values
     MATCH_ROLLCALL = 90;
-    officialMatch = NULL;
+    officialMatch  = NULL;
 
     // Load the configuration data when the plugin is loaded
     loadConfig(commandLine);
@@ -543,7 +549,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             {
                 // Reset scores in case Caps happened during countdown delay.
                 officialMatch->teamOnePoints = officialMatch->teamTwoPoints = 0;
-                officialMatch->approxTimeProgress = bz_getCurrentTime();
+                officialMatch->matchStart = time(NULL);
                 officialMatch->duration = bz_getTimeLimit();
             }
         }
@@ -634,10 +640,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 // Check if the start time is not negative since our default value for the approxTimeProgress is -1. Also check
                 // if it's time to do a roll call, which is defined as 90 seconds after the start of the match by default,
                 // and make sure we don't have any match participants recorded and the match isn't paused
-                if (officialMatch->approxTimeProgress >= 0.0f &&
-                    officialMatch->approxTimeProgress + MATCH_ROLLCALL < bz_getCurrentTime() &&
-                    officialMatch->matchParticipants.empty() &&
-                    !bz_isCountDownPaused())
+                if (getMatchProgress() > officialMatch->matchRollCall && officialMatch->matchParticipants.empty() &&
+                    !bz_isCountDownPaused() && !bz_isCountDownInProgress())
                 {
                     bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Processing roll call...");
 
@@ -683,9 +687,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                     // We were asked to invalidate the roll call because of some issue so let's check if there is still time for
                     // another roll call
-                    if (invalidateRollcall && MATCH_ROLLCALL + 30 < officialMatch->duration)
+                    if (invalidateRollcall && officialMatch->matchRollCall + 60 < officialMatch->duration)
                     {
-                        bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Invalid player found on field at %i:%i.", (int)(MATCH_ROLLCALL/60), (int)(fmod(MATCH_ROLLCALL,60.0)));
+                        bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Invalid player found on field at %s.", getMatchTime().c_str());
 
                         // There was an error with one of the members of either team, so request a team name update for all of
                         // the team members to try to fix any inconsistencies of different team names
@@ -693,7 +697,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                         if (teamTwoError) { requestTeamName(TEAM_TWO); }
 
                         // Delay the next roll call by 60 seconds
-                        MATCH_ROLLCALL += 60;
+                        officialMatch->matchRollCall += 60;
                         bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match roll call time has been delayed by 60 seconds.");
 
                         // Clear the struct because it's useless data
@@ -779,7 +783,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             if (officialMatch != NULL)
             {
                 // Let's check if we can report the match, in other words, at least half of the match has been reported
-                if (officialMatch->approxTimeProgress >= 0.0f && officialMatch->approxTimeProgress + (officialMatch->duration/2) < bz_getCurrentTime())
+                if (getMatchProgress() >= officialMatch->duration / 2)
                 {
                     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: Match Over Seer :: Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
                     bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match ended early by %s", playerData->callsign.c_str());
@@ -881,7 +885,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "pause")
     {
-        if (bz_isCountDownPaused())
+        if (bz_isCountDownPaused() || bz_isCountDownInProgress())
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "The match is already paused!");
         }
@@ -892,8 +896,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             // We've paused an official match, so we need to delay the approxTimeProgress in order to calculate the roll call time properly
             if (officialMatch != NULL)
             {
-                officialMatch->timePaused = bz_getCurrentTime();
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match paused at %f, in server seconds.", officialMatch->timePaused);
+                officialMatch->matchPaused = time(NULL);
             }
         }
         else
@@ -905,7 +908,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "resume")
     {
-        if (!bz_isCountDownPaused())
+        if (!bz_isCountDownPaused() || bz_isCountDownInProgress())
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "The match is not paused!");
         }
@@ -916,8 +919,14 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             // We've resumed an official match, so we need to properly edit the start time so we can calculate the roll call
             if (officialMatch != NULL)
             {
-                officialMatch->approxTimeProgress -= bz_getCurrentTime() - officialMatch->timePaused - 5;
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match progress time set to %f, in server seconds.", officialMatch->approxTimeProgress);
+                time_t now = time(NULL);
+                double timePaused = difftime(now, officialMatch->matchPaused);
+
+                struct tm modMatchStart = *localtime(&officialMatch->matchStart);
+                modMatchStart.tm_sec += timePaused + 5;
+
+                officialMatch->matchStart = mktime(&modMatchStart);
+                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match paused for %.f seconds.", timePaused);
             }
         }
         else
@@ -1177,6 +1186,50 @@ std::string LeagueOverseer::buildBZIDString (bz_eTeamType team)
     // add an extra comma at the end. If we leave it, it will cause issues with the PHP counterpart
     // which tokenizes the BZIDs by commas and we don't want an empty BZID
     return teamString.erase(teamString.size() - 1);
+}
+
+// Return the progress of a match in seconds. For example, 20:00 minutes remaining would return 600
+int LeagueOverseer::getMatchProgress()
+{
+    if (officialMatch != NULL)
+    {
+        time_t now = time(NULL);
+
+        return difftime(now, officialMatch->matchStart);
+    }
+
+    return -1;
+}
+
+// Get the literal time remaining in a match in the format of MM:SS
+std::string LeagueOverseer::getMatchTime()
+{
+    int time = getMatchProgress();
+
+    // Let's covert the seconds of a match's progress into minutes and seconds
+    int minutes = 30 - ceil(time / 60.0);
+    int seconds = 60 - (time % 60);
+
+    // We need to store the literal values
+    std::string minutesLiteral,
+                secondsLiteral;
+
+    // If the minutes remaining are less than 10 (only has one digit), then prepend a 0 to keep the format properly
+    minutesLiteral = (minutes < 10) ? "0" : "";
+    minutesLiteral += intToString(minutes);
+
+    // Do some formatting for seconds similarly to minutes
+    if (seconds == 60)
+    {
+        secondsLiteral = "00";
+    }
+    else
+    {
+        secondsLiteral = (seconds < 10) ? "0" : "";
+        secondsLiteral += intToString(seconds);
+    }
+
+    return minutesLiteral + ":" + secondsLiteral;
 }
 
 // Load the plugin configuration file

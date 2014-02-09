@@ -263,8 +263,6 @@ public:
     int          DEBUG_LEVEL,     // The DEBUG level the server owner wants the plugin to use for its messages
                  DEBUG_ALL;       // This is the spamming/ridiculous level of debug that the plugin uses
 
-    double       MATCH_ROLLCALL;  // The number of seconds the plugin needs to wait before recording who's matching
-
     std::string  LEAGUE_URL,      // The URL the plugin will use to report matches. This should be the URL the PHP counterpart of this plugin
                  MAP_NAME,        // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
                  MAPCHANGE_PATH;  // The path to the file that contains the name of current map being played
@@ -299,14 +297,14 @@ void LeagueOverseer::Init (const char* commandLine)
     bz_registerCustomSlashCommand("cancel", this);
     bz_registerCustomSlashCommand("finish", this);
     bz_registerCustomSlashCommand("fm", this);
+    bz_registerCustomSlashCommand("offi", this);
     bz_registerCustomSlashCommand("official", this);
     bz_registerCustomSlashCommand("spawn", this);
     bz_registerCustomSlashCommand("pause", this);
     bz_registerCustomSlashCommand("resume", this);
 
     // Set some default values
-    MATCH_ROLLCALL = 90;
-    officialMatch  = NULL;
+    officialMatch = NULL;
 
     // Load the configuration data when the plugin is loaded
     loadConfig(commandLine);
@@ -844,7 +842,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
         return true;
     }
-    else if (command == "official")
+    else if (command == "offi" || command == "official")
     {
         if (playerData->team == eObservers) // Observers can't start matches
         {

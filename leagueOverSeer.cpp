@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 255;
+const int BUILD = 256;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -607,7 +607,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             {
                 bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown resume' is disabled, please use /resume instead **");
             }
-            else if (isdigit(atoi(command.c_str()) + 12))
+            else if (strncmp("/countdown", command.c_str(), 10) == 0)
             {
                 bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown TIME' is disabled, please use /official or /fm instead **");
             }

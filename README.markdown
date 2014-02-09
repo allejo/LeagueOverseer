@@ -75,7 +75,7 @@ Compiling
 
 ### How to Compile
 
-1.  Check out the BZFlag source code.
+1.  Check out the 2.4.x BZFlag source code from GitHub, if you do not already have it on your server. If you are still using SVN, it is recommended you switch to using Git because all future development of BZFlag will use Git.
 
     `git clone -b v2_4_x https://github.com/BZFlag-Dev/bzflag-import-3.git bzflag`
 
@@ -91,9 +91,9 @@ Compiling
 
     `rm -rf leagueOverSeer`
 
-5.  Run a git clone of this repository from within the plugins directory. This should have created a new leagueOverSeer directory within the plugins directory.
+5.  Run a git clone of this repository from within the plugins directory. This should have created a new leagueOverSeer directory within the plugins directory. Notice, you will be checking out the 'release' branch will always contain the latest release of the plugin to allow for easy update. If you are running a test port and would like the latest development build, use the 'master' branch instead of 'release.'
 
-    `git clone https://github.com/allejo/leagueOverSeer.git`
+    `git clone -b release https://github.com/allejo/leagueOverSeer.git`
 
 6.  Instruct the build system to generate a Makefile and then compile and install the plugin.
 
@@ -105,11 +105,11 @@ Compiling
 
 2.  Pull the changes from Git.
 
-    `git pull origin master`
+    `git pull origin release`
 
 3.  (Optional) If you have made local changes to any of the files from this project, you may receive conflict errors where you may resolve the conflicts yourself or you may simply overwrite your changes with whatever is in the repository, which is recommended. *If you have a conflict every time you update because of your local change, submit a pull request and it will be accepted, provided it's a reasonable change.*
 
-    `git reset --hard origin/master; git pull`
+    `git reset --hard origin/release; git pull`
 
 4.  Compile the changes.
 
@@ -130,6 +130,34 @@ This error occurs when the plugin was not linked to the JSON library when it was
     Use of undeclared identifier 'bz_isCountDownPaused'
 
 This error occurs because the build of BZFlag you are using is outdated and the *bz_isCountDownPaused()* function did not exist at the time you checked out/cloned your copy of BZFlag. If you are still using SVN, then a `svn pull` should do the trick as *bz_isCountDownPaused()* was the last change committed to SVN. If you have stayed up to date with development, a `git pull` in your BZFlag clone will update the necessary files to include this function.
+
+### Repository Branches
+
+This repository contains different branches mainly for historical purposes where only two branches are actually used.
+
+#### Active
+
+- **master**
+
+    This branch is where all of the development occurs and always contains the most up to date plugin, which may or may not be stable.
+
+- **release**
+
+    This branch contains the latest stable release of the plugin and should be used when compiling for a production server.
+
+#### Abandoned
+
+- **C++98**
+
+    This branch contains abandoned code that followed the C++98 standards but was abandoned in favor of using the new C++11 features.
+
+- **matchOverSeer**
+
+    This branch contains the original code for the Match Overseer plugin used for OpenLeague. League Overseer was originally a fork of the this plugin.
+
+- **v1_0**
+
+    This branch contains the code for the 1.0 version of the plugin that used SQLite for information storage and had a lot of bugs.
 
 Server Details
 --------------

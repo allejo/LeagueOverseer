@@ -237,7 +237,7 @@ public:
             teamOneName("Team-A"),
             teamTwoName("Team-B"),
             duration(-1.0f),
-            matchRollCall(0.0),
+            matchRollCall(90.0),
             teamOnePoints(0),
             teamTwoPoints(0),
             matchStart(time(NULL)),

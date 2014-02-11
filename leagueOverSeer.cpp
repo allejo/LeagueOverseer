@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 256;
+const int BUILD = 258;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -287,6 +287,7 @@ void LeagueOverseer::Init (const char* commandLine)
     // Register our events with Register()
     Register(bz_eCaptureEvent);
     Register(bz_eGameEndEvent);
+    Register(bz_eGameResumeEvent);
     Register(bz_eGameStartEvent);
     Register(bz_eGetPlayerMotto);
     Register(bz_ePlayerJoinEvent);
@@ -530,6 +531,23 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         }
         break;
 
+        case bz_eGameResumeEvent:
+        {
+            // We've resumed an official match, so we need to properly edit the start time so we can calculate the roll call
+            if (officialMatch != NULL)
+            {
+                time_t now = time(NULL);
+                double timePaused = difftime(now, officialMatch->matchPaused);
+
+                struct tm modMatchStart = *localtime(&officialMatch->matchStart);
+                modMatchStart.tm_sec += timePaused;
+
+                officialMatch->matchStart = mktime(&modMatchStart);
+                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
+            }
+        }
+        break;
+
         case bz_eGameStartEvent: // This event is triggered when a timed game begins
         {
             bz_debugMessage(DEBUG_ALL, "DEBUG :: League Overseer :: A match has started");
@@ -545,7 +563,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             }
             else
             {
-                bz_debugMessage(0, "ERROR :: League Overseer :: This match could could not be recorded");
+                bz_debugMessage(0, "ERROR :: League Overseer :: This match could not be recorded");
             }
 
             // Check if this is an official match
@@ -889,7 +907,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "pause")
     {
-        if (bz_isCountDownPaused() || bz_isCountDownInProgress())
+        if (bz_isCountDownPaused())
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "The match is already paused!");
         }
@@ -901,6 +919,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             if (officialMatch != NULL)
             {
                 officialMatch->matchPaused = time(NULL);
+                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match paused at %s by %s.", getMatchTime().c_str(), playerData->callsign.c_str());
             }
         }
         else
@@ -912,7 +931,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "resume")
     {
-        if (!bz_isCountDownPaused() || bz_isCountDownInProgress())
+        if (!bz_isCountDownPaused())
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "The match is not paused!");
         }
@@ -920,17 +939,9 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_resumeCountdown(playerData->callsign.c_str());
 
-            // We've resumed an official match, so we need to properly edit the start time so we can calculate the roll call
             if (officialMatch != NULL)
             {
-                time_t now = time(NULL);
-                double timePaused = difftime(now, officialMatch->matchPaused);
-
-                struct tm modMatchStart = *localtime(&officialMatch->matchStart);
-                modMatchStart.tm_sec += timePaused + 5;
-
-                officialMatch->matchStart = mktime(&modMatchStart);
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match paused for %.f seconds.", timePaused);
+                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match resumed by %s.", playerData->callsign.c_str());
             }
         }
         else

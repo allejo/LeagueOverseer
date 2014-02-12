@@ -65,7 +65,7 @@ Compiling
 
 ### Requirements
 
-- BZFlag 2.4.3+ (After Oct 16th 2013)
+- BZFlag 2.4.3+ (After Feb 9th 2014)
 
 - C++11
 
@@ -129,7 +129,11 @@ This error occurs when the plugin was not linked to the JSON library when it was
 
     Use of undeclared identifier 'bz_isCountDownPaused'
 
-This error occurs because the build of BZFlag you are using is outdated and the *bz_isCountDownPaused()* function did not exist at the time you checked out/cloned your copy of BZFlag. If you are still using SVN, then a `svn pull` should do the trick as *bz_isCountDownPaused()* was the last change committed to SVN. If you have stayed up to date with development, a `git pull` in your BZFlag clone will update the necessary files to include this function.
+or
+
+    'bz_eGameResumeEvent' was not declared in this scope
+
+This error occurs because the build of BZFlag you are using is outdated and the *bz_isCountDownPaused()* function or *bz_eGameResumeEvent* event did not exist at the time you checked out/cloned your copy of BZFlag. In order to compile this plugin, you are required to use the latest BZFlag trunk, which has been migrated to GitHub so using git is a requirement.
 
 ### Repository Branches
 

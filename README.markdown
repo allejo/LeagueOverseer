@@ -244,7 +244,7 @@ MAPCHANGE_PATH
 
 - Description: If this is a rotational league, then be sure to change the path to the mapchange.out file because that is where the name of the map file is stored. Whatever is located in this file is what will be submitted as the map played. If this is not a rotational, then this variable can be left with the current value or commented out.
 
-LEAGUE_OVER_SEER_URL
+LEAGUE_OVERSEER_URL
 
 - Default: *N/A*
 
@@ -256,7 +256,7 @@ DEBUG_LEVEL
 
 - Description: The debug level that will be used by the plugin to report some information on who started a match, who canceled a match, what teams played, etc
 
-DEBUG_ALL
+VERBOSE_LEVEL
 
 - Default: *4*
 

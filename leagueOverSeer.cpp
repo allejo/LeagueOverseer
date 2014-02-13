@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 260;
+const int BUILD = 262;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -678,7 +678,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     {
                         std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
 
-                        if (bz_getPlayerTeam(playerList->get(i)) != eObservers) // If player is not an observer
+                        if (playerRecord && bz_getPlayerTeam(playerList->get(i)) != eObservers) // If player is not an observer
                         {
                             MatchParticipant currentPlayer(playerRecord->bzID.c_str(), playerRecord->callsign.c_str(),
                                                            playerRecord->ipAddress.c_str(), teamMottos[playerRecord->bzID.c_str()],

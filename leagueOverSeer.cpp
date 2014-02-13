@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 262;
+const int BUILD = 263;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -53,14 +53,18 @@ static bz_BasePlayerRecord* bz_getPlayerByCallsign (const char* callsign)
     // when we're done. In other words, laziness.
     std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
-    // Loop through all of the players' callsigns
-    for (unsigned int i = 0; i < playerList->size(); i++)
+    // Be sure the playerlist exists
+    if (playerList)
     {
-        // Have we found the callsign we're looking for?
-        if (bz_getPlayerByIndex(playerList->get(i))->callsign == callsign)
+        // Loop through all of the players' callsigns
+        for (unsigned int i = 0; i < playerList->size(); i++)
         {
-            // Return the record for that player
-            return bz_getPlayerByIndex(playerList->get(i));
+            // Have we found the callsign we're looking for?
+            if (bz_getPlayerByIndex(playerList->get(i))->callsign == callsign)
+            {
+                // Return the record for that player
+                return bz_getPlayerByIndex(playerList->get(i));
+            }
         }
     }
 
@@ -247,8 +251,8 @@ public:
     };
 
     virtual std::string buildBZIDString (bz_eTeamType team);
-    virtual int getMatchProgress();
-    virtual std::string getMatchTime();
+    virtual int getMatchProgress ();
+    virtual std::string getMatchTime ();
     virtual void loadConfig (const char *cmdLine);
     virtual void requestTeamName (bz_eTeamType team);
     virtual void requestTeamName (std::string callsign, std::string bzID);
@@ -261,7 +265,7 @@ public:
                  RECORDING;       // Whether or not we are recording a match
 
     int          DEBUG_LEVEL,     // The DEBUG level the server owner wants the plugin to use for its messages
-                 DEBUG_ALL;       // This is the spamming/ridiculous level of debug that the plugin uses
+                 VERBOSE_LEVEL;       // This is the spamming/ridiculous level of debug that the plugin uses
 
     std::string  LEAGUE_URL,      // The URL the plugin will use to report matches. This should be the URL the PHP counterpart of this plugin
                  MAP_NAME,        // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
@@ -384,8 +388,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 bz_CTFCaptureEventData_V1* captureData = (bz_CTFCaptureEventData_V1*)eventData;
                 (captureData->teamCapping == TEAM_ONE) ? officialMatch->teamOnePoints++ : officialMatch->teamTwoPoints++;
 
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: %s team scored.", formatTeam(captureData->teamCapping).c_str());
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: Leauve Overseer :: Official Match Score %s [%i] vs %s [%i]",
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s team scored.", formatTeam(captureData->teamCapping).c_str());
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: Leauve Overseer :: Official Match Score %s [%i] vs %s [%i]",
                     formatTeam(TEAM_ONE).c_str(), officialMatch->teamOnePoints,
                     formatTeam(TEAM_TWO).c_str(), officialMatch->teamTwoPoints);
             }
@@ -394,7 +398,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
         case bz_eGameEndEvent: // This event is called each time a game ends
         {
-            bz_debugMessage(DEBUG_ALL, "DEBUG :: League Overseer :: A match has ended.");
+            bz_debugMessage(VERBOSE_LEVEL, "DEBUG :: League Overseer :: A match has ended.");
 
             // Get the current standard UTC time
             bz_Time standardTime;
@@ -404,7 +408,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // Only save the recording buffer if we actually started recording when the match started
             if (RECORDING)
             {
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Recording was in progress during the match.");
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Recording was in progress during the match.");
 
                 // We'll be formatting the file name, so create a variable to store it
                 char tempRecordingFileName[512];
@@ -441,12 +445,12 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 // Move the char[] into a string to handle it better
                 recordingFileName = tempRecordingFileName;
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Replay file will be named: %s", recordingFileName.c_str());
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Replay file will be named: %s", recordingFileName.c_str());
 
                 // Save the recording buffer and stop recording
                 bz_saveRecBuf(recordingFileName.c_str(), 0);
                 bz_stopRecBuf();
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Replay file has been saved and recording has stopped.");
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Replay file has been saved and recording has stopped.");
 
                 // We're no longer recording, so set the boolean and announce to players that the file has been saved
                 RECORDING = false;
@@ -543,14 +547,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 modMatchStart.tm_sec += timePaused;
 
                 officialMatch->matchStart = mktime(&modMatchStart);
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
             }
         }
         break;
 
         case bz_eGameStartEvent: // This event is triggered when a timed game begins
         {
-            bz_debugMessage(DEBUG_ALL, "DEBUG :: League Overseer :: A match has started");
+            bz_debugMessage(VERBOSE_LEVEL, "DEBUG :: League Overseer :: A match has started");
 
             // We started recording a match, so save the status
             RECORDING = bz_startRecBuf();
@@ -559,7 +563,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // owner needs to check to see if players were lying about there no replay
             if (RECORDING)
             {
-                bz_debugMessage(DEBUG_ALL, "DEBUG :: League Overseer :: Match recording has started successfully");
+                bz_debugMessage(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match recording has started successfully");
             }
             else
             {
@@ -652,7 +656,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 if (bz_isCountDownActive())
                 {
                     bz_gameOver(253, eObservers);
-                    bz_debugMessage(DEBUG_ALL, "DEBUG :: League Overseer :: Game ended because no players were found playing with an active countdown.");
+                    bz_debugMessage(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Game ended because no players were found playing with an active countdown.");
                 }
             }
 
@@ -665,7 +669,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 if (getMatchProgress() > officialMatch->matchRollCall && officialMatch->matchParticipants.empty() &&
                     !bz_isCountDownPaused() && !bz_isCountDownInProgress())
                 {
-                    bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Processing roll call...");
+                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Processing roll call...");
 
                     std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
                     bool invalidateRollcall, teamOneError, teamTwoError;
@@ -673,6 +677,13 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                     invalidateRollcall = teamOneError = teamTwoError = false;
                     teamOneMotto = teamTwoMotto = "";
+
+                    // We can't do a roll call if the player list wasn't created
+                    if (!playerList)
+                    {
+                        bz_debugMessagef(VERBOSE_LEVEL, "ERROR :: League Overseer :: Failure to create player list for roll call.");
+                        return;
+                    }
 
                     for (unsigned int i = 0; i < playerList->size(); i++)
                     {
@@ -685,11 +696,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                                                            playerRecord->team);
 
                             // In order to see what is going wrong with the roll call if anything, display all of the player's information
-                            bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Adding player '%s' to roll call...", currentPlayer.callsign.c_str());
-                            bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer ::   >  BZID       : %s", currentPlayer.bzID.c_str());
-                            bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer ::   >  IP Address : %s", currentPlayer.ipAddress.c_str());
-                            bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer ::   >  Team Name  : %s", currentPlayer.teamName.c_str());
-                            bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer ::   >  Team Color : %s", formatTeam(currentPlayer.teamColor).c_str());
+                            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Adding player '%s' to roll call...", currentPlayer.callsign.c_str());
+                            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   >  BZID       : %s", currentPlayer.bzID.c_str());
+                            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   >  IP Address : %s", currentPlayer.ipAddress.c_str());
+                            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   >  Team Name  : %s", currentPlayer.teamName.c_str());
+                            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   >  Team Color : %s", formatTeam(currentPlayer.teamColor).c_str());
 
                             // Check if there is any need to invalidate a roll call from a team
                             validateTeamName(invalidateRollcall, teamOneError, currentPlayer, teamOneMotto, TEAM_ONE);
@@ -698,12 +709,12 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                             if (currentPlayer.bzID.empty()) // Someone is playing without a BZID, how did this happen?
                             {
                                 invalidateRollcall = true;
-                                bz_debugMessagef(DEBUG_ALL, "ERROR :: League Overseer :: Roll call has been marked as invalid due to '%s' not having a valid BZID.", currentPlayer.callsign.c_str());
+                                bz_debugMessagef(VERBOSE_LEVEL, "ERROR :: League Overseer :: Roll call has been marked as invalid due to '%s' not having a valid BZID.", currentPlayer.callsign.c_str());
                             }
 
                             // Add the player to the struct of participants
                             officialMatch->matchParticipants.push_back(currentPlayer);
-                            bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Player '%s' successfully added to the roll call.", currentPlayer.callsign.c_str());
+                            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Player '%s' successfully added to the roll call.", currentPlayer.callsign.c_str());
                         }
                     }
 
@@ -720,11 +731,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                         // Delay the next roll call by 60 seconds
                         officialMatch->matchRollCall += 60;
-                        bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match roll call time has been delayed by 60 seconds.");
+                        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match roll call time has been delayed by 60 seconds.");
 
                         // Clear the struct because it's useless data
                         officialMatch->matchParticipants.clear();
-                        bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match participants have been cleared.");
+                        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match participants have been cleared.");
                     }
 
                     // There is no need to invalidate the roll call so the team names must be right so save them in the struct
@@ -733,8 +744,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                         officialMatch->teamOneName = teamOneMotto;
                         officialMatch->teamTwoName = teamTwoMotto;
 
-                        bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Team One set to: %s", officialMatch->teamOneName.c_str());
-                        bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Team Two set to: %s", officialMatch->teamTwoName.c_str());
+                        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Team One set to: %s", officialMatch->teamOneName.c_str());
+                        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Team Two set to: %s", officialMatch->teamTwoName.c_str());
                     }
                 }
             }
@@ -749,6 +760,13 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 {
     std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
+    // For some reason, the player record could not be created
+    if (!playerData)
+    {
+        return true;
+    }
+
+    // If the player is not verified and does not have the spawn permission, they can't use any of the commands
     if (!playerData->verified || !bz_hasPerm(playerID, "spawn"))
     {
         bz_sendTextMessagef(BZ_SERVER, playerID, "You do not have permission to run the /%s command.", command.c_str());
@@ -919,7 +937,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             if (officialMatch != NULL)
             {
                 officialMatch->matchPaused = time(NULL);
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match paused at %s by %s.", getMatchTime().c_str(), playerData->callsign.c_str());
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match paused at %s by %s.", getMatchTime().c_str(), playerData->callsign.c_str());
             }
         }
         else
@@ -941,7 +959,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
             if (officialMatch != NULL)
             {
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Match resumed by %s.", playerData->callsign.c_str());
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match resumed by %s.", playerData->callsign.c_str());
             }
         }
         else
@@ -957,7 +975,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             if (params->size() > 0)
             {
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: %s has executed the /spawn command.", playerData->callsign.c_str());
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s has executed the /spawn command.", playerData->callsign.c_str());
 
                 std::string callsignToLookup; // Store the callsign we're going to search for
 
@@ -971,7 +989,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                     }
                 }
 
-                bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Callsign or Player slot to look for: %s", callsignToLookup.c_str());
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Callsign or Player slot to look for: %s", callsignToLookup.c_str());
 
                 // We have a pound sign followed by a valid player index
                 if (std::string::npos != std::string(params->get(0).c_str()).find("#") && isValidPlayerID(atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str())))
@@ -980,6 +998,12 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                     int victimPlayerID = atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str());
                     std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByIndex(victimPlayerID));
 
+                    if (!victim)
+                    {
+                        bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, something wrong happened to the player after you executed the command.");
+                        return true;
+                    }
+
                     bz_grantPerm(victim->playerID, "spawn");
                     bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), victim->callsign.c_str());
                 }
@@ -987,13 +1011,19 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                 {
                     std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByCallsign(callsignToLookup.c_str()));
 
+                    if (!victim)
+                    {
+                        bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, something wrong happened to the player after you executed the command.");
+                        return true;
+                    }
+
                     bz_grantPerm(victim->playerID, "spawn");
                     bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), victim->callsign.c_str());
                 }
                 else
                 {
                     bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", params->get(0).c_str());
-                    bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Player %s was not found.", callsignToLookup.c_str());
+                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Player %s was not found.", callsignToLookup.c_str());
                 }
             }
             else
@@ -1018,7 +1048,7 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
 
     // Convert the data we get from the URL job to a std::string
     std::string siteData = (const char*)(data);
-    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: URL Job returned: %s", siteData.c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: URL Job returned: %s", siteData.c_str());
 
     /*
         For whenever <regex> gets pushed out in the new version of GCC...
@@ -1049,7 +1079,7 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
                 // We're getting an array meaning it's an entire team dump, so handle it accordingly
                 case json_type_array:
                 {
-                    bz_debugMessage(DEBUG_ALL, "DEBUG :: League Overseer :: Team dump JSON data received.");
+                    bz_debugMessage(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Team dump JSON data received.");
 
                     // Our array will have multiple indexes with each index containing two elements
                     // so we need to create an array_list that will give us access to all of the indexes
@@ -1077,7 +1107,7 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
                                 {
                                     teamName = json_object_get_string(_value);
 
-                                    bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Team '%s' recorded. Getting team members...", teamName.c_str());
+                                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Team '%s' recorded. Getting team members...", teamName.c_str());
                                 }
                                 // Our second key is going to be the team members' BZIDs seperated by commas
                                 else if (strcmp(_key, "members") == 0)
@@ -1093,7 +1123,7 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
                                         std::string bzID = std::string(*it);
                                         teamMottos[bzID.c_str()] = teamName.c_str();
 
-                                        bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: BZID %s set to team %s.", bzID.c_str(), teamName.c_str());
+                                        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: BZID %s set to team %s.", bzID.c_str(), teamName.c_str());
                                     }
                                 }
                             }
@@ -1105,7 +1135,7 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
                 // We've found a JSON string, which means it's only a single team name and bzid so handle it accordingly
                 case json_type_string:
                 {
-                    bz_debugMessage(DEBUG_ALL, "DEBUG :: League Overseer :: Team name JSON data received.");
+                    bz_debugMessage(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Team name JSON data received.");
 
                     // Store the respective information in other variables because we aren't done looping
                     if (strcmp(key, "bzid") == 0)
@@ -1128,7 +1158,7 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
         {
             teamMottos[urlJobBZID] = urlJobTeamName;
 
-            bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Motto saved for BZID %s.", urlJobBZID.c_str());
+            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Motto saved for BZID %s.", urlJobBZID.c_str());
 
             // If the team name is equal to an empty string that means a player is teamless and if they are in our motto
             // map, that means they recently left a team so remove their entry in the map
@@ -1255,14 +1285,32 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
 
     // Shutdown the server if the configuration file has errors because we can't do anything
     // with a broken config
-    if (config.errors) { bz_shutdown(); }
+    if (config.errors)
+    {
+        bz_debugMessage(0, "ERROR :: League Overseer :: Your configuration file contains errors. Shutting down...");
+        bz_shutdown();
+    }
+
+    // Deprecated configuration file options
+    /*if (!config.item(section, "DEBUG_ALL").empty())
+    {
+        bz_debugMessage(0, "WARNING :: League Overseer :: The 'DEBUG_ALL' configuration file option has been deprecated.");
+        bz_debugMessage(0, "WARNING :: League Overseer :: Please use the 'VERBOSE_LEVEL' option instead.");
+        VERBOSE_LEVEL = atoi((config.item(section, "VERBOSE_LEVEL")).c_str());
+    }
+    if (!config.item(section, "LEAGUE_OVER_SEER_URL").empty())
+    {
+        bz_debugMessage(0, "WARNING :: League Overseer :: The 'LEAGUE_OVER_SEER_URL' configuration file option has been deprecated.");
+        bz_debugMessage(0, "WARNING :: League Overseer :: Please use the 'LEAGUE_OVERSEER_URL' option instead.");
+        LEAGUE_URL = atoi((config.item(section, "LEAGUE_OVER_SEER_URL")).c_str());
+    }*/
 
     // Extract all the data in the configuration file and assign it to plugin variables
     ROTATION_LEAGUE = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
     MAPCHANGE_PATH  = config.item(section, "MAPCHANGE_PATH");
-    LEAGUE_URL      = config.item(section, "LEAGUE_OVER_SEER_URL");
+    LEAGUE_URL      = config.item(section, "LEAGUE_OVERSEER_URL");
     DEBUG_LEVEL     = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
-    DEBUG_ALL       = atoi((config.item(section, "DEBUG_ALL")).c_str());
+    VERBOSE_LEVEL   = atoi((config.item(section, "VERBOSE_LEVEL")).c_str());
 
     // Sanity check for our debug level, if it doesn't pass the check then set the debug level to 1
     if (DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0)
@@ -1272,34 +1320,50 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
         DEBUG_LEVEL = 1;
     }
 
-    // We don't need to advertise that DEBUG_ALL failed so let's set it to 4, which is the default
-    if (DEBUG_ALL > 4 || DEBUG_ALL < 0)
+    // We don't need to advertise that VERBOSE_LEVEL failed so let's set it to 4, which is the default
+    if (VERBOSE_LEVEL > 4 || VERBOSE_LEVEL < 0)
     {
-        DEBUG_ALL = 4;
+        VERBOSE_LEVEL = 4;
     }
 
     // Check for errors in the configuration data. If there is an error, shut down the server
     if (strcmp(LEAGUE_URL.c_str(), "") == 0)
     {
-        bz_debugMessage(0, "ERROR :: League Overseer :: No URLs were choosen to report matches or query teams.");
+        bz_debugMessage(0, "ERROR :: League Overseer :: No URL was choosen to report matches or query teams.");
         bz_debugMessage(0, "ERROR :: League Overseer :: I won't be able to do anything without a URL, shutting down.");
         bz_shutdown();
     }
+
+    // Output the configuration settings
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Configuration File Settings");
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: ---------------------------");
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Rotational league set to  : %s", (ROTATION_LEAGUE) ? "true" : "false");
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Map change path set to    : %s", MAPCHANGE_PATH.c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Reporting matches to URL  : %s", LEAGUE_URL.c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Normal debug level set to : %d", DEBUG_LEVEL);
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Verbose level set to      : %d", VERBOSE_LEVEL);
 }
 
 // Request a team name update for all the members of a team
 void LeagueOverseer::requestTeamName (bz_eTeamType team)
 {
-    bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: A team name update for the '%s' team has been requested.", formatTeam(team).c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: A team name update for the '%s' team has been requested.", formatTeam(team).c_str());
     std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+
+    // Our player list couldn't be created so exit out of here
+    if (!playerList)
+    {
+        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: The player list to process team names failed to be created.");
+        return;
+    }
 
     for (unsigned int i = 0; i < playerList->size(); i++)
     {
         std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
 
-        if (playerRecord->team == team) // Only request a new team name for the players of a certain team
+        if (playerRecord && playerRecord->team == team) // Only request a new team name for the players of a certain team
         {
-            bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Player '%s' is a part of the '%s' team.", playerRecord->callsign.c_str(), formatTeam(team).c_str());
+            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Player '%s' is a part of the '%s' team.", playerRecord->callsign.c_str(), formatTeam(team).c_str());
             requestTeamName(playerRecord->callsign.c_str(), playerRecord->bzID.c_str());
         }
     }
@@ -1321,7 +1385,7 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 // Check if there is any need to invalidate a roll call team
 void LeagueOverseer::validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team)
 {
-    bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Starting validation of the %s team.", formatTeam(team).c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Starting validation of the %s team.", formatTeam(team).c_str());
 
     // Check if the player is a part of the team we're validating
     if (currentPlayer.teamColor == team)
@@ -1332,13 +1396,13 @@ void LeagueOverseer::validateTeamName (bool &invalidate, bool &teamError, MatchP
         if (teamName == "")
         {
             teamName = currentPlayer.teamName;
-            bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: The team name for the %s team has been set to: %s", formatTeam(team).c_str(), teamName.c_str());
+            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: The team name for the %s team has been set to: %s", formatTeam(team).c_str(), teamName.c_str());
         }
         // We found someone with a different team name, therefore we need invalidate the
         // roll call and check all of the member's team names for sanity
         else if (teamName != currentPlayer.teamName)
         {
-            bz_debugMessagef(DEBUG_ALL, "ERROR :: League Overseer :: Player '%s' is not part of the '%s' team.", currentPlayer.callsign.c_str(), teamName.c_str());
+            bz_debugMessagef(VERBOSE_LEVEL, "ERROR :: League Overseer :: Player '%s' is not part of the '%s' team.", currentPlayer.callsign.c_str(), teamName.c_str());
             invalidate = true; // Invalidate the roll call
             teamError = true;  // We need to check team one's members for their teams
         }
@@ -1346,7 +1410,7 @@ void LeagueOverseer::validateTeamName (bool &invalidate, bool &teamError, MatchP
 
     if (!teamError)
     {
-        bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Overseer :: Player '%s' belongs to the '%s' team.", currentPlayer.callsign.c_str(), currentPlayer.teamName.c_str());
+        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Player '%s' belongs to the '%s' team.", currentPlayer.callsign.c_str(), currentPlayer.teamName.c_str());
     }
 }
 
@@ -1354,7 +1418,7 @@ void LeagueOverseer::updateTeamNames ()
 {
     // Build the POST data for the URL job
     std::string teamNameDump = "query=teamDump&apiVersion=" + intToString(API_VERSION);
-    bz_debugMessagef(DEBUG_ALL, "DEBUG :: League Over Seer :: Updating Team name database...");
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Over Seer :: Updating Team name database...");
 
     bz_addURLJob(LEAGUE_URL.c_str(), this, teamNameDump.c_str()); //Send the team update request to the league website
 }

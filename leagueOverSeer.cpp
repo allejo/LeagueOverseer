@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 263;
+const int BUILD = 265;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1252,7 +1252,7 @@ std::string LeagueOverseer::getMatchTime()
     int time = getMatchProgress();
 
     // Let's covert the seconds of a match's progress into minutes and seconds
-    int minutes = 30 - ceil(time / 60.0);
+    int minutes = (officialMatch->duration/60) - ceil(time / 60.0);
     int seconds = 60 - (time % 60);
 
     // We need to store the literal values

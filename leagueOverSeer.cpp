@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 265;
+const int BUILD = 266;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1280,8 +1280,12 @@ std::string LeagueOverseer::getMatchTime()
 // Load the plugin configuration file
 void LeagueOverseer::loadConfig(const char* cmdLine)
 {
+	// Setup to read the configuration file
     PluginConfig config = PluginConfig(cmdLine);
     std::string section = "leagueOverSeer";
+
+    // Set a default value
+    VERBOSE_LEVEL = -1;
 
     // Shutdown the server if the configuration file has errors because we can't do anything
     // with a broken config
@@ -1292,25 +1296,25 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     }
 
     // Deprecated configuration file options
-    /*if (!config.item(section, "DEBUG_ALL").empty())
+    if (!config.item(section, "DEBUG_ALL").empty())
     {
         bz_debugMessage(0, "WARNING :: League Overseer :: The 'DEBUG_ALL' configuration file option has been deprecated.");
         bz_debugMessage(0, "WARNING :: League Overseer :: Please use the 'VERBOSE_LEVEL' option instead.");
-        VERBOSE_LEVEL = atoi((config.item(section, "VERBOSE_LEVEL")).c_str());
+        VERBOSE_LEVEL = atoi((config.item(section, "DEBUG_ALL")).c_str());
     }
     if (!config.item(section, "LEAGUE_OVER_SEER_URL").empty())
     {
         bz_debugMessage(0, "WARNING :: League Overseer :: The 'LEAGUE_OVER_SEER_URL' configuration file option has been deprecated.");
         bz_debugMessage(0, "WARNING :: League Overseer :: Please use the 'LEAGUE_OVERSEER_URL' option instead.");
-        LEAGUE_URL = atoi((config.item(section, "LEAGUE_OVER_SEER_URL")).c_str());
-    }*/
+        LEAGUE_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
+    }
 
     // Extract all the data in the configuration file and assign it to plugin variables
     ROTATION_LEAGUE = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
     MAPCHANGE_PATH  = config.item(section, "MAPCHANGE_PATH");
-    LEAGUE_URL      = config.item(section, "LEAGUE_OVERSEER_URL");
     DEBUG_LEVEL     = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
-    VERBOSE_LEVEL   = atoi((config.item(section, "VERBOSE_LEVEL")).c_str());
+    LEAGUE_URL      = (LEAGUE_URL.empty()) ? config.item(section, "LEAGUE_OVERSEER_URL") : LEAGUE_URL;
+    VERBOSE_LEVEL   = (VERBOSE_LEVEL < 0) ? atoi((config.item(section, "VERBOSE_LEVEL")).c_str()) : VERBOSE_LEVEL;
 
     // Sanity check for our debug level, if it doesn't pass the check then set the debug level to 1
     if (DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0)
@@ -1321,7 +1325,7 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     }
 
     // We don't need to advertise that VERBOSE_LEVEL failed so let's set it to 4, which is the default
-    if (VERBOSE_LEVEL > 4 || VERBOSE_LEVEL < 0)
+    if (VERBOSE_LEVEL > 4 || VERBOSE_LEVEL < 0 || config.item(section, "VERBOSE_LEVEL").empty())
     {
         VERBOSE_LEVEL = 4;
     }

@@ -65,13 +65,15 @@ Compiling
 
 ### Requirements
 
-- BZFlag 2.4.3+ (After Feb 9th 2014)
+- BZFlag 2.4.3+ (after Feb 16th 2014)
 
 - C++11
 
-- libjson0
+- JSON Library
 
-- libjson0-dev
+    - libjson0-dev (Debian/Ubuntu)
+
+    - json-c-devel (Fedora Linux)
 
 ### How to Compile
 
@@ -82,22 +84,19 @@ Compiling
 2.  Go into the newly checked out source code and then the plugins directory.
 
     `cd bzflag/plugins`
-
-3.  Create a plugin using the `newplug.sh` script.
-
-    `sh newplug.sh leagueOverSeer`
-
-4.  Delete the newly create leagueOverSeer directory.
-
-    `rm -rf leagueOverSeer`
-
-5.  Run a git clone of this repository from within the plugins directory. This should have created a new leagueOverSeer directory within the plugins directory. Notice, you will be checking out the 'release' branch will always contain the latest release of the plugin to allow for easy update. If you are running a test port and would like the latest development build, use the 'master' branch instead of 'release.'
+    
+3.  Run a git clone of this repository from within the plugins directory. This should have created a new leagueOverSeer directory within the plugins directory. Notice, you will be checking out the 'release' branch will always contain the latest release of the plugin to allow for easy update. If you are running a test port and would like the latest development build, use the 'master' branch instead of 'release.'
 
     `git clone -b release https://github.com/allejo/leagueOverSeer.git`
+    
+4.  The latest BZFlag trunk will contain a script called 'addToBuild.sh' and it will allow you to add the plugin to the build system.
 
-6.  Instruct the build system to generate a Makefile and then compile and install the plugin.
+    `sh addToBuild.sh leagueOverSeer`
+
+5.  Instruct the build system to generate a Makefile and then compile and install the plugin.
 
     `cd ..; ./autogen.sh; ./configure; make; make install;`
+
 
 ### Updating the Plugin
 

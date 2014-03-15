@@ -30,6 +30,9 @@ League Over Seer Plug-in
         // instead the ID that is stored in the bz-owl database
         $AUTOREPORT_UID = 0;
 
+        // Allow anonymous users to retrieve team motto information via POST requests
+        $ALLOW_ANONYMOUS_TEAM_FETCHING = false;
+
         // When set to true, all match details and unauthorized access attempts will be reported in the specified log
         // file
         $LOG_DETAILS = true;
@@ -76,6 +79,90 @@ League Over Seer Plug-in
 // as I'm sure they would benefit other people.
 
 
+// Create an object to access the bz-owl database
+require_once 'CMS/siteinfo.php';
+$site = new siteinfo();
+$dbc = $site->connect_to_db();
+
+// After the first major rewrite of the league overseer plugin, the API was introduced in order to provided backwards
+// compatibility for servers that have not updated to the latest version of the plugin.
+$API_VERSION = (isset($REPORT_METHOD['apiVersion'])) ? $REPORT_METHOD['apiVersion'] : 0;
+
+
+// In order to allow people to retrieve team motto anonymously
+if ((!$DISABLE_IP_CHECK && !in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS)) || $ALLOW_ANONYMOUS_TEAM_FETCHING)
+{
+    // Retrieving team information isn't sensitive data so allowing
+    if ($REPORT_METHOD['query'] == 'teamNameQuery') // We would like to get the team name for a user
+    {
+        $player = sqlSafeString($REPORT_METHOD['teamPlayers']);
+        $teamID = getTeamID($player);
+
+        // We will only get -1 if a player did not belong to a team, so notify BZFS that they are teamless by sending it a
+        // blank team name or a DELETE query respective to the API version.
+        if ($teamID < 0)
+        {
+            if ($API_VERSION == 1)
+            {
+                echo json_encode(array("bzid" => "$player", "team" => ""));
+            }
+            else
+            {
+                echo "DELETE FROM players WHERE bzid = " . $player;
+            }
+
+            die();
+        }
+
+        // If we have made it this far, then that means the player has a team so notify BZFS of the team name by either
+        // sending JSON or a INSERT query
+        if ($API_VERSION == 1)
+        {
+            echo json_encode(array("bzid" => "$player", "team" => preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID)))));
+        }
+        else
+        {
+            echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $player . ", \"" . preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID))) . "\")";
+        }
+    }
+    else if ($REPORT_METHOD['query'] == 'teamDump') // We are starting a server and need a database dump of all the team names
+    {
+        if ($API_VERSION == 1)
+        {
+            // Create an array to store all teams and the BZIDs
+            $teamArray = array();
+
+            // Create a merged table of team names and BZID list
+            $getTeams = "SELECT teams.name, GROUP_CONCAT(players.external_id separator ',') AS members FROM players, teams WHERE players.teamid = teams.id AND teams.leader_userid != 0 AND players.external_id != '' GROUP BY teams.name";
+            $getTeamsQuery = @$site->execute_query('players, teams', $getTeams);
+
+            // Store the team name and member list in the array we just created
+            while ($entry = mysql_fetch_array($getTeamsQuery))
+            {
+                $teamArray[] = array("team" => preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[0])), "members" => $entry[1]);
+            }
+
+            // Return the JSON
+            echo json_encode(array("teamDump" => $teamArray));
+        }
+        else
+        {
+            // Create a merged table of players' BZID and team names
+            $getTeams = "SELECT players.external_id, teams.name FROM players, teams WHERE players.teamid = teams.id AND players.external_id != ''";
+            $getTeamsQuery = @$site->execute_query('players, teams', $getTeams);
+
+            // For each player, we'll output a SQLite query for BZFS to execute
+            while ($entry = mysql_fetch_array($getTeamsQuery))
+            {
+                echo "INSERT OR REPLACE INTO players(bzid, team) VALUES (" . $entry[0] . ",\"" . preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[1])) . "\");";
+            }
+        }
+    }
+
+    die();
+}
+
+
 // To prevent abuse of the automated system, we need to make sure that the IP making the request is one of the IPs we
 // allowed in the $ALLOWED_IPS array.
 if (!$DISABLE_IP_CHECK && !in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS))
@@ -85,15 +172,6 @@ if (!$DISABLE_IP_CHECK && !in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS))
     writeToDebug("Unauthorized access attempt from " . $_SERVER['REMOTE_ADDR']);
     die('Error: 403 - Forbidden');
 }
-
-// Create an object to access the bz-owl database
-require_once 'CMS/siteinfo.php';
-$site = new siteinfo();
-$dbc = $site->connect_to_db();
-
-// After the first major rewrite of the league overseer plugin, the API was introduced in order to provided backwards
-// compatibility for servers that have not updated to the latest version of the plugin.
-$API_VERSION = (isset($REPORT_METHOD['apiVersion'])) ? $REPORT_METHOD['apiVersion'] : 0;
 
 // The server would like to report a match
 if ($REPORT_METHOD['query'] == 'reportMatch')
@@ -265,71 +343,6 @@ if ($REPORT_METHOD['query'] == 'reportMatch')
     ob_start();
     require_once ('CMS/maintenance/index.php');
     ob_end_clean();
-}
-else if ($REPORT_METHOD['query'] == 'teamNameQuery') // We would like to get the team name for a user
-{
-    $player = sqlSafeString($REPORT_METHOD['teamPlayers']);
-    $teamID = getTeamID($player);
-
-    // We will only get -1 if a player did not belong to a team, so notify BZFS that they are teamless by sending it a
-    // blank team name or a DELETE query respective to the API version.
-    if ($teamID < 0)
-    {
-        if ($API_VERSION == 1)
-        {
-            echo json_encode(array("bzid" => "$player", "team" => ""));
-        }
-        else
-        {
-            echo "DELETE FROM players WHERE bzid = " . $player;
-        }
-
-        die();
-    }
-
-    // If we have made it this far, then that means the player has a team so notify BZFS of the team name by either
-    // sending JSON or a INSERT query
-    if ($API_VERSION == 1)
-    {
-        echo json_encode(array("bzid" => "$player", "team" => preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID)))));
-    }
-    else
-    {
-        echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $player . ", \"" . preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID))) . "\")";
-    }
-}
-else if ($REPORT_METHOD['query'] == 'teamDump') // We are starting a server and need a database dump of all the team names
-{
-    if ($API_VERSION == 1)
-    {
-        // Create an array to store all teams and the BZIDs
-        $teamArray = array();
-
-        // Create a merged table of team names and BZID list
-        $getTeams = "SELECT teams.name, GROUP_CONCAT(players.external_id separator ',') AS members FROM players, teams WHERE players.teamid = teams.id AND teams.leader_userid != 0 AND players.external_id != '' GROUP BY teams.name";
-        $getTeamsQuery = @$site->execute_query('players, teams', $getTeams);
-
-        // Store the team name and member list in the array we just created
-        while ($entry = mysql_fetch_array($getTeamsQuery))
-        {
-            $teamArray[] = array("team" => preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[0])), "members" => $entry[1]);
-        }
-
-        // Return the JSON
-        echo json_encode(array("teamDump" => $teamArray));
-    }
-    else
-    {
-        // Create a merged table of players' BZID and team names
-        $getTeams = "SELECT players.external_id, teams.name FROM players, teams WHERE players.teamid = teams.id AND players.external_id != ''";
-        $getTeamsQuery = @$site->execute_query('players, teams', $getTeams);
-
-        // For each player, we'll output a SQLite query for BZFS to execute
-        while ($entry = mysql_fetch_array($getTeamsQuery))
-        {
-            echo "INSERT OR REPLACE INTO players(bzid, team) VALUES (" . $entry[0] . ",\"" . preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[1])) . "\");";
-        }
-    }
 }
 else // Oh noes! Someone is trying to h4x0r us!
 {

@@ -106,10 +106,6 @@ if ((!$DISABLE_IP_CHECK && !in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS)) || 
             {
                 echo json_encode(array("bzid" => "$player", "team" => ""));
             }
-            else
-            {
-                echo "DELETE FROM players WHERE bzid = " . $player;
-            }
 
             die();
         }
@@ -119,10 +115,6 @@ if ((!$DISABLE_IP_CHECK && !in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS)) || 
         if ($API_VERSION == 1)
         {
             echo json_encode(array("bzid" => "$player", "team" => preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID)))));
-        }
-        else
-        {
-            echo "INSERT OR REPLACE INTO players (bzid, team) VALUES (" . $player . ", \"" . preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID))) . "\")";
         }
     }
     else if ($REPORT_METHOD['query'] == 'teamDump') // We are starting a server and need a database dump of all the team names
@@ -144,18 +136,6 @@ if ((!$DISABLE_IP_CHECK && !in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS)) || 
 
             // Return the JSON
             echo json_encode(array("teamDump" => $teamArray));
-        }
-        else
-        {
-            // Create a merged table of players' BZID and team names
-            $getTeams = "SELECT players.external_id, teams.name FROM players, teams WHERE players.teamid = teams.id AND players.external_id != ''";
-            $getTeamsQuery = @$site->execute_query('players, teams', $getTeams);
-
-            // For each player, we'll output a SQLite query for BZFS to execute
-            while ($entry = mysql_fetch_array($getTeamsQuery))
-            {
-                echo "INSERT OR REPLACE INTO players(bzid, team) VALUES (" . $entry[0] . ",\"" . preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[1])) . "\");";
-            }
         }
     }
 

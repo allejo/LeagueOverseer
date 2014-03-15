@@ -90,7 +90,7 @@ $API_VERSION = (isset($REPORT_METHOD['apiVersion'])) ? $REPORT_METHOD['apiVersio
 
 
 // In order to allow people to retrieve team motto anonymously
-if ((!$DISABLE_IP_CHECK && !in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS)) || $ALLOW_ANONYMOUS_TEAM_FETCHING)
+if ((!$DISABLE_IP_CHECK && in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS)) || $ALLOW_ANONYMOUS_TEAM_FETCHING)
 {
     // Retrieving team information isn't sensitive data so allowing
     if ($REPORT_METHOD['query'] == 'teamNameQuery') // We would like to get the team name for a user
@@ -116,6 +116,8 @@ if ((!$DISABLE_IP_CHECK && !in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS)) || 
         {
             echo json_encode(array("bzid" => "$player", "team" => preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID)))));
         }
+
+        die();
     }
     else if ($REPORT_METHOD['query'] == 'teamDump') // We are starting a server and need a database dump of all the team names
     {
@@ -137,9 +139,9 @@ if ((!$DISABLE_IP_CHECK && !in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS)) || 
             // Return the JSON
             echo json_encode(array("teamDump" => $teamArray));
         }
-    }
 
-    die();
+        die();
+    }
 }
 
 

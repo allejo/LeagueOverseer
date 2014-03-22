@@ -312,51 +312,51 @@ If you would like to host your own tournament using the League Overseer plugin, 
 
 query
 
-- Description: The request the plugin is submitting. When submitting a match report, this value is set to `reportMatch`.
+- The request the plugin is submitting. When submitting a match report, this value is set to `reportMatch`.
 
 apiVersion
 
-- Value: The API version the BZFS plugin is using when submitting information. The current API version is set to 1.
+- The API version the BZFS plugin is using when submitting information. The current API version is set to 1.
 
 teamOneWins
 
-- Value: The number of times Team A captured the flag in the official match.
+- The number of times Team A captured the flag in the official match.
 
 teamTwoWins
 
-- Value: The number of times Team B captured the flag in the official match.
+- The number of times Team B captured the flag in the official match.
 
 duration
 
-- Value: The duration of the match in minutes.
+- The duration of the match in minutes.
 
 matchTime
 
-- Value: The UTC timestamp of when the match was submitted
+- The UTC timestamp of when the match was submitted
 
 server
 
-- Value: The domain name of the server where the match took place.
+- The domain name of the server where the match took place.
 
 port
 
-- Value: The port of the server where the match took place.
+- The port of the server where the match took place.
 
 replayFile
 
-- Value: The name of the report file saved on the server.
+- The name of the report file saved on the server.
 
 mapPlayed
 
-- Value: The name of the map that was played on. This value is only applicable to rotational leagues.
+- The name of the map that was played on. This value is only applicable to rotational leagues.
 
 teamOnePlayers
 
-- Value: A list of BZIDs separated by commas of the players who participated on Team A.
+- A list of BZIDs separated by commas of the players who participated on Team A.
 
 teamTwoPlayers
 
-- Value: A list of BZIDs separated by commas of the players who participated on Team B.
+- A list of BZIDs separated by commas of the players who participated on Team B.
 
 Code Hosting
 ------------

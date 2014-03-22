@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 266;
+const int BUILD = 271;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -260,19 +260,22 @@ public:
     virtual void updateTeamNames (void);
 
     // All the variables that will be used in the plugin
-    bool         ROTATION_LEAGUE, // Whether or not we are watching a league that uses different maps
-                 MATCH_INFO_SENT, // Whether or not the information returned by a URL job pertains to a match report
-                 RECORDING;       // Whether or not we are recording a match
+    bool         ROTATION_LEAGUE,  // Whether or not we are watching a league that uses different maps
+                 MATCH_INFO_SENT,  // Whether or not the information returned by a URL job pertains to a match report
+                 DISABLE_REPORT,   // Whether or not to disable automatic match reports if a server is not used as an official match server
+                 DISABLE_MOTTO,    // Whether or not to set a player's motto to their team name
+                 RECORDING;        // Whether or not we are recording a match
+ 
+    int          DEBUG_LEVEL,      // The DEBUG level the server owner wants the plugin to use for its messages
+                 VERBOSE_LEVEL;    // This is the spamming/ridiculous level of debug that the plugin uses
 
-    int          DEBUG_LEVEL,     // The DEBUG level the server owner wants the plugin to use for its messages
-                 VERBOSE_LEVEL;       // This is the spamming/ridiculous level of debug that the plugin uses
+    std::string  MATCH_REPORT_URL, // The URL the plugin will use to report matches. This should be the URL the PHP counterpart of this plugin
+                 TEAM_NAME_URL,
+                 MAP_NAME,         // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
+                 MAPCHANGE_PATH;   // The path to the file that contains the name of current map being played
 
-    std::string  LEAGUE_URL,      // The URL the plugin will use to report matches. This should be the URL the PHP counterpart of this plugin
-                 MAP_NAME,        // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
-                 MAPCHANGE_PATH;  // The path to the file that contains the name of current map being played
-
-    bz_eTeamType TEAM_ONE,        // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
-                 TEAM_TWO;        //     ONE and TWO
+    bz_eTeamType TEAM_ONE,         // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
+                 TEAM_TWO;         //     ONE and TWO
 
     // This is the only pointer of the struct for the official match that we will be using. If this
     // variable is set to NULL, that means that there is currently no official match occurring.
@@ -457,77 +460,80 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Match saved as: %s", recordingFileName.c_str());
             }
 
-            if (officialMatch == NULL)
+            if (!DISABLE_REPORT)
             {
-                // It was a fun match, so there is no need to do anything
-
-                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Overseer :: Fun match has completed.");
-            }
-            else if (officialMatch->canceled)
-            {
-                // The match was canceled for some reason so output the reason to both the players and the server logs
-
-                bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: %s", officialMatch->cancelationReason.c_str());
-                bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, officialMatch->cancelationReason.c_str());
-            }
-            else if (officialMatch->matchParticipants.empty())
-            {
-                // Oops... I darn goofed. Somehow the players were not recorded properly
-
-                bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Overseer :: No recorded players for this official match.");
-                bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match could not be reported due to not having a list of valid match participants.");
-            }
-            else
-            {
-                // This was an official match, so let's report it
-
-                // Format the date to -> year-month-day hour:minute:second
-                char matchDate[20];
-                sprintf(matchDate, "%02d-%02d-%02d %02d:%02d:%02d", standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute, standardTime.second);
-
-                // Keep references to values for quick reference
-                std::string teamOnePointsFinal = intToString(officialMatch->teamOnePoints);
-                std::string teamTwoPointsFinal = intToString(officialMatch->teamTwoPoints);
-                std::string matchDuration      = intToString(officialMatch->duration/60);
-
-                // Store match data in the logs
-                bz_debugMessagef(0, "Match Data :: League Over Seer Match Report");
-                bz_debugMessagef(0, "Match Data :: -----------------------------");
-                bz_debugMessagef(0, "Match Data :: Match Time      : %s", matchDate);
-                bz_debugMessagef(0, "Match Data :: Duration        : %s", matchDuration.c_str());
-                bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_ONE, true).c_str(), teamOnePointsFinal.c_str());
-                bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_TWO, true).c_str(), teamTwoPointsFinal.c_str());
-
-                // Start building POST data to be sent to the league website
-                std::string matchToSend = "query=reportMatch";
-                            matchToSend += "&apiVersion="  + std::string(bz_urlEncode(intToString(API_VERSION).c_str()));
-                            matchToSend += "&teamOneWins=" + std::string(bz_urlEncode(teamOnePointsFinal.c_str()));
-                            matchToSend += "&teamTwoWins=" + std::string(bz_urlEncode(teamTwoPointsFinal.c_str()));
-                            matchToSend += "&duration="    + std::string(bz_urlEncode(matchDuration.c_str()));
-                            matchToSend += "&matchTime="   + std::string(bz_urlEncode(matchDate));
-                            matchToSend += "&server="      + std::string(bz_urlEncode(bz_getPublicAddr().c_str()));
-                            matchToSend += "&port="        + std::string(bz_urlEncode(intToString(bz_getPublicPort()).c_str()));
-                            matchToSend += "&replayFile="  + std::string(bz_urlEncode(recordingFileName.c_str()));
-
-                // Only add this parameter if it's a rotational league such as OpenLeague
-                if (ROTATION_LEAGUE)
+                if (officialMatch == NULL)
                 {
-                    matchToSend += "&mapPlayed=" + std::string(bz_urlEncode(MAP_NAME.c_str()));
+                    // It was a fun match, so there is no need to do anything
+
+                    bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Overseer :: Fun match has completed.");
                 }
+                else if (officialMatch->canceled)
+                {
+                    // The match was canceled for some reason so output the reason to both the players and the server logs
 
-                // Build a string of BZIDs and also output the BZIDs to the server logs while we're at it
-                matchToSend += "&teamOnePlayers=" + buildBZIDString(TEAM_ONE);
-                matchToSend += "&teamTwoPlayers=" + buildBZIDString(TEAM_TWO);
+                    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: %s", officialMatch->cancelationReason.c_str());
+                    bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, officialMatch->cancelationReason.c_str());
+                }
+                else if (officialMatch->matchParticipants.empty())
+                {
+                    // Oops... I darn goofed. Somehow the players were not recorded properly
 
-                // Finish prettifying the server logs
-                bz_debugMessagef(0, "Match Data :: -----------------------------");
-                bz_debugMessagef(0, "Match Data :: End of Match Report");
-                bz_debugMessagef(0, "DEBUG :: League Overseer :: Reporting match data...");
-                bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Reporting match...");
+                    bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Overseer :: No recorded players for this official match.");
+                    bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match could not be reported due to not having a list of valid match participants.");
+                }
+                else
+                {
+                    // This was an official match, so let's report it
 
-                //Send the match data to the league website
-                bz_addURLJob(LEAGUE_URL.c_str(), this, matchToSend.c_str());
-                MATCH_INFO_SENT = true;
+                    // Format the date to -> year-month-day hour:minute:second
+                    char matchDate[20];
+                    sprintf(matchDate, "%02d-%02d-%02d %02d:%02d:%02d", standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute, standardTime.second);
+
+                    // Keep references to values for quick reference
+                    std::string teamOnePointsFinal = intToString(officialMatch->teamOnePoints);
+                    std::string teamTwoPointsFinal = intToString(officialMatch->teamTwoPoints);
+                    std::string matchDuration      = intToString(officialMatch->duration/60);
+
+                    // Store match data in the logs
+                    bz_debugMessagef(0, "Match Data :: League Over Seer Match Report");
+                    bz_debugMessagef(0, "Match Data :: -----------------------------");
+                    bz_debugMessagef(0, "Match Data :: Match Time      : %s", matchDate);
+                    bz_debugMessagef(0, "Match Data :: Duration        : %s", matchDuration.c_str());
+                    bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_ONE, true).c_str(), teamOnePointsFinal.c_str());
+                    bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_TWO, true).c_str(), teamTwoPointsFinal.c_str());
+
+                    // Start building POST data to be sent to the league website
+                    std::string matchToSend = "query=reportMatch";
+                                matchToSend += "&apiVersion="  + std::string(bz_urlEncode(intToString(API_VERSION).c_str()));
+                                matchToSend += "&teamOneWins=" + std::string(bz_urlEncode(teamOnePointsFinal.c_str()));
+                                matchToSend += "&teamTwoWins=" + std::string(bz_urlEncode(teamTwoPointsFinal.c_str()));
+                                matchToSend += "&duration="    + std::string(bz_urlEncode(matchDuration.c_str()));
+                                matchToSend += "&matchTime="   + std::string(bz_urlEncode(matchDate));
+                                matchToSend += "&server="      + std::string(bz_urlEncode(bz_getPublicAddr().c_str()));
+                                matchToSend += "&port="        + std::string(bz_urlEncode(intToString(bz_getPublicPort()).c_str()));
+                                matchToSend += "&replayFile="  + std::string(bz_urlEncode(recordingFileName.c_str()));
+
+                    // Only add this parameter if it's a rotational league such as OpenLeague
+                    if (ROTATION_LEAGUE)
+                    {
+                        matchToSend += "&mapPlayed=" + std::string(bz_urlEncode(MAP_NAME.c_str()));
+                    }
+
+                    // Build a string of BZIDs and also output the BZIDs to the server logs while we're at it
+                    matchToSend += "&teamOnePlayers=" + buildBZIDString(TEAM_ONE);
+                    matchToSend += "&teamTwoPlayers=" + buildBZIDString(TEAM_TWO);
+
+                    // Finish prettifying the server logs
+                    bz_debugMessagef(0, "Match Data :: -----------------------------");
+                    bz_debugMessagef(0, "Match Data :: End of Match Report");
+                    bz_debugMessagef(0, "DEBUG :: League Overseer :: Reporting match data...");
+                    bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Reporting match...");
+
+                    //Send the match data to the league website
+                    bz_addURLJob(MATCH_REPORT_URL.c_str(), this, matchToSend.c_str());
+                    MATCH_INFO_SENT = true;
+                }
             }
 
             // We're done with the struct, so make it NULL until the next official match
@@ -585,7 +591,10 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_GetPlayerMottoData_V2* mottoData = (bz_GetPlayerMottoData_V2*)eventData;
 
-            mottoData->motto = teamMottos[mottoData->record->bzID.c_str()];
+            if (!DISABLE_MOTTO)
+            {
+                mottoData->motto = teamMottos[mottoData->record->bzID.c_str()];
+            }
         }
         break;
 
@@ -600,10 +609,13 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                                     ((officialMatch != NULL) ? "an official" : "a fun"));
             }
 
-            // Only send a URL job if the user is verified
-            if (joinData->record->verified)
+            if (!DISABLE_MOTTO)
             {
-                requestTeamName(joinData->record->callsign.c_str(), joinData->record->bzID.c_str());
+                // Only send a URL job if the user is verified
+                if (joinData->record->verified)
+                {
+                    requestTeamName(joinData->record->callsign.c_str(), joinData->record->bzID.c_str());
+                }
             }
         }
         break;
@@ -1285,7 +1297,7 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     std::string section = "leagueOverSeer";
 
     // Set a default value
-    VERBOSE_LEVEL = -1;
+    VERBOSE_LEVEL  = -1;
 
     // Shutdown the server if the configuration file has errors because we can't do anything
     // with a broken config
@@ -1300,21 +1312,61 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     {
         bz_debugMessage(0, "WARNING :: League Overseer :: The 'DEBUG_ALL' configuration file option has been deprecated.");
         bz_debugMessage(0, "WARNING :: League Overseer :: Please use the 'VERBOSE_LEVEL' option instead.");
+
         VERBOSE_LEVEL = atoi((config.item(section, "DEBUG_ALL")).c_str());
     }
     if (!config.item(section, "LEAGUE_OVER_SEER_URL").empty())
     {
         bz_debugMessage(0, "WARNING :: League Overseer :: The 'LEAGUE_OVER_SEER_URL' configuration file option has been deprecated.");
         bz_debugMessage(0, "WARNING :: League Overseer :: Please use the 'LEAGUE_OVERSEER_URL' option instead.");
-        LEAGUE_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
+
+        MATCH_REPORT_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
+        TEAM_NAME_URL    = config.item(section, "LEAGUE_OVER_SEER_URL");
     }
 
     // Extract all the data in the configuration file and assign it to plugin variables
     ROTATION_LEAGUE = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
     MAPCHANGE_PATH  = config.item(section, "MAPCHANGE_PATH");
+    DISABLE_REPORT  = toBool(config.item(section, "DISABLE_MATCH_REPORT"));
+    DISABLE_MOTTO   = toBool(config.item(section, "DISABLE_TEAM_MOTTO"));
     DEBUG_LEVEL     = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
-    LEAGUE_URL      = (LEAGUE_URL.empty()) ? config.item(section, "LEAGUE_OVERSEER_URL") : LEAGUE_URL;
     VERBOSE_LEVEL   = (VERBOSE_LEVEL < 0) ? atoi((config.item(section, "VERBOSE_LEVEL")).c_str()) : VERBOSE_LEVEL;
+
+    if (!config.item(section, "LEAGUE_OVERSEER_URL").empty())
+    {
+        MATCH_REPORT_URL = config.item(section, "LEAGUE_OVERSEER_URL");
+        TEAM_NAME_URL    = config.item(section, "LEAGUE_OVERSEER_URL");
+    }
+    else
+    {
+        if (!DISABLE_REPORT)
+        {
+            if (!config.item(section, "MATCH_REPORT_URL").empty())
+            {
+                MATCH_REPORT_URL = config.item(section, "MATCH_REPORT_URL");
+            }
+            else
+            {
+                bz_debugMessage(0, "ERROR :: League Overseer :: You are requesting to report matches but you have no specified a URL to report to.");
+                bz_debugMessage(0, "ERROR :: League Overseer :: Please set the 'MATCH_REPORT_URL' or 'LEAGUE_OVERSEER_URL' option respectively.");
+                bz_shutdown();
+            }
+        }
+
+        if (!DISABLE_MOTTO)
+        {
+            if (!config.item(section, "MOTTO_FETCH_URL").empty())
+            {
+                TEAM_NAME_URL = config.item(section, "MOTTO_FETCH_URL");
+            }
+            else
+            {
+                bz_debugMessage(0, "ERROR :: League Overseer :: You have requested to fetch team names but have not specified a URL to fetch them from.");
+                bz_debugMessage(0, "ERROR :: League Overseer :: Please set the 'MOTTO_FETCH_URL' or 'LEAGUE_OVERSEER_URL' option respectively.");
+                bz_shutdown();
+            }
+        }
+    }
 
     // Sanity check for our debug level, if it doesn't pass the check then set the debug level to 1
     if (DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0)
@@ -1330,20 +1382,13 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
         VERBOSE_LEVEL = 4;
     }
 
-    // Check for errors in the configuration data. If there is an error, shut down the server
-    if (strcmp(LEAGUE_URL.c_str(), "") == 0)
-    {
-        bz_debugMessage(0, "ERROR :: League Overseer :: No URL was choosen to report matches or query teams.");
-        bz_debugMessage(0, "ERROR :: League Overseer :: I won't be able to do anything without a URL, shutting down.");
-        bz_shutdown();
-    }
-
     // Output the configuration settings
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Configuration File Settings");
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: ---------------------------");
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Rotational league set to  : %s", (ROTATION_LEAGUE) ? "true" : "false");
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Map change path set to    : %s", MAPCHANGE_PATH.c_str());
-    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Reporting matches to URL  : %s", LEAGUE_URL.c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Reporting matches to URL  : %s", MATCH_REPORT_URL.c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Fetching Team Names from  : %s", TEAM_NAME_URL.c_str());
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Normal debug level set to : %d", DEBUG_LEVEL);
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Verbose level set to      : %d", VERBOSE_LEVEL);
 }
@@ -1383,7 +1428,7 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Sending motto request for '%s'", callsign.c_str());
 
     // Send the team update request to the league website
-    bz_addURLJob(LEAGUE_URL.c_str(), this, teamMotto.c_str());
+    bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamMotto.c_str());
 }
 
 // Check if there is any need to invalidate a roll call team
@@ -1424,5 +1469,5 @@ void LeagueOverseer::updateTeamNames ()
     std::string teamNameDump = "query=teamDump&apiVersion=" + intToString(API_VERSION);
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Over Seer :: Updating Team name database...");
 
-    bz_addURLJob(LEAGUE_URL.c_str(), this, teamNameDump.c_str()); //Send the team update request to the league website
+    bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamNameDump.c_str()); //Send the team update request to the league website
 }

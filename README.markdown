@@ -30,7 +30,7 @@ Table of Contents
 
     - [Configuration File Options](#configuration-file-options)
 
-- [Web Hosting Details](#web-hosting-details)
+- [League Websites](#league-websites)
 
 - [Code Hosting](#code-hosting)
 
@@ -243,17 +243,41 @@ MAPCHANGE_PATH
 
 - Description: If this is a rotational league, then be sure to change the path to the mapchange.out file because that is where the name of the map file is stored. Whatever is located in this file is what will be submitted as the map played. If this is not a rotational, then this variable can be left with the current value or commented out.
 
+DISABLE_MATCH_REPORT
+
+- Default: *false*
+
+- Description: Disable automatically submitting matches when the `/official` command is issued. Use this option when running a server that will not be reporting matches to the league website.
+
+DISABLE_TEAM_MOTTO
+
+- Default: *false*
+
+- Description: Disable fetching team names and setting the team names as the mottos for players when they join. Use this option if you would like to allow players to use their own mottos when joining a league server.
+
 LEAGUE_OVERSEER_URL
 
 - Default: *N/A*
 
-- Description: The URL of the main leagueOverSeer PHP script
+- Description: The URL the plugin will be using for __both__ automatic match reports and the team name fetching for replacing a player's motto. When this option is used, it will automatically set `AUTO_REPORT_URL` and `MOTTO_FETCH_URL` to the same value.
+
+MATCH_REPORT_URL
+
+- Default: *N/A*
+
+- Description: The URL the plugin will be using __only__ to report matches. This option can be used if the plugin will not be reporting matches to a league website but instead to a custom script for a custom tournament.
+
+MOTTO_FETCH_URL
+
+- Default: *N/A*
+
+- Description: The URL the plugin will be using __only__ to fetch team names for players' mottos. If the plugin is running a custom tournament and is reporting to a custom script, then this URL will be set to the actual league site in order to fetch the correct team names.
 
 DEBUG_LEVEL
 
 - Default: *1*
 
-- Description: The debug level that will be used by the plugin to report some information on who started a match, who canceled a match, what teams played, etc
+- Description: The debug level that will be used by the plugin to report some information on who started a match, who canceled a match, what teams played, etc.
 
 VERBOSE_LEVEL
 
@@ -261,8 +285,14 @@ VERBOSE_LEVEL
 
 - Description: This option is not in the sample configuration and should not really be used on a live server as there is no need for it. This option only exists in need of debugging purposes where this is the debug level the plugin will use for __all__ of the extra information the plugin received and how it is handled; this value is separate and does __not__ overwrite the `DEBUG_LEVEL` value. *Warning:* Your log file will be much larger if this value is set appropriately.
 
-Web Hosting Details
--------------------
+League Websites
+-----------
+
+### BZiON
+
+The [BZiON](http://github.com/allejo/bzion) project supports League Overseer automatically and does not require the leagueOverSeer.php file, instead read BZiON's documentation to learn how to configure accepting automatic match reports.
+
+### bz-owl
 
 If you are hosting a league website using the [bz-owl](https://code.google.com/p/bz-owl/) project, make sure you follow these requirements:
 
@@ -275,6 +305,58 @@ If you are hosting a league website using the [bz-owl](https://code.google.com/p
 4.  If you would like for the report handler to output match information received to a file, leave $LOG_DETAILS (line 35) set to *true* and set the file location with the $LOG_FILE variable on line 39. If you do not wish to log, set $LOG_DETAILS to false and leave $LOG_FILE as is.
 
 5.  Since all leagues have different scoring systems, configure line 49 to use the respective fractions of ELOs with their match durations. By default, GU league uses the 2/3 of the ELO points for 20 minute matches and all of the ELO points for 30 minute matches. This looks like: `array(20 => 2/3, 30 => 1)`
+
+### Custom Script
+
+If you would like to host your own tournament using the League Overseer plugin, you may write your own script on a webserver to handle match reports from the plugin automatically. The plugin submits information via POST requests and the information submitted are the following:
+
+query
+
+- Description: The request the plugin is submitting. When submitting a match report, this value is set to `reportMatch`.
+
+apiVersion
+
+- Value: The API version the BZFS plugin is using when submitting information. The current API version is set to 1.
+
+teamOneWins
+
+- Value: The number of times Team A captured the flag in the official match.
+
+teamTwoWins
+
+- Value: The number of times Team B captured the flag in the official match.
+
+duration
+
+- Value: The duration of the match in minutes.
+
+matchTime
+
+- Value: The UTC timestamp of when the match was submitted
+
+server
+
+- Value: The domain name of the server where the match took place.
+
+port
+
+- Value: The port of the server where the match took place.
+
+replayFile
+
+- Value: The name of the report file saved on the server.
+
+mapPlayed
+
+- Value: The name of the map that was played on. This value is only applicable to rotational leagues.
+
+teamOnePlayers
+
+- Value: A list of BZIDs separated by commas of the players who participated on Team A.
+
+teamTwoPlayers
+
+- Value: A list of BZIDs separated by commas of the players who participated on Team B.
 
 Code Hosting
 ------------

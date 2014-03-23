@@ -38,13 +38,13 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 0;
-const int BUILD = 272;
+const int BUILD = 274;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
 
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
-#define ASSERT(x) { if (!(x)) { bz_debugMessagef(0, "ERROR :: League Over Seer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }}
+#define ASSERT(x) { if (!(x)) { bz_debugMessagef(0, "ERROR :: League Overseer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }}
 
 // A function that will get the player record by their callsign
 static bz_BasePlayerRecord* bz_getPlayerByCallsign (const char* callsign)
@@ -496,7 +496,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     std::string matchDuration      = intToString(officialMatch->duration/60);
 
                     // Store match data in the logs
-                    bz_debugMessagef(0, "Match Data :: League Over Seer Match Report");
+                    bz_debugMessagef(0, "Match Data :: League Overseer Match Report");
                     bz_debugMessagef(0, "Match Data :: -----------------------------");
                     bz_debugMessagef(0, "Match Data :: Match Time      : %s", matchDate);
                     bz_debugMessagef(0, "Match Data :: Duration        : %s", matchDuration.c_str());
@@ -1347,8 +1347,9 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
             }
             else
             {
-                bz_debugMessage(0, "ERROR :: League Overseer :: You are requesting to report matches but you have no specified a URL to report to.");
+                bz_debugMessage(0, "ERROR :: League Overseer :: You are requesting to report matches but you have not specified a URL to report to.");
                 bz_debugMessage(0, "ERROR :: League Overseer :: Please set the 'MATCH_REPORT_URL' or 'LEAGUE_OVERSEER_URL' option respectively.");
+                bz_debugMessage(0, "ERROR :: League Overseer :: If you do not wish to report matches, set 'DISABLE_MATCH_REPORT' to true.");
                 bz_shutdown();
             }
         }
@@ -1363,6 +1364,7 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
             {
                 bz_debugMessage(0, "ERROR :: League Overseer :: You have requested to fetch team names but have not specified a URL to fetch them from.");
                 bz_debugMessage(0, "ERROR :: League Overseer :: Please set the 'MOTTO_FETCH_URL' or 'LEAGUE_OVERSEER_URL' option respectively.");
+                bz_debugMessage(0, "ERROR :: League Overseer :: If you do not wish to team names for mottos, set 'DISABLE_TEAM_MOTTO' to true.");
                 bz_shutdown();
             }
         }
@@ -1386,10 +1388,23 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Configuration File Settings");
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: ---------------------------");
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Rotational league set to  : %s", (ROTATION_LEAGUE) ? "true" : "false");
-    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Map change path set to    : %s", MAPCHANGE_PATH.c_str());
-    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Reporting matches to URL  : %s", MATCH_REPORT_URL.c_str());
-    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Fetching Team Names from  : %s", TEAM_NAME_URL.c_str());
-    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Normal debug level set to : %d", DEBUG_LEVEL);
+
+    if (ROTATION_LEAGUE)
+    {
+        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Map change path set to    : %s", MAPCHANGE_PATH.c_str());
+    }
+
+    if (!DISABLE_REPORT)
+    {
+        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Reporting matches to URL  : %s", MATCH_REPORT_URL.c_str());
+    }
+
+    if (!DISABLE_MOTTO)
+    {
+        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Fetching Team Names from  : %s", TEAM_NAME_URL.c_str());
+    }
+    
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Debug level set to        : %d", DEBUG_LEVEL);
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Verbose level set to      : %d", VERBOSE_LEVEL);
 }
 
@@ -1467,7 +1482,7 @@ void LeagueOverseer::updateTeamNames ()
 {
     // Build the POST data for the URL job
     std::string teamNameDump = "query=teamDump&apiVersion=" + intToString(API_VERSION);
-    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Over Seer :: Updating Team name database...");
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Updating Team name database...");
 
     bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamNameDump.c_str()); //Send the team update request to the league website
 }

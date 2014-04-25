@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 277;
+const int BUILD = 278;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -259,23 +259,32 @@ public:
     virtual void validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team);
     virtual void updateTeamNames (void);
 
+
     // All the variables that will be used in the plugin
     bool         ROTATION_LEAGUE,  // Whether or not we are watching a league that uses different maps
                  MATCH_INFO_SENT,  // Whether or not the information returned by a URL job pertains to a match report
                  DISABLE_REPORT,   // Whether or not to disable automatic match reports if a server is not used as an official match server
                  DISABLE_MOTTO,    // Whether or not to set a player's motto to their team name
-                 RECORDING;        // Whether or not we are recording a match
- 
+                 RECORDING,        // Whether or not we are recording a match
+                 ENABLE_TALK_MSG,  // Whether or not to send custom messages explaining why players can't talk
+                 ENABLE_SPAWN_MSG; // Whether or not to send custom messages explaining why players can't spawn
+             
     int          DEBUG_LEVEL,      // The DEBUG level the server owner wants the plugin to use for its messages
                  VERBOSE_LEVEL;    // This is the spamming/ridiculous level of debug that the plugin uses
-
-    std::string  MATCH_REPORT_URL, // The URL the plugin will use to report matches. This should be the URL the PHP counterpart of this plugin
-                 TEAM_NAME_URL,
+             
+    std::string  MATCH_REPORT_URL, // The URL the plugin will use to report matches
+                 TEAM_NAME_URL,    // The URL the plugin will use to fetch team information
                  MAP_NAME,         // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
                  MAPCHANGE_PATH;   // The path to the file that contains the name of current map being played
-
+             
     bz_eTeamType TEAM_ONE,         // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
                  TEAM_TWO;         //     ONE and TWO
+
+
+    // All of the messages that will be displayed to users on certain events
+    std::vector<std::string> NO_TALK_MSG,      // The message for users who can't talk; will be sent when they try to talk
+                             NO_SPAWN_MSG;     // The message for users who can't spawn; will be sent when they try to spawn
+
 
     // This is the only pointer of the struct for the official match that we will be using. If this
     // variable is set to NULL, that means that there is currently no official match occurring.
@@ -626,10 +635,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_ChatEventData_V1* chatData = (bz_ChatEventData_V1*)eventData;
 
-            if (!bz_hasPerm(chatData->from, "talk"))
-            {
-                // @todo Add a configuration option custom message and to disable this feature
-                bz_sendTextMessagef(BZ_SERVER, chatData->from, "%s", tempMessage.c_str());
+            // If an non-league player tries to talk, send them a message as to why they can't talk
+            if (ENABLE_TALK_MSG && !bz_hasPerm(chatData->from, "talk"))
+            {                            
+                for (std::vector<std::string>::const_iterator it = NO_TALK_MSG.begin(); it != NO_TALK_MSG.end(); ++it)
+                {
+                    std::string currentLine = std::string(*it);
+                    bz_sendTextMessagef(BZ_SERVER, chatData->from, "%s", currentLine.c_str());
+                }
             }
         }
         break;
@@ -1370,10 +1383,12 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
 
     // Extract all the data in the configuration file and assign it to plugin variables
     ROTATION_LEAGUE = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
+    ENABLE_TALK_MSG = toBool(config.item(section, "ENABLE_TALK_MESSAGE"));
     MAPCHANGE_PATH  = config.item(section, "MAPCHANGE_PATH");
     DISABLE_REPORT  = toBool(config.item(section, "DISABLE_MATCH_REPORT"));
     DISABLE_MOTTO   = toBool(config.item(section, "DISABLE_TEAM_MOTTO"));
     DEBUG_LEVEL     = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
+    NO_TALK_MSG     = split(config.item(section, "NO_TALK_MESSAGE"), '\n');
     VERBOSE_LEVEL   = (VERBOSE_LEVEL < 0) ? atoi((config.item(section, "VERBOSE_LEVEL")).c_str()) : VERBOSE_LEVEL;
 
     if (!config.item(section, "LEAGUE_OVERSEER_URL").empty())

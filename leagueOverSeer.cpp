@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 275;
+const int BUILD = 276;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -977,6 +977,33 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         else
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to resume right now.");
+        }
+
+        return true;
+    }
+    else if (command == "showhidden")
+    {
+        if (bz_hasPerm(playerID, "ban"))
+        {
+            bz_APIIntList *playerList = bz_newIntList();
+            bz_getPlayerIndexList(playerList);
+
+            bz_sendTextMessage(BZ_SERVER, playerID, "Hidden Admins Present");
+            bz_sendTextMessage(BZ_SERVER, playerID, "---------------------");
+
+            for (unsigned int i = 0; i < playerList->size(); i++)
+            {
+                if (bz_hasPerm(playerList->get(i), "hideadmin"))
+                {
+                    bz_sendTextMessagef(BZ_SERVER, playerID, " - %s", bz_getPlayerByIndex(playerList->get(i))->callsign.c_str());
+                }
+            }
+
+            bz_deleteIntList(playerList);
+        }
+        else
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /showhidden command.");
         }
 
         return true;

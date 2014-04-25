@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 276;
+const int BUILD = 277;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -298,6 +298,7 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_eGameStartEvent);
     Register(bz_eGetPlayerMotto);
     Register(bz_ePlayerJoinEvent);
+    Register(bz_eRawChatMessageEvent);
     Register(bz_eSlashCommandEvent);
     Register(bz_eTickEvent);
 
@@ -308,6 +309,7 @@ void LeagueOverseer::Init (const char* commandLine)
     bz_registerCustomSlashCommand("offi", this);
     bz_registerCustomSlashCommand("official", this);
     bz_registerCustomSlashCommand("spawn", this);
+    bz_registerCustomSlashCommand("showhidden", this);
     bz_registerCustomSlashCommand("pause", this);
     bz_registerCustomSlashCommand("resume", this);
 
@@ -616,6 +618,18 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 {
                     requestTeamName(joinData->record->callsign.c_str(), joinData->record->bzID.c_str());
                 }
+            }
+        }
+        break;
+
+        case bz_eRawChatMessageEvent: // This event is called for each chat message the server receives. It is called before any filtering is done.
+        {
+            bz_ChatEventData_V1* chatData = (bz_ChatEventData_V1*)eventData;
+
+            if (!bz_hasPerm(chatData->from, "talk"))
+            {
+                // @todo Add a configuration option custom message and to disable this feature
+                bz_sendTextMessagef(BZ_SERVER, chatData->from, "%s", tempMessage.c_str());
             }
         }
         break;
@@ -985,21 +999,24 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     {
         if (bz_hasPerm(playerID, "ban"))
         {
+            // Create a list of players on the server
             bz_APIIntList *playerList = bz_newIntList();
             bz_getPlayerIndexList(playerList);
 
             bz_sendTextMessage(BZ_SERVER, playerID, "Hidden Admins Present");
             bz_sendTextMessage(BZ_SERVER, playerID, "---------------------");
 
+            // Loop through all of the players
             for (unsigned int i = 0; i < playerList->size(); i++)
             {
+                // If the player is hidden, then show them in the list
                 if (bz_hasPerm(playerList->get(i), "hideadmin"))
                 {
                     bz_sendTextMessagef(BZ_SERVER, playerID, " - %s", bz_getPlayerByIndex(playerList->get(i))->callsign.c_str());
                 }
             }
 
-            bz_deleteIntList(playerList);
+            bz_deleteIntList(playerList); // Clean up
         }
         else
         {

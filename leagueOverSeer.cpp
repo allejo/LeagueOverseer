@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 296;
+const int BUILD = 297;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -194,7 +194,7 @@ static bool toBool (std::string str)
 class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
 public:
-    virtual const char* Name ();
+    virtual const char* Name (void);
     virtual void Init (const char* config);
     virtual void Event (bz_EventData *eventData);
     virtual void Cleanup (void);
@@ -351,7 +351,7 @@ public:
 
 BZ_PLUGIN(LeagueOverseer)
 
-const char* LeagueOverseer::Name ()
+const char* LeagueOverseer::Name (void)
 {
     static std::string pluginBuild = "";
 
@@ -1216,7 +1216,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 }
 
 // We got a response from one of our URL jobs
-void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/)
+void LeagueOverseer::URLDone (const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/)
 {
     // This variable will only be set to true for the duration of one URL job, so just set it back to false regardless
     MATCH_INFO_SENT = false;
@@ -1351,7 +1351,7 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
 }
 
 // The league website is down or is not responding, the request timed out
-void LeagueOverseer::URLTimeout(const char* /*URL*/, int /*errorCode*/)
+void LeagueOverseer::URLTimeout (const char* /*URL*/, int /*errorCode*/)
 {
     logMessage(0, "warning", "The request to the league site has timed out.");
 
@@ -1364,7 +1364,7 @@ void LeagueOverseer::URLTimeout(const char* /*URL*/, int /*errorCode*/)
 }
 
 // The server owner must have set up the URLs wrong because this shouldn't happen
-void LeagueOverseer::URLError(const char* /*URL*/, int errorCode, const char *errorString)
+void LeagueOverseer::URLError (const char* /*URL*/, int errorCode, const char *errorString)
 {
     logMessage(0, "error", "Match report failed with the following error:");
     logMessage(0, "error", "Error code: %i - %s", errorCode, errorString);
@@ -1409,7 +1409,7 @@ std::string LeagueOverseer::buildBZIDString (bz_eTeamType team)
 }
 
 // Return the progress of a match in seconds. For example, 20:00 minutes remaining would return 600
-int LeagueOverseer::getMatchProgress()
+int LeagueOverseer::getMatchProgress (void)
 {
     if (officialMatch != NULL)
     {
@@ -1422,7 +1422,7 @@ int LeagueOverseer::getMatchProgress()
 }
 
 // Get the literal time remaining in a match in the format of MM:SS
-std::string LeagueOverseer::getMatchTime()
+std::string LeagueOverseer::getMatchTime (void)
 {
     int time = getMatchProgress();
 
@@ -1471,7 +1471,7 @@ bool LeagueOverseer::isLeagueMember (int playerID)
 }
 
 // Load the plugin configuration file
-void LeagueOverseer::loadConfig(const char* cmdLine)
+void LeagueOverseer::loadConfig (const char* cmdLine)
 {
     // Setup to read the configuration file
     PLUGIN_CONFIG = PluginConfig(cmdLine);
@@ -1628,7 +1628,7 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 }
 
 // Get the value of a configuration boolean setting or use the default
-bool LeagueOverseer::setPluginConfigBool(std::string value, bool defaultValue)
+bool LeagueOverseer::setPluginConfigBool (std::string value, bool defaultValue)
 {
     std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value);
 
@@ -1636,7 +1636,7 @@ bool LeagueOverseer::setPluginConfigBool(std::string value, bool defaultValue)
 }
 
 // Get the value of a configuration int setting or use the default
-int LeagueOverseer::setPluginConfigInt(std::string value, int defaultValue)
+int LeagueOverseer::setPluginConfigInt (std::string value, int defaultValue)
 {
     std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value);
 
@@ -1644,7 +1644,7 @@ int LeagueOverseer::setPluginConfigInt(std::string value, int defaultValue)
 }
 
 // Get the value of a configuration string setting or use the default
-std::string LeagueOverseer::setPluginConfigString(std::string value, std::string defaultValue)
+std::string LeagueOverseer::setPluginConfigString (std::string value, std::string defaultValue)
 {
     std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value);
 

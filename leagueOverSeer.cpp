@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 293;
+const int BUILD = 294;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -205,14 +205,34 @@ public:
     virtual void URLTimeout (const char* URL, int errorCode);
     virtual void URLError (const char* URL, int errorCode, const char *errorString);
 
+    // We will be storing events that occur in the match in this struct
+    struct MatchEvents
+    {
+        int playerID;
+
+        std::string json,
+                    bzID,
+                    message,
+                    match_time;
+
+        MatchEvents (int _playerID, std::string _bzID, std::string _message, std::string _json, std::string _match_time) :
+            playerID(_playerID),
+            bzID(_bzID),
+            json(_json),
+            message(_message),
+            match_time(_match_time)
+        {}
+    };
+
     // We will be storing information about the players who participated in a match so we will
     // be storing that information inside a struct
     struct MatchParticipant
     {
-        std::string bzID;
-        std::string callsign;
-        std::string ipAddress;
-        std::string teamName;
+        std::string bzID,
+                    callsign,
+                    ipAddress,
+                    teamName;
+
         bz_eTeamType teamColor;
 
         MatchParticipant (std::string _bzID, std::string _callsign, std::string _ipAddress, std::string _teamName, bz_eTeamType _teamColor) :
@@ -248,6 +268,9 @@ public:
 
         // We will be storing all of the match participants in this vector
         std::vector<MatchParticipant> matchParticipants;
+
+        // All of the events that occur in this match
+        std::vector<MatchEvents> matchEvents;
 
         // Set the default values for this struct
         OfficialMatch () :
@@ -474,6 +497,13 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 logMessage(VERBOSE_LEVEL, "debug", "Official Match Score %s [%i] vs %s [%i]",
                     formatTeam(TEAM_ONE).c_str(), officialMatch->teamOnePoints,
                     formatTeam(TEAM_TWO).c_str(), officialMatch->teamTwoPoints);
+
+                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(captureData->playerCapping));
+                MatchEvents capEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
+                                     std::string(playerData->callsign.c_str()) + " captured the " + formatTeam(captureData->teamCapped) + " flag",
+                                     "{\"event\": {\"type\": \"capture\", \"color\": \"" + formatTeam(captureData->teamCapped) + "\"}}",
+                                     getMatchTime());
+                officialMatch->matchEvents.push_back(capEvent);
             }
         }
         break;

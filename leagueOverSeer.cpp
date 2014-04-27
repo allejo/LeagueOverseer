@@ -409,7 +409,7 @@ void LeagueOverseer::Init (const char* commandLine)
     // Make sure both teams were found, if they weren't then notify in the logs
     if (TEAM_ONE == eNoTeam || TEAM_TWO == eNoTeam)
     {
-        logMessage(0, "error", "Teams could not be detected at %s:%d", __FILE__, __LINE__);
+        logMessage(0, "error", "Team colors could not be detected in LeagueOverseer::Init()");
     }
 
     // Build the POST data for the URL job

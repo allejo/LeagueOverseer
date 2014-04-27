@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 289;
+const int BUILD = 290;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -181,17 +181,6 @@ static bool toBool (std::string str)
     return !str.empty() && (strcasecmp(str.c_str (), "true") == 0 || atoi(str.c_str ()) != 0);
 }
 
-// Set a plugin configuration variable with a default value if empty
-static bool setPluginConfig(std::string str, bool defaultValue)
-{
-    if (str.empty())
-    {
-        return defaultValue;
-    }
-
-    return toBool(str);
-}
-
 class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
 public:
@@ -270,9 +259,13 @@ public:
     virtual std::string buildBZIDString (bz_eTeamType team);
     virtual int getMatchProgress ();
     virtual std::string getMatchTime ();
+    virtual bool isLeagueMember(int playerID);
     virtual void loadConfig (const char *cmdLine);
     virtual void requestTeamName (bz_eTeamType team);
     virtual void requestTeamName (std::string callsign, std::string bzID);
+    virtual bool setPluginConfigBool(std::string value, bool defaultValue);
+    virtual int setPluginConfigInt(std::string value, int defaultValue);
+    virtual std::string setPluginConfigString(std::string value, std::string defaultValue);
     virtual void supportDeprecatedBoolConfigValue (std::string deprecatedValue, std::string newValue, bool &value, bool showMsg = true);
     virtual void supportDeprecatedIntConfigValue (std::string deprecatedValue, std::string newValue, int &value, bool showMsg = true);
     virtual void supportDeprecatedStringConfigValue (std::string deprecatedValue, std::string newValue, std::string &value, bool showMsg = true);
@@ -282,7 +275,8 @@ public:
     // All the variables that will be used in the plugin
     PluginConfig PLUGIN_CONFIG;          // The configuration file used by the plugin
 
-    bool         MATCH_REPORT_ENABLED,   // Whether or not to disable automatic match reports if a server is not used as an official match server
+    bool         PC_PROTECTION_ENABLED,  // Whether or not the PC protection is enabled
+                 MATCH_REPORT_ENABLED,   // Whether or not to enable automatic match reports if a server is not used as an official match server
                  MOTTO_FETCH_ENABLED,    // Whether or not to set a player's motto to their team name
                  SPAWN_MSG_ENABLED,      // Whether or not to send custom messages explaining why players can't spawn
                  TALK_MSG_ENABLED,       // Whether or not to send custom messages explaining why players can't talk
@@ -296,6 +290,7 @@ public:
     std::string  PLUGIN_SECTION,         // The section name the plugin will read from in the configuration file
                  MATCH_REPORT_URL,       // The URL the plugin will use to report matches
                  TEAM_NAME_URL,          // The URL the plugin will use to fetch team information
+                 LEAGUE_GROUP,           // The BZBB group that signifies membership of a league (typically in the format of <something>.LEAGUE)
                  MAP_NAME,               // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
                  MAPCHANGE_PATH;         // The path to the file that contains the name of current map being played
                      
@@ -1391,6 +1386,24 @@ std::string LeagueOverseer::getMatchTime()
     return minutesLiteral + ":" + secondsLiteral;
 }
 
+// Check if a player is part of the league
+bool LeagueOverseer::isLeagueMember (int playerID)
+{
+    std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
+
+    for (int i = 0; i < (int)playerData->groups.size(); i++) // Go through all the groups a player belongs to
+    {
+        std::string group = playerData->groups.get(i).c_str(); // Convert the group into a string
+
+        if (group == LEAGUE_GROUP) // Player is a part of the *.LEAGUE group
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Load the plugin configuration file
 void LeagueOverseer::loadConfig(const char* cmdLine)
 {
@@ -1410,23 +1423,29 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     }
 
     // Deprecated configuration file options
-    supportDeprecatedIntConfigValue("DEBUG_ALL", "VERBOSE_LEVEL", VERBOSE_LEVEL);
     supportDeprecatedStringConfigValue("LEAGUE_OVER_SEER_URL", "LEAGUE_OVERSEER_URL", MATCH_REPORT_URL);
     supportDeprecatedStringConfigValue("LEAGUE_OVER_SEER_URL", "LEAGUE_OVERSEER_URL", TEAM_NAME_URL, false);
     supportDeprecatedBoolConfigValue("DISABLE_MATCH_REPORT", "MATCH_REPORT_ENABLED", MATCH_REPORT_ENABLED);
     supportDeprecatedBoolConfigValue("DISABLE_TEAM_MOTTO", "MOTTO_FETCH_ENABLED", MOTTO_FETCH_ENABLED);
+    supportDeprecatedIntConfigValue("DEBUG_ALL", "VERBOSE_LEVEL", VERBOSE_LEVEL);
 
     // Extract all the data in the configuration file and assign it to plugin variables
-    MATCH_REPORT_ENABLED   = setPluginConfig(PLUGIN_CONFIG.item(PLUGIN_SECTION, "MATCH_REPORT_ENABLED"), true);
-    MOTTO_FETCH_ENABLED    = setPluginConfig(PLUGIN_CONFIG.item(PLUGIN_SECTION, "MOTTO_FETCH_ENABLED"), true);
-    SPAWN_MSG_ENABLED      = setPluginConfig(PLUGIN_CONFIG.item(PLUGIN_SECTION, "ENABLE_SPAWN_MESSAGE"), true);
-    TALK_MSG_ENABLED       = setPluginConfig(PLUGIN_CONFIG.item(PLUGIN_SECTION, "ENABLE_TALK_MESSAGE"), true);
+    LEAGUE_GROUP           = setPluginConfigString("LEAGUE_GROUP", "VERIFIED");
+    MAPCHANGE_PATH         = setPluginConfigString("MAPCHANGE_PATH", "");
+    PC_PROTECTION_ENABLED  = setPluginConfigBool("PC_PROTECTION_ENABLED", false);
+    MATCH_REPORT_ENABLED   = setPluginConfigBool("MATCH_REPORT_ENABLED", true);
+    MOTTO_FETCH_ENABLED    = setPluginConfigBool("MOTTO_FETCH_ENABLED", true);
+    SPAWN_MSG_ENABLED      = setPluginConfigBool("ENABLE_SPAWN_MESSAGE", true);
+    TALK_MSG_ENABLED       = setPluginConfigBool("ENABLE_TALK_MESSAGE", true);
+    ROTATION_LEAGUE        = setPluginConfigBool("ROTATIONAL_LEAGUE", false);
+    DEBUG_LEVEL            = setPluginConfigInt("DEBUG_LEVEL", 1);
 
-    ROTATION_LEAGUE  = toBool(PLUGIN_CONFIG.item(PLUGIN_SECTION, "ROTATIONAL_LEAGUE"));
-    MAPCHANGE_PATH   = PLUGIN_CONFIG.item(PLUGIN_SECTION, "MAPCHANGE_PATH");
-    DEBUG_LEVEL      = atoi((PLUGIN_CONFIG.item(PLUGIN_SECTION, "DEBUG_LEVEL")).c_str());
-    NO_TALK_MSG      = split(PLUGIN_CONFIG.item(PLUGIN_SECTION, "NO_TALK_MESSAGE"), "\n");
-    VERBOSE_LEVEL    = (VERBOSE_LEVEL < 0) ? atoi((PLUGIN_CONFIG.item(PLUGIN_SECTION, "VERBOSE_LEVEL")).c_str()) : VERBOSE_LEVEL;
+    NO_TALK_MSG            = split(PLUGIN_CONFIG.item(PLUGIN_SECTION, "NO_TALK_MESSAGE"), "\n");
+
+    if (VERBOSE_LEVEL < 0)
+    {
+        VERBOSE_LEVEL = setPluginConfigInt("VERBOSE_LEVEL", 4);
+    }
 
     if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, "LEAGUE_OVERSEER_URL").empty())
     {
@@ -1540,6 +1559,30 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 
     // Send the team update request to the league website
     bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamMotto.c_str());
+}
+
+// Get the value of a configuration boolean setting or use the default
+bool LeagueOverseer::setPluginConfigBool(std::string value, bool defaultValue)
+{
+    std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value);
+
+    return ((pluginConfig.empty()) ?  defaultValue : toBool(pluginConfig));
+}
+
+// Get the value of a configuration int setting or use the default
+int LeagueOverseer::setPluginConfigInt(std::string value, int defaultValue)
+{
+    std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value);
+
+    return ((pluginConfig.empty()) ?  defaultValue : atoi(pluginConfig.c_str()));
+}
+
+// Get the value of a configuration string setting or use the default
+std::string LeagueOverseer::setPluginConfigString(std::string value, std::string defaultValue)
+{
+    std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value);
+
+    return ((pluginConfig.empty()) ? defaultValue : pluginConfig);
 }
 
 // Have a function to handle deprecrated bool config values easier

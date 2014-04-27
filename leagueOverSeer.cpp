@@ -325,10 +325,15 @@ public:
     virtual void loadConfig (const char *cmdLine);
     virtual void requestTeamName (bz_eTeamType team);
     virtual void requestTeamName (std::string callsign, std::string bzID);
+    virtual void supportDeprecatedBoolConfigValue (std::string deprecatedValue, std::string newValue, bool &value, bool showMsg = true);
+    virtual void supportDeprecatedIntConfigValue (std::string deprecatedValue, std::string newValue, int &value, bool showMsg = true);
+    virtual void supportDeprecatedStringConfigValue (std::string deprecatedValue, std::string newValue, std::string &value, bool showMsg = true);
     virtual void validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team);
 
 
     // All the variables that will be used in the plugin
+    PluginConfig PLUGIN_CONFIG;          // The configuration file used by the plugin
+
     bool         MATCH_REPORT_ENABLED,   // Whether or not to disable automatic match reports if a server is not used as an official match server
                  MOTTO_FETCH_ENABLED,    // Whether or not to set a player's motto to their team name
                  SPAWN_MSG_ENABLED,      // Whether or not to send custom messages explaining why players can't spawn
@@ -337,16 +342,17 @@ public:
                  MATCH_INFO_SENT,        // Whether or not the information returned by a URL job pertains to a match report
                  RECORDING;              // Whether or not we are recording a match
              
-    int          DEBUG_LEVEL,      // The DEBUG level the server owner wants the plugin to use for its messages
-                 VERBOSE_LEVEL;    // This is the spamming/ridiculous level of debug that the plugin uses
-             
-    std::string  MATCH_REPORT_URL, // The URL the plugin will use to report matches
-                 TEAM_NAME_URL,    // The URL the plugin will use to fetch team information
-                 MAP_NAME,         // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
-                 MAPCHANGE_PATH;   // The path to the file that contains the name of current map being played
-             
-    bz_eTeamType TEAM_ONE,         // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
-                 TEAM_TWO;         //     ONE and TWO
+    int          DEBUG_LEVEL,            // The DEBUG level the server owner wants the plugin to use for its messages
+                 VERBOSE_LEVEL;          // This is the spamming/ridiculous level of debug that the plugin uses
+                     
+    std::string  PLUGIN_SECTION,         // The section name the plugin will read from in the configuration file
+                 MATCH_REPORT_URL,       // The URL the plugin will use to report matches
+                 TEAM_NAME_URL,          // The URL the plugin will use to fetch team information
+                 MAP_NAME,               // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
+                 MAPCHANGE_PATH;         // The path to the file that contains the name of current map being played
+                     
+    bz_eTeamType TEAM_ONE,               // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
+                 TEAM_TWO;               //     ONE and TWO
 
 
     // All of the messages that will be displayed to users on certain events
@@ -1425,66 +1431,51 @@ std::string LeagueOverseer::getMatchTime()
 void LeagueOverseer::loadConfig(const char* cmdLine)
 {
     // Setup to read the configuration file
-    PluginConfig config = PluginConfig(cmdLine);
-    std::string section = "leagueOverSeer";
+    PLUGIN_CONFIG = PluginConfig(cmdLine);
+    PLUGIN_SECTION = "leagueOverSeer";
 
     // Set a default value
     VERBOSE_LEVEL  = -1;
 
     // Shutdown the server if the configuration file has errors because we can't do anything
     // with a broken config
-    if (config.errors)
+    if (PLUGIN_CONFIG.errors)
     {
         showError("Your configuration file contains errors. Shutting down...");
         bz_shutdown();
     }
 
     // Deprecated configuration file options
-    if (!config.item(section, "DEBUG_ALL").empty())
-    {
-        showDeprecatedConfigValueWarning("DEBUG_ALL", "VERBOSE_LEVEL");
-
-        VERBOSE_LEVEL = atoi((config.item(section, "DEBUG_ALL")).c_str());
-    }
-    if (!config.item(section, "LEAGUE_OVER_SEER_URL").empty())
-    {
-        showDeprecatedConfigValueWarning("LEAGUE_OVER_SEER_URL", "LEAGUE_OVERSEER_URL");
-
-        MATCH_REPORT_URL = config.item(section, "LEAGUE_OVER_SEER_URL");
-        TEAM_NAME_URL    = config.item(section, "LEAGUE_OVER_SEER_URL");
-    }
+    supportDeprecatedIntConfigValue("DEBUG_ALL", "VERBOSE_LEVEL", VERBOSE_LEVEL);
+    supportDeprecatedStringConfigValue("LEAGUE_OVER_SEER_URL", "LEAGUE_OVERSEER_URL", MATCH_REPORT_URL);
+    supportDeprecatedStringConfigValue("LEAGUE_OVER_SEER_URL", "LEAGUE_OVERSEER_URL", TEAM_NAME_URL, false);
+    supportDeprecatedBoolConfigValue("DISABLE_MATCH_REPORT", "MATCH_REPORT_ENABLED", MATCH_REPORT_ENABLED);
+    supportDeprecatedBoolConfigValue("DISABLE_TEAM_MOTTO", "MOTTO_FETCH_ENABLED", MOTTO_FETCH_ENABLED);
 
     // Extract all the data in the configuration file and assign it to plugin variables
-    MATCH_REPORT_ENABLED   = setPluginConfig(config.item(section, "MATCH_REPORT_ENABLED"), true);
-    MOTTO_FETCH_ENABLED    = setPluginConfig(config.item(section, "MOTTO_FETCH_ENABLED"), true);
-    SPAWN_MSG_ENABLED      = setPluginConfig(config.item(section, "ENABLE_SPAWN_MESSAGE"), true);
-    TALK_MSG_ENABLED       = setPluginConfig(config.item(section, "ENABLE_TALK_MESSAGE"), true);
+    MATCH_REPORT_ENABLED   = setPluginConfig(PLUGIN_CONFIG.item(PLUGIN_SECTION, "MATCH_REPORT_ENABLED"), true);
+    MOTTO_FETCH_ENABLED    = setPluginConfig(PLUGIN_CONFIG.item(PLUGIN_SECTION, "MOTTO_FETCH_ENABLED"), true);
+    SPAWN_MSG_ENABLED      = setPluginConfig(PLUGIN_CONFIG.item(PLUGIN_SECTION, "ENABLE_SPAWN_MESSAGE"), true);
+    TALK_MSG_ENABLED       = setPluginConfig(PLUGIN_CONFIG.item(PLUGIN_SECTION, "ENABLE_TALK_MESSAGE"), true);
 
-    ROTATION_LEAGUE  = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
-    MAPCHANGE_PATH   = config.item(section, "MAPCHANGE_PATH");
-    DEBUG_LEVEL      = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
-    NO_TALK_MSG      = split(config.item(section, "NO_TALK_MESSAGE"), "\n");
-    VERBOSE_LEVEL    = (VERBOSE_LEVEL < 0) ? atoi((config.item(section, "VERBOSE_LEVEL")).c_str()) : VERBOSE_LEVEL;
+    ROTATION_LEAGUE  = toBool(PLUGIN_CONFIG.item(PLUGIN_SECTION, "ROTATIONAL_LEAGUE"));
+    MAPCHANGE_PATH   = PLUGIN_CONFIG.item(PLUGIN_SECTION, "MAPCHANGE_PATH");
+    DEBUG_LEVEL      = atoi((PLUGIN_CONFIG.item(PLUGIN_SECTION, "DEBUG_LEVEL")).c_str());
+    NO_TALK_MSG      = split(PLUGIN_CONFIG.item(PLUGIN_SECTION, "NO_TALK_MESSAGE"), "\n");
+    VERBOSE_LEVEL    = (VERBOSE_LEVEL < 0) ? atoi((PLUGIN_CONFIG.item(PLUGIN_SECTION, "VERBOSE_LEVEL")).c_str()) : VERBOSE_LEVEL;
 
-    /*
-        @todo Added deprecation warnings for this values
-
-        "DISABLE_MATCH_REPORT"
-        "DISABLE_TEAM_MOTTO"
-     */
-
-    if (!config.item(section, "LEAGUE_OVERSEER_URL").empty())
+    if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, "LEAGUE_OVERSEER_URL").empty())
     {
-        MATCH_REPORT_URL = config.item(section, "LEAGUE_OVERSEER_URL");
-        TEAM_NAME_URL    = config.item(section, "LEAGUE_OVERSEER_URL");
+        MATCH_REPORT_URL = PLUGIN_CONFIG.item(PLUGIN_SECTION, "LEAGUE_OVERSEER_URL");
+        TEAM_NAME_URL    = PLUGIN_CONFIG.item(PLUGIN_SECTION, "LEAGUE_OVERSEER_URL");
     }
     else
     {
         if (MATCH_REPORT_ENABLED)
         {
-            if (!config.item(section, "MATCH_REPORT_URL").empty())
+            if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, "MATCH_REPORT_URL").empty())
             {
-                MATCH_REPORT_URL = config.item(section, "MATCH_REPORT_URL");
+                MATCH_REPORT_URL = PLUGIN_CONFIG.item(PLUGIN_SECTION, "MATCH_REPORT_URL");
             }
             else
             {
@@ -1497,9 +1488,9 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
 
         if (MOTTO_FETCH_ENABLED)
         {
-            if (!config.item(section, "MOTTO_FETCH_URL").empty())
+            if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, "MOTTO_FETCH_URL").empty())
             {
-                TEAM_NAME_URL = config.item(section, "MOTTO_FETCH_URL");
+                TEAM_NAME_URL = PLUGIN_CONFIG.item(PLUGIN_SECTION, "MOTTO_FETCH_URL");
             }
             else
             {
@@ -1520,7 +1511,7 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     }
 
     // We don't need to advertise that VERBOSE_LEVEL failed so let's set it to 4, which is the default
-    if (VERBOSE_LEVEL > 4 || VERBOSE_LEVEL < 0 || config.item(section, "VERBOSE_LEVEL").empty())
+    if (VERBOSE_LEVEL > 4 || VERBOSE_LEVEL < 0 || PLUGIN_CONFIG.item(PLUGIN_SECTION, "VERBOSE_LEVEL").empty())
     {
         VERBOSE_LEVEL = 4;
     }
@@ -1585,6 +1576,45 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 
     // Send the team update request to the league website
     bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamMotto.c_str());
+}
+
+void LeagueOverseer::supportDeprecatedBoolConfigValue (std::string deprecatedValue, std::string newValue, bool &value, bool showMsg)
+{
+    if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue).empty())
+    {
+        if (showMsg)
+        {
+            showDeprecatedConfigValueWarning(deprecatedValue, newValue);
+        }
+
+        value = atoi((PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue)).c_str());
+    }
+}
+
+void LeagueOverseer::supportDeprecatedIntConfigValue (std::string deprecatedValue, std::string newValue, int &value, bool showMsg)
+{
+    if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue).empty())
+    {
+        if (showMsg)
+        {
+            showDeprecatedConfigValueWarning(deprecatedValue, newValue);
+        }
+
+        value = atoi((PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue)).c_str());
+    }
+}
+
+void LeagueOverseer::supportDeprecatedStringConfigValue (std::string deprecatedValue, std::string newValue, std::string &value, bool showMsg)
+{
+    if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue).empty())
+    {
+        if (showMsg)
+        {
+            showDeprecatedConfigValueWarning(deprecatedValue, newValue);
+        }
+
+        value = atoi((PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue)).c_str());
+    }
 }
 
 // Check if there is any need to invalidate a roll call team

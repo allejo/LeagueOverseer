@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 278;
+const int BUILD = 279;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -160,6 +160,17 @@ static std::vector<std::string> split (const char *str, char c = ' ')
 static bool toBool (std::string str)
 {
     return !str.empty() && (strcasecmp(str.c_str (), "true") == 0 || atoi(str.c_str ()) != 0);
+}
+
+// Set a plugin configuration variable with a default value if empty
+static bool setPluginConfig(std::string str, bool defaultValue)
+{
+    if (str.empty())
+    {
+        return defaultValue;
+    }
+
+    return toBool(str);
 }
 
 class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
@@ -1382,14 +1393,15 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     }
 
     // Extract all the data in the configuration file and assign it to plugin variables
-    ROTATION_LEAGUE = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
-    ENABLE_TALK_MSG = toBool(config.item(section, "ENABLE_TALK_MESSAGE"));
-    MAPCHANGE_PATH  = config.item(section, "MAPCHANGE_PATH");
-    DISABLE_REPORT  = toBool(config.item(section, "DISABLE_MATCH_REPORT"));
-    DISABLE_MOTTO   = toBool(config.item(section, "DISABLE_TEAM_MOTTO"));
-    DEBUG_LEVEL     = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
-    NO_TALK_MSG     = split(config.item(section, "NO_TALK_MESSAGE"), '\n');
-    VERBOSE_LEVEL   = (VERBOSE_LEVEL < 0) ? atoi((config.item(section, "VERBOSE_LEVEL")).c_str()) : VERBOSE_LEVEL;
+    ENABLE_SPAWN_MSG = setPluginConfig(config.item(section, "ENABLE_SPAWN_MESSAGE"), true);
+    ENABLE_TALK_MSG  = setPluginConfig(config.item(section, "ENABLE_TALK_MESSAGE"), true);
+    ROTATION_LEAGUE  = toBool(config.item(section, "ROTATIONAL_LEAGUE"));
+    MAPCHANGE_PATH   = config.item(section, "MAPCHANGE_PATH");
+    DISABLE_REPORT   = toBool(config.item(section, "DISABLE_MATCH_REPORT"));
+    DISABLE_MOTTO    = toBool(config.item(section, "DISABLE_TEAM_MOTTO"));
+    DEBUG_LEVEL      = atoi((config.item(section, "DEBUG_LEVEL")).c_str());
+    NO_TALK_MSG      = split(config.item(section, "NO_TALK_MESSAGE"), '\n');
+    VERBOSE_LEVEL    = (VERBOSE_LEVEL < 0) ? atoi((config.item(section, "VERBOSE_LEVEL")).c_str()) : VERBOSE_LEVEL;
 
     if (!config.item(section, "LEAGUE_OVERSEER_URL").empty())
     {

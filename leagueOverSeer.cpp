@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 288;
+const int BUILD = 289;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1475,7 +1475,7 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     }
 
     // We don't need to advertise that VERBOSE_LEVEL failed so let's set it to 4, which is the default
-    if (VERBOSE_LEVEL > 4 || VERBOSE_LEVEL < 0 || PLUGIN_CONFIG.item(PLUGIN_SECTION, "VERBOSE_LEVEL").empty())
+    if (VERBOSE_LEVEL > 4 || VERBOSE_LEVEL < 0)
     {
         VERBOSE_LEVEL = 4;
     }

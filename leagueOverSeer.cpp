@@ -42,13 +42,13 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 295;
+const int BUILD = 296;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
 
 // A function to simply format the beginning of the debug messages outputted by this plugin
-static std::string formatDebug(std::string msgType)
+static std::string formatDebug (std::string msgType)
 {
     msgType = bz_toupper(msgType.c_str());
 
@@ -56,7 +56,7 @@ static std::string formatDebug(std::string msgType)
 }
 
 // Output a formatted debug message and make it look nice
-static void logMessage(int debugLevel, std::string msgType, const char* fmt, ...)
+static void logMessage (int debugLevel, std::string msgType, const char* fmt, ...)
 {
     char buffer[4096];
     va_list args;
@@ -160,7 +160,7 @@ static bool isValidPlayerID (int playerID)
 }
 
 // Send a player a message that is stored in a vector
-static void sendPluginMessage(int playerID, std::vector<std::string> message)
+static void sendPluginMessage (int playerID, std::vector<std::string> message)
 {
     for (std::vector<std::string>::const_iterator it = message.begin(); it != message.end(); ++it)
     {
@@ -170,7 +170,7 @@ static void sendPluginMessage(int playerID, std::vector<std::string> message)
 }
 
 // Output a message saying that a configuragion file option has been deprecated and won't be supported in the future
-static void showDeprecatedConfigValueWarning(std::string deprecatedValue, std::string supportedValue)
+static void showDeprecatedConfigValueWarning (std::string deprecatedValue, std::string supportedValue)
 {
     logMessage(0, "warning", "The '%s' configuration file option has been deprecated.", deprecatedValue.c_str());
     logMessage(0, "warning", "This warning will trigger an error in a future release of the plug-in.");
@@ -208,7 +208,7 @@ public:
     // We will be storing events that occur in the match in this struct
     struct MatchEvents
     {
-        int playerID;
+        int         playerID;
 
         std::string json,
                     bzID,
@@ -228,10 +228,10 @@ public:
     // be storing that information inside a struct
     struct MatchParticipant
     {
-        std::string bzID,
-                    callsign,
-                    ipAddress,
-                    teamName;
+        std::string  bzID,
+                     callsign,
+                     ipAddress,
+                     teamName;
 
         bz_eTeamType teamColor;
 
@@ -289,20 +289,23 @@ public:
         {}
     };
 
-    virtual std::string buildBZIDString (bz_eTeamType team);
-    virtual int getMatchProgress ();
-    virtual std::string getMatchTime ();
-    virtual bool isLeagueMember(int playerID);
-    virtual void loadConfig (const char *cmdLine);
-    virtual void requestTeamName (bz_eTeamType team);
-    virtual void requestTeamName (std::string callsign, std::string bzID);
-    virtual bool setPluginConfigBool(std::string value, bool defaultValue);
-    virtual int setPluginConfigInt(std::string value, int defaultValue);
-    virtual std::string setPluginConfigString(std::string value, std::string defaultValue);
-    virtual void supportDeprecatedBoolConfigValue (std::string deprecatedValue, std::string newValue, bool &value, bool showMsg = true);
-    virtual void supportDeprecatedIntConfigValue (std::string deprecatedValue, std::string newValue, int &value, bool showMsg = true);
-    virtual void supportDeprecatedStringConfigValue (std::string deprecatedValue, std::string newValue, std::string &value, bool showMsg = true);
-    virtual void validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team);
+    virtual int         setPluginConfigInt (std::string value, int defaultValue),
+                        getMatchProgress (void);
+
+    virtual bool        setPluginConfigBool (std::string value, bool defaultValue),
+                        isLeagueMember (int playerID);
+
+    virtual std::string setPluginConfigString (std::string value, std::string defaultValue),
+                        buildBZIDString (bz_eTeamType team),
+                        getMatchTime (void);
+
+    virtual void        supportDeprecatedStringConfigValue (std::string deprecatedValue, std::string newValue, std::string &value, bool showMsg = true),
+                        validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team),
+                        supportDeprecatedBoolConfigValue (std::string deprecatedValue, std::string newValue, bool &value, bool showMsg = true),
+                        supportDeprecatedIntConfigValue (std::string deprecatedValue, std::string newValue, int &value, bool showMsg = true),
+                        requestTeamName (std::string callsign, std::string bzID),
+                        requestTeamName (bz_eTeamType team),
+                        loadConfig (const char *cmdLine);
 
 
     // All the variables that will be used in the plugin

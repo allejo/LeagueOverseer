@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 282;
+const int BUILD = 284;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1539,6 +1539,7 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
     bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamMotto.c_str());
 }
 
+// Have a function to handle deprecrated bool config values easier
 void LeagueOverseer::supportDeprecatedBoolConfigValue (std::string deprecatedValue, std::string newValue, bool &value, bool showMsg)
 {
     if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue).empty())
@@ -1552,6 +1553,7 @@ void LeagueOverseer::supportDeprecatedBoolConfigValue (std::string deprecatedVal
     }
 }
 
+// Have a function to handle deprecrated int config values easier
 void LeagueOverseer::supportDeprecatedIntConfigValue (std::string deprecatedValue, std::string newValue, int &value, bool showMsg)
 {
     if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue).empty())
@@ -1565,6 +1567,7 @@ void LeagueOverseer::supportDeprecatedIntConfigValue (std::string deprecatedValu
     }
 }
 
+// Have a function to handle deprecrated string config values easier
 void LeagueOverseer::supportDeprecatedStringConfigValue (std::string deprecatedValue, std::string newValue, std::string &value, bool showMsg)
 {
     if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue).empty())

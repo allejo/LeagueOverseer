@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 292;
+const int BUILD = 293;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -162,9 +162,10 @@ static bool isValidPlayerID (int playerID)
 // Send a player a message that is stored in a vector
 static void sendPluginMessage(int playerID, std::vector<std::string> message)
 {
-    for (unsigned int i = 0; i < message.size(); i++)
+    for (std::vector<std::string>::const_iterator it = message.begin(); it != message.end(); ++it)
     {
-        bz_sendTextMessagef(BZ_SERVER, playerID, "%s", message.at(i).c_str());
+        std::string currentLine = std::string(*it);
+        bz_sendTextMessagef(BZ_SERVER, playerID, "%s", currentLine.c_str());
     }
 }
 
@@ -704,12 +705,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             // If an non-league player tries to talk, send them a message as to why they can't talk
             if (TALK_MSG_ENABLED && !bz_hasPerm(chatData->from, "talk"))
-            {                            
-                for (std::vector<std::string>::const_iterator it = NO_TALK_MSG.begin(); it != NO_TALK_MSG.end(); ++it)
-                {
-                    std::string currentLine = std::string(*it);
-                    bz_sendTextMessagef(BZ_SERVER, chatData->from, "%s", currentLine.c_str());
-                }
+            {                       
+                chatData->message = "";
+                sendPluginMessage(chatData->from, NO_TALK_MSG);     
             }
         }
         break;

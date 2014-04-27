@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 280;
+const int BUILD = 282;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1587,7 +1587,7 @@ void LeagueOverseer::supportDeprecatedBoolConfigValue (std::string deprecatedVal
             showDeprecatedConfigValueWarning(deprecatedValue, newValue);
         }
 
-        value = atoi((PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue)).c_str());
+        value = toBool((PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue)).c_str());
     }
 }
 
@@ -1613,7 +1613,7 @@ void LeagueOverseer::supportDeprecatedStringConfigValue (std::string deprecatedV
             showDeprecatedConfigValueWarning(deprecatedValue, newValue);
         }
 
-        value = atoi((PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue)).c_str());
+        value = (PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue)).c_str();
     }
 }
 

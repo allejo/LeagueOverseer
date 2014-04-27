@@ -195,20 +195,7 @@ static bool setPluginConfig(std::string str, bool defaultValue)
 class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
 public:
-    virtual const char* Name ()
-    {
-        static std::string pluginBuild = "";
-
-        if (!pluginBuild.size())
-        {
-            std::ostringstream pluginBuildStream;
-
-            pluginBuildStream << PLUGIN_NAME << " " << MAJOR << "." << MINOR << "." << REV << " (" << BUILD << ")";
-            pluginBuild = pluginBuildStream.str();
-        }
-
-        return pluginBuild.c_str();
-    }
+    virtual const char* Name ();
     virtual void Init (const char* config);
     virtual void Event (bz_EventData *eventData);
     virtual void Cleanup (void);
@@ -332,6 +319,21 @@ public:
 };
 
 BZ_PLUGIN(LeagueOverseer)
+
+const char* LeagueOverseer::Name ()
+{
+    static std::string pluginBuild = "";
+
+    if (!pluginBuild.size())
+    {
+        std::ostringstream pluginBuildStream;
+
+        pluginBuildStream << PLUGIN_NAME << " " << MAJOR << "." << MINOR << "." << REV << " (" << BUILD << ")";
+        pluginBuild = pluginBuildStream.str();
+    }
+
+    return pluginBuild.c_str();
+}
 
 void LeagueOverseer::Init (const char* commandLine)
 {

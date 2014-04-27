@@ -159,6 +159,15 @@ static bool isValidPlayerID (int playerID)
     return (playerData) ? true : false;
 }
 
+// Send a player a message that is stored in a vector
+static void sendPluginMessage(int playerID, std::vector<std::string> message)
+{
+    for (unsigned int i = 0; i < message.size(); i++)
+    {
+        bz_sendTextMessagef(BZ_SERVER, playerID, "%s", message.at(i).c_str());
+    }
+}
+
 // Output a message saying that a configuragion file option has been deprecated and won't be supported in the future
 static void showDeprecatedConfigValueWarning(std::string deprecatedValue, std::string supportedValue)
 {
@@ -333,6 +342,7 @@ const char* LeagueOverseer::Name ()
 void LeagueOverseer::Init (const char* commandLine)
 {
     // Register our events with Register()
+    Register(bz_eAllowSpawn);
     Register(bz_eCaptureEvent);
     Register(bz_eGameEndEvent);
     Register(bz_eGameResumeEvent);
@@ -434,6 +444,23 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 {
     switch (eventData->eventType)
     {
+        case bz_eAllowSpawn:
+        {
+            bz_AllowSpawnData_V1* allowSpawnData = (bz_AllowSpawnData_V1*)eventData;
+
+            if (!isLeagueMember(allowSpawnData->playerID))
+            {
+                allowSpawnData->handled = true;
+                allowSpawnData->allow   = false;
+
+                if (SPAWN_MSG_ENABLED)
+                {
+                    sendPluginMessage(allowSpawnData->playerID, NO_SPAWN_MSG);
+                }
+            }
+        }
+        break;
+
         case bz_eCaptureEvent: // This event is called each time a team's flag has been captured
         {
             // We only need to keep track of the store if it's an official match

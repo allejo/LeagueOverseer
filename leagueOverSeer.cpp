@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 294;
+const int BUILD = 295;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -369,6 +369,7 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_eAllowSpawn);
     Register(bz_eCaptureEvent);
     Register(bz_eGameEndEvent);
+    Register(bz_eGamePauseEvent);
     Register(bz_eGameResumeEvent);
     Register(bz_eGameStartEvent);
     Register(bz_eGetPlayerMotto);
@@ -647,6 +648,20 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             // We're done with the struct, so make it NULL until the next official match
             officialMatch = NULL;
+        }
+        break;
+
+        case bz_eGamePauseEvent:
+        {
+            bz_GamePauseResumeEventData_V1* gamePauseData = (bz_GamePauseResumeEventData_V1*)eventData;
+
+            // We've paused an official match, so we need to delay the approxTimeProgress in order to calculate the roll call time properly
+            if (officialMatch != NULL)
+            {
+                officialMatch->matchPaused = time(NULL);
+                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "    with %s remaining.", getMatchTime().c_str());
+                logMessage(VERBOSE_LEVEL, "debug", "Match paused at %s by %s.", getMatchTime().c_str(), gamePauseData->actionBy.c_str());
+            }
         }
         break;
 
@@ -1066,13 +1081,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         else if (bz_isCountDownActive())
         {
             bz_pauseCountdown(playerData->callsign.c_str());
-
-            // We've paused an official match, so we need to delay the approxTimeProgress in order to calculate the roll call time properly
-            if (officialMatch != NULL)
-            {
-                officialMatch->matchPaused = time(NULL);
-                logMessage(VERBOSE_LEVEL, "debug", "Match paused at %s by %s.", getMatchTime().c_str(), playerData->callsign.c_str());
-            }
         }
         else
         {

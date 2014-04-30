@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 303;
+const int BUILD = 304;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1718,7 +1718,7 @@ bool LeagueOverseer::setPluginConfigBool (std::string value, bool defaultValue)
 {
     std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value);
 
-    return ((pluginConfig.empty()) ?  defaultValue : toBool(pluginConfig));
+    return ((pluginConfig.empty()) ? defaultValue : toBool(pluginConfig));
 }
 
 // Get the value of a configuration int setting or use the default
@@ -1726,7 +1726,7 @@ int LeagueOverseer::setPluginConfigInt (std::string value, int defaultValue)
 {
     std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value);
 
-    return ((pluginConfig.empty()) ?  defaultValue : atoi(pluginConfig.c_str()));
+    return ((pluginConfig.empty()) ? defaultValue : atoi(pluginConfig.c_str()));
 }
 
 // Get the value of a configuration string setting or use the default

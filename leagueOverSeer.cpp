@@ -40,9 +40,9 @@ const std::string PLUGIN_NAME = "League Overseer";
 
 // Define plugin version numbering
 const int MAJOR = 1;
-const int MINOR = 1;
-const int REV = 1;
-const int BUILD = 297;
+const int MINOR = 2;
+const int REV = 0;
+const int BUILD = 298;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -315,9 +315,11 @@ public:
                  MATCH_REPORT_ENABLED,   // Whether or not to enable automatic match reports if a server is not used as an official match server
                  MOTTO_FETCH_ENABLED,    // Whether or not to set a player's motto to their team name
                  SPAWN_MSG_ENABLED,      // Whether or not to send custom messages explaining why players can't spawn
+                 DISABLE_OFFICIALS,      // Whether or not official matches have been disabled on this server
                  TALK_MSG_ENABLED,       // Whether or not to send custom messages explaining why players can't talk
                  ROTATION_LEAGUE,        // Whether or not we are watching a league that uses different maps
                  MATCH_INFO_SENT,        // Whether or not the information returned by a URL job pertains to a match report
+                 DISABLE_FMS,            // Whether or not fun matches have been disabled on this server
                  RECORDING;              // Whether or not we are recording a match
              
     int          DEBUG_LEVEL,            // The DEBUG level the server owner wants the plugin to use for its messages
@@ -1002,7 +1004,11 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "fm")
     {
-        if (playerData->team == eObservers) // Observers can't start matches
+        if (DISABLE_FMS)
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, this server has not be configured for fun matches.");
+        }
+        else if (playerData->team == eObservers) // Observers can't start matches
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
         }
@@ -1038,7 +1044,11 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "offi" || command == "official")
     {
-        if (playerData->team == eObservers) // Observers can't start matches
+        if (DISABLE_OFFICIALS)
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, this server has not be configured for official matches.");
+        }
+        else if (playerData->team == eObservers) // Observers can't start matches
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
         }
@@ -1502,8 +1512,10 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
     MATCH_REPORT_ENABLED   = setPluginConfigBool("MATCH_REPORT_ENABLED", true);
     MOTTO_FETCH_ENABLED    = setPluginConfigBool("MOTTO_FETCH_ENABLED", true);
     SPAWN_MSG_ENABLED      = setPluginConfigBool("ENABLE_SPAWN_MESSAGE", true);
+    DISABLE_OFFICIALS      = setPluginConfigBool("DISABLE_OFFICIAL_MATCHES", false);
     TALK_MSG_ENABLED       = setPluginConfigBool("ENABLE_TALK_MESSAGE", true);
     ROTATION_LEAGUE        = setPluginConfigBool("ROTATIONAL_LEAGUE", false);
+    DISABLE_FMS            = setPluginConfigBool("DISABLE_FM_MATCHES", false);
     DEBUG_LEVEL            = setPluginConfigInt("DEBUG_LEVEL", 1);
 
     NO_TALK_MSG            = split(PLUGIN_CONFIG.item(PLUGIN_SECTION, "NO_TALK_MESSAGE"), "\n");

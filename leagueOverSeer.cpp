@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 302;
+const int BUILD = 303;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -763,7 +763,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             bz_PlayerJoinPartEventData_V1* joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
 
             // Only notify a player if they exist, have joined the observer team, and there is a match in progress
-            if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
+            if (isMatchInProgress() && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
             {
                 bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** There is currently %s match in progress, please be respectful. ***",
                                     ((officialMatch != NULL) ? "an official" : "a fun"));
@@ -988,7 +988,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
 
     // If the player is not verified and does not have the spawn permission, they can't use any of the commands
-    if (!playerData->verified || !bz_hasPerm(playerID, "spawn"))
+    if (!playerData->verified || !isLeagueMember(playerID))
     {
         bz_sendTextMessagef(BZ_SERVER, playerID, "You do not have permission to run the /%s command.", command.c_str());
         return true;

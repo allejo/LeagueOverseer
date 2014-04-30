@@ -354,12 +354,14 @@ public:
     int          DEBUG_LEVEL,            // The DEBUG level the server owner wants the plugin to use for its messages
                  VERBOSE_LEVEL;          // This is the spamming/ridiculous level of debug that the plugin uses
 
-    std::string  PLUGIN_SECTION,         // The section name the plugin will read from in the configuration file
+    std::string  SPAWN_COMMAND_PERM,     // The BZFS permission required to use the /spawn command
+                 SHOW_HIDDEN_PERM,       // The BZFS permission required to use the /showhidden command
                  MATCH_REPORT_URL,       // The URL the plugin will use to report matches
+                 PLUGIN_SECTION,         // The section name the plugin will read from in the configuration file
+                 MAPCHANGE_PATH,         // The path to the file that contains the name of current map being played
                  TEAM_NAME_URL,          // The URL the plugin will use to fetch team information
                  LEAGUE_GROUP,           // The BZBB group that signifies membership of a league (typically in the format of <something>.LEAGUE)
-                 MAP_NAME,               // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
-                 MAPCHANGE_PATH;         // The path to the file that contains the name of current map being played
+                 MAP_NAME;               // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
 
     bz_eTeamType TEAM_ONE,               // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
                  TEAM_TWO;               //     ONE and TWO
@@ -1583,8 +1585,10 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
     supportDeprecatedIntConfigValue("DEBUG_ALL", "VERBOSE_LEVEL", VERBOSE_LEVEL);
 
     // Extract all the data in the configuration file and assign it to plugin variables
-    LEAGUE_GROUP           = setPluginConfigString("LEAGUE_GROUP", "VERIFIED");
+    SPAWN_COMMAND_PERM     = setPluginConfigString("SPAWN_COMMAND_PERM", "ban");
+    SHOW_HIDDEN_PERM       = setPluginConfigString("SHOW_HIDDEN_PERM", "ban");
     MAPCHANGE_PATH         = setPluginConfigString("MAPCHANGE_PATH", "");
+    LEAGUE_GROUP           = setPluginConfigString("LEAGUE_GROUP", "VERIFIED");
     PC_PROTECTION_ENABLED  = setPluginConfigBool("PC_PROTECTION_ENABLED", false);
     MATCH_REPORT_ENABLED   = setPluginConfigBool("MATCH_REPORT_ENABLED", true);
     MOTTO_FETCH_ENABLED    = setPluginConfigBool("MOTTO_FETCH_ENABLED", true);
@@ -1594,6 +1598,7 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
     TALK_MSG_ENABLED       = setPluginConfigBool("ENABLE_TALK_MESSAGE", true);
     ROTATION_LEAGUE        = setPluginConfigBool("ROTATIONAL_LEAGUE", false);
     DISABLE_FMS            = setPluginConfigBool("DISABLE_FM_MATCHES", false);
+    VERBOSE_LEVEL          = setPluginConfigInt("VERBOSE_LEVEL", 4);
     DEBUG_LEVEL            = setPluginConfigInt("DEBUG_LEVEL", 1);
 
     NO_TALK_MSG            = split(PLUGIN_CONFIG.item(PLUGIN_SECTION, "NO_TALK_MESSAGE"), "\n");

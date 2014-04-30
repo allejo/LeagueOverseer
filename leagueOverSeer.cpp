@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 298;
+const int BUILD = 299;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -160,12 +160,19 @@ static bool isValidPlayerID (int playerID)
 }
 
 // Send a player a message that is stored in a vector
-static void sendPluginMessage (int playerID, std::vector<std::string> message)
+static void sendPluginMessage (int playerID, bool sendCustomMessage, std::vector<std::string> message)
 {
-    for (std::vector<std::string>::const_iterator it = message.begin(); it != message.end(); ++it)
+    if (sendCustomMessage) // We want to send the players a custom message
     {
-        std::string currentLine = std::string(*it);
-        bz_sendTextMessagef(BZ_SERVER, playerID, "%s", currentLine.c_str());
+        for (std::vector<std::string>::const_iterator it = message.begin(); it != message.end(); ++it)
+        {
+            std::string currentLine = std::string(*it);
+            bz_sendTextMessagef(BZ_SERVER, playerID, "%s", currentLine.c_str());
+        }
+    }
+    else // Send them the default BZFS message
+    {
+        bz_sendTextMessage(BZ_SERVER, playerID, "We're sorry, you are not allowed to talk!");
     }
 }
 
@@ -293,6 +300,8 @@ public:
                         getMatchProgress (void);
 
     virtual bool        setPluginConfigBool (std::string value, bool defaultValue),
+                        isMatchInProgress (void),
+                        isOfficialMatch (void),
                         isLeagueMember (int playerID);
 
     virtual std::string setPluginConfigString (std::string value, std::string defaultValue),
@@ -314,6 +323,7 @@ public:
     bool         PC_PROTECTION_ENABLED,  // Whether or not the PC protection is enabled
                  MATCH_REPORT_ENABLED,   // Whether or not to enable automatic match reports if a server is not used as an official match server
                  MOTTO_FETCH_ENABLED,    // Whether or not to set a player's motto to their team name
+                 ALLOW_LIMITED_CHAT,     // Whether or not to allow limited chat functionality for non-league players
                  SPAWN_MSG_ENABLED,      // Whether or not to send custom messages explaining why players can't spawn
                  DISABLE_OFFICIALS,      // Whether or not official matches have been disabled on this server
                  TALK_MSG_ENABLED,       // Whether or not to send custom messages explaining why players can't talk
@@ -321,17 +331,17 @@ public:
                  MATCH_INFO_SENT,        // Whether or not the information returned by a URL job pertains to a match report
                  DISABLE_FMS,            // Whether or not fun matches have been disabled on this server
                  RECORDING;              // Whether or not we are recording a match
-             
+
     int          DEBUG_LEVEL,            // The DEBUG level the server owner wants the plugin to use for its messages
                  VERBOSE_LEVEL;          // This is the spamming/ridiculous level of debug that the plugin uses
-                     
+
     std::string  PLUGIN_SECTION,         // The section name the plugin will read from in the configuration file
                  MATCH_REPORT_URL,       // The URL the plugin will use to report matches
                  TEAM_NAME_URL,          // The URL the plugin will use to fetch team information
                  LEAGUE_GROUP,           // The BZBB group that signifies membership of a league (typically in the format of <something>.LEAGUE)
                  MAP_NAME,               // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
                  MAPCHANGE_PATH;         // The path to the file that contains the name of current map being played
-                     
+
     bz_eTeamType TEAM_ONE,               // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
                  TEAM_TWO;               //     ONE and TWO
 
@@ -485,7 +495,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 if (SPAWN_MSG_ENABLED)
                 {
-                    sendPluginMessage(allowSpawnData->playerID, NO_SPAWN_MSG);
+                    sendPluginMessage(allowSpawnData->playerID, SPAWN_MSG_ENABLED, NO_SPAWN_MSG);
                 }
             }
         }
@@ -751,13 +761,49 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
         case bz_eRawChatMessageEvent: // This event is called for each chat message the server receives. It is called before any filtering is done.
         {
-            bz_ChatEventData_V1* chatData = (bz_ChatEventData_V1*)eventData;
+            bz_ChatEventData_V1* chatData  = (bz_ChatEventData_V1*)eventData;
+            bz_eTeamType         target    = chatData->team;
+            int                  playerID  = chatData->from;
+            int                  recipient = chatData->to;
 
-            // If an non-league player tries to talk, send them a message as to why they can't talk
-            if (TALK_MSG_ENABLED && !bz_hasPerm(chatData->from, "talk"))
-            {                       
-                chatData->message = "";
-                sendPluginMessage(chatData->from, NO_TALK_MSG);     
+            // A non-league player is attempting to talk
+            if (!isLeagueMember(playerID))
+            {
+                if (ALLOW_LIMITED_CHAT) // Are non-league members allowed limited talking functionality
+                {
+                    if (isMatchInProgress()) // A match is progress
+                    {
+                        if (bz_getPlayerTeam(playerID) == eObservers) // Only consider allowing non-league members to talk if they are in the observer team
+                        {
+                            // Only allow non-league members to talk if they're talking to the observer team chat or private messaging a player in the observer team
+                            // this precaution is so non-league players do not private message players participating in a match, do not message an admin who may
+                            // playing a match, and do not send messages to public chat to avoid match disturbances
+                            if (target != eObservers || bz_getPlayerTeam(recipient) != eObservers)
+                            {
+                                chatData->message = ""; // We set the message to nothing so they won't send thing anything
+                                sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG);
+                            }
+                        }
+                        else // If they aren't in the observer team during a match, don't let them talk
+                        {
+                            chatData->message = "";
+                            sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG);
+                        }
+                    }
+                    else // A match is not in progress
+                    {
+                        if (target != eAdministrators)
+                        {
+                            chatData->message = "";
+                            sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG);
+                        }
+                    }
+                }
+                else // Non-league members are not allowed limited talk functionality
+                {
+                    chatData->message = "";
+                    sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG); // Send them a message
+                }
             }
         }
         break;
@@ -1480,6 +1526,18 @@ bool LeagueOverseer::isLeagueMember (int playerID)
     return false;
 }
 
+// Check if there is a match in progress; even if it's paused
+bool LeagueOverseer::isMatchInProgress (void)
+{
+    return (bz_isCountDownActive() || bz_isCountDownPaused() || bz_isCountDownInProgress());
+}
+
+// Check if there is currently an active official match
+bool LeagueOverseer::isOfficialMatch (void)
+{
+    return (isMatchInProgress() && officialMatch != NULL);
+}
+
 // Load the plugin configuration file
 void LeagueOverseer::loadConfig (const char* cmdLine)
 {
@@ -1511,6 +1569,7 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
     PC_PROTECTION_ENABLED  = setPluginConfigBool("PC_PROTECTION_ENABLED", false);
     MATCH_REPORT_ENABLED   = setPluginConfigBool("MATCH_REPORT_ENABLED", true);
     MOTTO_FETCH_ENABLED    = setPluginConfigBool("MOTTO_FETCH_ENABLED", true);
+    ALLOW_LIMITED_CHAT     = setPluginConfigBool("ALLOW_LIMITED_CHAT", false);
     SPAWN_MSG_ENABLED      = setPluginConfigBool("ENABLE_SPAWN_MESSAGE", true);
     DISABLE_OFFICIALS      = setPluginConfigBool("DISABLE_OFFICIAL_MATCHES", false);
     TALK_MSG_ENABLED       = setPluginConfigBool("ENABLE_TALK_MESSAGE", true);
@@ -1596,7 +1655,7 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
     {
         logMessage(VERBOSE_LEVEL, "debug", "Fetching Team Names from  : %s", TEAM_NAME_URL.c_str());
     }
-    
+
     logMessage(VERBOSE_LEVEL, "debug", "Debug level set to        : %d", DEBUG_LEVEL);
     logMessage(VERBOSE_LEVEL, "debug", "Verbose level set to      : %d", VERBOSE_LEVEL);
 }

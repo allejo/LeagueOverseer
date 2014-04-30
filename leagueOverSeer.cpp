@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 304;
+const int BUILD = 305;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -53,6 +53,12 @@ enum DefaultMsgType
     CHAT,
     SPAWN,
 };
+
+// Return a literal value of a boolean
+static std::string boolToString(bool value)
+{
+    return (value) ? "true" : "false";
+}
 
 // A function to simply format the beginning of the debug messages outputted by this plugin
 static std::string formatDebug (std::string msgType)
@@ -315,22 +321,20 @@ public:
         {}
     };
 
-    virtual int         setPluginConfigInt (std::string value, int defaultValue),
+    virtual int         setPluginConfigInt (std::string value, int defaultValue, std::string deprecatedField = "", bool showMsg = false),
                         getMatchProgress (void);
 
-    virtual bool        setPluginConfigBool (std::string value, bool defaultValue),
+    virtual bool        setPluginConfigBool (std::string value, bool defaultValue, std::string deprecatedField = "", bool showMsg = false),
                         isMatchInProgress (void),
                         isOfficialMatch (void),
                         isLeagueMember (int playerID);
 
-    virtual std::string setPluginConfigString (std::string value, std::string defaultValue),
+    virtual std::string setPluginConfigString (std::string value, std::string defaultValue, std::string deprecatedField = "", bool showMsg = false),
+                        setPluginConfig (std::string value, std::string defaultValue, std::string deprecatedField = "", bool showMsg = false),
                         buildBZIDString (bz_eTeamType team),
                         getMatchTime (void);
 
-    virtual void        supportDeprecatedStringConfigValue (std::string deprecatedValue, std::string newValue, std::string &value, bool showMsg = true),
-                        validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team),
-                        supportDeprecatedBoolConfigValue (std::string deprecatedValue, std::string newValue, bool &value, bool showMsg = true),
-                        supportDeprecatedIntConfigValue (std::string deprecatedValue, std::string newValue, int &value, bool showMsg = true),
+    virtual void        validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team),
                         requestTeamName (std::string callsign, std::string bzID),
                         requestTeamName (bz_eTeamType team),
                         loadConfig (const char *cmdLine);
@@ -1574,35 +1578,29 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
         bz_shutdown();
     }
 
-    // Deprecated configuration file options
-    supportDeprecatedStringConfigValue("LEAGUE_OVER_SEER_URL", "LEAGUE_OVERSEER_URL", MATCH_REPORT_URL);
-    supportDeprecatedStringConfigValue("LEAGUE_OVER_SEER_URL", "LEAGUE_OVERSEER_URL", TEAM_NAME_URL, false);
-    supportDeprecatedBoolConfigValue("DISABLE_MATCH_REPORT", "MATCH_REPORT_ENABLED", MATCH_REPORT_ENABLED);
-    supportDeprecatedBoolConfigValue("DISABLE_TEAM_MOTTO", "MOTTO_FETCH_ENABLED", MOTTO_FETCH_ENABLED);
-
     // Extract all the data in the configuration file and assign it to plugin variables
     SPAWN_COMMAND_PERM     = setPluginConfigString("SPAWN_COMMAND_PERM", "ban");
     SHOW_HIDDEN_PERM       = setPluginConfigString("SHOW_HIDDEN_PERM", "ban");
     MAPCHANGE_PATH         = setPluginConfigString("MAPCHANGE_PATH", "");
     LEAGUE_GROUP           = setPluginConfigString("LEAGUE_GROUP", "VERIFIED");
     PC_PROTECTION_ENABLED  = setPluginConfigBool("PC_PROTECTION_ENABLED", false);
-    MATCH_REPORT_ENABLED   = setPluginConfigBool("MATCH_REPORT_ENABLED", true);
-    MOTTO_FETCH_ENABLED    = setPluginConfigBool("MOTTO_FETCH_ENABLED", true);
+    MATCH_REPORT_ENABLED   = setPluginConfigBool("MATCH_REPORT_ENABLED", true, "DISABLE_MATCH_REPORT", true);
+    MOTTO_FETCH_ENABLED    = setPluginConfigBool("MOTTO_FETCH_ENABLED", true, "DISABLE_TEAM_MOTTO", true);
     ALLOW_LIMITED_CHAT     = setPluginConfigBool("ALLOW_LIMITED_CHAT", false);
     SPAWN_MSG_ENABLED      = setPluginConfigBool("ENABLE_SPAWN_MESSAGE", true);
     DISABLE_OFFICIALS      = setPluginConfigBool("DISABLE_OFFICIAL_MATCHES", false);
     TALK_MSG_ENABLED       = setPluginConfigBool("ENABLE_TALK_MESSAGE", true);
     ROTATION_LEAGUE        = setPluginConfigBool("ROTATIONAL_LEAGUE", false);
     DISABLE_FMS            = setPluginConfigBool("DISABLE_FM_MATCHES", false);
-    VERBOSE_LEVEL          = setPluginConfigInt("VERBOSE_LEVEL", 4);
+    VERBOSE_LEVEL          = setPluginConfigInt("VERBOSE_LEVEL", 4, "DEBUG_ALL");
     DEBUG_LEVEL            = setPluginConfigInt("DEBUG_LEVEL", 1);
 
     NO_TALK_MSG            = split(PLUGIN_CONFIG.item(PLUGIN_SECTION, "NO_TALK_MESSAGE"), "\n");
 
     if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, "LEAGUE_OVERSEER_URL").empty())
     {
-        MATCH_REPORT_URL = PLUGIN_CONFIG.item(PLUGIN_SECTION, "LEAGUE_OVERSEER_URL");
-        TEAM_NAME_URL    = PLUGIN_CONFIG.item(PLUGIN_SECTION, "LEAGUE_OVERSEER_URL");
+        MATCH_REPORT_URL = setPluginConfigString("LEAGUE_OVERSEER_URL", "", "LEAGUE_OVER_SEER_URL", true);
+        TEAM_NAME_URL    = setPluginConfigString("LEAGUE_OVERSEER_URL", "", "LEAGUE_OVER_SEER_URL");
     }
     else
     {
@@ -1713,70 +1711,55 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
     bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamMotto.c_str());
 }
 
-// Get the value of a configuration boolean setting or use the default
-bool LeagueOverseer::setPluginConfigBool (std::string value, bool defaultValue)
+std::string LeagueOverseer::setPluginConfig (std::string value, std::string defaultValue, std::string deprecatedField, bool showMsg)
 {
-    std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value);
+    std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value); // Get the value of the config field
 
-    return ((pluginConfig.empty()) ? defaultValue : toBool(pluginConfig));
+    if (pluginConfig.empty()) // If the field is empty...
+    {
+        if (!deprecatedField.empty()) // Check if we're looking at a deprecated field
+        {
+            std::string deprecatedValue = PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedField); // Get the value from the deprecated field
+
+            if (showMsg)
+            {
+                showDeprecatedConfigValueWarning(deprecatedField, value);
+            }
+
+            if (!deprecatedValue.empty()) // If the value isn't empty, return the boolean value of it
+            {
+                return deprecatedValue;
+            }
+        }
+
+        // If we've had no luck finding a value to use, let's use the default value
+        return defaultValue;
+    }
+
+    // We found a normal value, let's return the boolean equivalent of it
+    return pluginConfig;
+}
+
+// Get the value of a configuration boolean setting or use the default
+bool LeagueOverseer::setPluginConfigBool (std::string value, bool defaultValue, std::string deprecatedField, bool showMsg)
+{
+    std::string configValue = setPluginConfig(value, boolToString(defaultValue), deprecatedField);
+
+    return toBool(configValue);
 }
 
 // Get the value of a configuration int setting or use the default
-int LeagueOverseer::setPluginConfigInt (std::string value, int defaultValue)
+int LeagueOverseer::setPluginConfigInt (std::string value, int defaultValue, std::string deprecatedField, bool showMsg)
 {
-    std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value);
+    std::string configValue = setPluginConfig(value, intToString(defaultValue), deprecatedField);
 
-    return ((pluginConfig.empty()) ? defaultValue : atoi(pluginConfig.c_str()));
+    return atoi(configValue.c_str());
 }
 
 // Get the value of a configuration string setting or use the default
-std::string LeagueOverseer::setPluginConfigString (std::string value, std::string defaultValue)
+std::string LeagueOverseer::setPluginConfigString (std::string value, std::string defaultValue, std::string deprecatedField, bool showMsg)
 {
-    std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value);
-
-    return ((pluginConfig.empty()) ? defaultValue : pluginConfig);
-}
-
-// Have a function to handle deprecrated bool config values easier
-void LeagueOverseer::supportDeprecatedBoolConfigValue (std::string deprecatedValue, std::string newValue, bool &value, bool showMsg)
-{
-    if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue).empty())
-    {
-        if (showMsg)
-        {
-            showDeprecatedConfigValueWarning(deprecatedValue, newValue);
-        }
-
-        value = toBool((PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue)).c_str());
-    }
-}
-
-// Have a function to handle deprecrated int config values easier
-void LeagueOverseer::supportDeprecatedIntConfigValue (std::string deprecatedValue, std::string newValue, int &value, bool showMsg)
-{
-    if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue).empty())
-    {
-        if (showMsg)
-        {
-            showDeprecatedConfigValueWarning(deprecatedValue, newValue);
-        }
-
-        value = atoi((PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue)).c_str());
-    }
-}
-
-// Have a function to handle deprecrated string config values easier
-void LeagueOverseer::supportDeprecatedStringConfigValue (std::string deprecatedValue, std::string newValue, std::string &value, bool showMsg)
-{
-    if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue).empty())
-    {
-        if (showMsg)
-        {
-            showDeprecatedConfigValueWarning(deprecatedValue, newValue);
-        }
-
-        value = (PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedValue)).c_str();
-    }
+    return setPluginConfig(value, defaultValue, deprecatedField);
 }
 
 // Check if there is any need to invalidate a roll call team

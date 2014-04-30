@@ -42,10 +42,17 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 299;
+const int BUILD = 300;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
+
+// The default messages to send based on the case
+enum DefaultMsgType
+{
+    CHAT,
+    SPAWN,
+};
 
 // A function to simply format the beginning of the debug messages outputted by this plugin
 static std::string formatDebug (std::string msgType)
@@ -160,7 +167,7 @@ static bool isValidPlayerID (int playerID)
 }
 
 // Send a player a message that is stored in a vector
-static void sendPluginMessage (int playerID, bool sendCustomMessage, std::vector<std::string> message)
+static void sendPluginMessage (int playerID, bool sendCustomMessage, std::vector<std::string> message, DefaultMsgType msgToSend)
 {
     if (sendCustomMessage) // We want to send the players a custom message
     {
@@ -172,7 +179,19 @@ static void sendPluginMessage (int playerID, bool sendCustomMessage, std::vector
     }
     else // Send them the default BZFS message
     {
-        bz_sendTextMessage(BZ_SERVER, playerID, "We're sorry, you are not allowed to talk!");
+        switch (msgToSend)
+        {
+            case CHAT:
+                bz_sendTextMessage(BZ_SERVER, playerID, "We're sorry, you are not allowed to talk!");
+                break;
+
+            case SPAWN:
+                bz_sendTextMessage(BZ_SERVER, playerID, "We're sorry, you are not allowed to spawn!");
+                break;
+
+            default:
+                break;
+        }
     }
 }
 
@@ -495,7 +514,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 if (SPAWN_MSG_ENABLED)
                 {
-                    sendPluginMessage(allowSpawnData->playerID, SPAWN_MSG_ENABLED, NO_SPAWN_MSG);
+                    sendPluginMessage(allowSpawnData->playerID, SPAWN_MSG_ENABLED, NO_SPAWN_MSG, SPAWN);
                 }
             }
         }
@@ -781,13 +800,13 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                             if (target != eObservers || bz_getPlayerTeam(recipient) != eObservers)
                             {
                                 chatData->message = ""; // We set the message to nothing so they won't send thing anything
-                                sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG);
+                                sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG, CHAT);
                             }
                         }
                         else // If they aren't in the observer team during a match, don't let them talk
                         {
                             chatData->message = "";
-                            sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG);
+                            sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG, CHAT);
                         }
                     }
                     else // A match is not in progress
@@ -795,14 +814,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                         if (target != eAdministrators)
                         {
                             chatData->message = "";
-                            sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG);
+                            sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG, CHAT);
                         }
                     }
                 }
                 else // Non-league members are not allowed limited talk functionality
                 {
                     chatData->message = "";
-                    sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG); // Send them a message
+                    sendPluginMessage(playerID, TALK_MSG_ENABLED, NO_TALK_MSG, CHAT); // Send them a message
                 }
             }
         }

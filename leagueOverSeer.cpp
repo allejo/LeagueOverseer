@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 300;
+const int BUILD = 302;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1566,9 +1566,6 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
     PLUGIN_CONFIG = PluginConfig(cmdLine);
     PLUGIN_SECTION = "leagueOverSeer";
 
-    // Set a default value
-    VERBOSE_LEVEL  = -1;
-
     // Shutdown the server if the configuration file has errors because we can't do anything
     // with a broken config
     if (PLUGIN_CONFIG.errors)
@@ -1582,7 +1579,6 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
     supportDeprecatedStringConfigValue("LEAGUE_OVER_SEER_URL", "LEAGUE_OVERSEER_URL", TEAM_NAME_URL, false);
     supportDeprecatedBoolConfigValue("DISABLE_MATCH_REPORT", "MATCH_REPORT_ENABLED", MATCH_REPORT_ENABLED);
     supportDeprecatedBoolConfigValue("DISABLE_TEAM_MOTTO", "MOTTO_FETCH_ENABLED", MOTTO_FETCH_ENABLED);
-    supportDeprecatedIntConfigValue("DEBUG_ALL", "VERBOSE_LEVEL", VERBOSE_LEVEL);
 
     // Extract all the data in the configuration file and assign it to plugin variables
     SPAWN_COMMAND_PERM     = setPluginConfigString("SPAWN_COMMAND_PERM", "ban");
@@ -1602,11 +1598,6 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
     DEBUG_LEVEL            = setPluginConfigInt("DEBUG_LEVEL", 1);
 
     NO_TALK_MSG            = split(PLUGIN_CONFIG.item(PLUGIN_SECTION, "NO_TALK_MESSAGE"), "\n");
-
-    if (VERBOSE_LEVEL < 0)
-    {
-        VERBOSE_LEVEL = setPluginConfigInt("VERBOSE_LEVEL", 4);
-    }
 
     if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, "LEAGUE_OVERSEER_URL").empty())
     {

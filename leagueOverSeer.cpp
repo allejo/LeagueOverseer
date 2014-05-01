@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 305;
+const int BUILD = 306;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -151,6 +151,31 @@ static std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace = fals
 
     // Return the team color with or without the padding
     return color;
+}
+
+// Get the bz_eTeamType of a flag abbreviation
+static bz_eTeamType getTeamTypeFromFlag(std::string flagAbbr)
+{
+    if (flagAbbr == "R*")
+    {
+        return eRedTeam;
+    }
+    else if (flagAbbr == "G*")
+    {
+        return eGreenTeam;
+    }
+    else if (flagAbbr == "B*")
+    {
+        return eBlueTeam;
+    }
+    else if (flagAbbr == "P*")
+    {
+        return ePurpleTeam;
+    }
+    else
+    {
+        return eNoTeam;
+    }
 }
 
 // Convert an int to a string
@@ -355,8 +380,12 @@ public:
                  DISABLE_FMS,            // Whether or not fun matches have been disabled on this server
                  RECORDING;              // Whether or not we are recording a match
 
-    int          DEBUG_LEVEL,            // The DEBUG level the server owner wants the plugin to use for its messages
-                 VERBOSE_LEVEL;          // This is the spamming/ridiculous level of debug that the plugin uses
+    double       TEAM_ONE_LAST_CAP,      // The event time of the last time TEAM ONE had their flag captured
+                 TEAM_TWO_LAST_CAP;      //     and TWO, respectively
+
+    int          PC_PROTECTION_DELAY,    // The delay (in seconds) of how long the PC protection will be in effect
+                 VERBOSE_LEVEL,          // This is the spamming/ridiculous level of debug that the plugin uses
+                 DEBUG_LEVEL;            // The DEBUG level the server owner wants the plugin to use for its messages
 
     std::string  SPAWN_COMMAND_PERM,     // The BZFS permission required to use the /spawn command
                  SHOW_HIDDEN_PERM,       // The BZFS permission required to use the /showhidden command
@@ -406,6 +435,7 @@ const char* LeagueOverseer::Name (void)
 void LeagueOverseer::Init (const char* commandLine)
 {
     // Register our events with Register()
+    Register(bz_eAllowFlagGrab);
     Register(bz_eAllowSpawn);
     Register(bz_eCaptureEvent);
     Register(bz_eGameEndEvent);
@@ -509,19 +539,41 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 {
     switch (eventData->eventType)
     {
+        case bz_eAllowFlagGrab: // This event is called each time a player attempts to grab a flag
+        {
+            bz_AllowFlagGrabData_V1* allowFlagGrabData = (bz_AllowFlagGrabData_V1*)eventData;
+            std::string              flagAbbr          = allowFlagGrabData->flagType;
+            int                      playerID          = allowFlagGrabData->playerID;
+
+            if (PC_PROTECTION_ENABLED) // Is the server configured to protect against Pass Camping
+            {
+                // Check if TEAM ONE's or TEAM TWO's flag was captured in the last 'PC_PROTECTION_DELAY' seconds
+                if ((TEAM_ONE_LAST_CAP + PC_PROTECTION_DELAY > bz_getCurrentTime()) ||
+                    (TEAM_TWO_LAST_CAP + PC_PROTECTION_DELAY > bz_getCurrentTime()))
+                {
+                    // If TEAM ONE's or TEAM TWO's flag is grabbed by someone not part of the respective team, disallow it
+                    if ((getTeamTypeFromFlag(flagAbbr) == TEAM_ONE && bz_getPlayerTeam(playerID) != TEAM_ONE) ||
+                        (getTeamTypeFromFlag(flagAbbr) == TEAM_TWO && bz_getPlayerTeam(playerID) != TEAM_TWO))
+                    {
+                        allowFlagGrabData->allow = false;
+                    }
+                }
+            }
+        }
+        break;
+
         case bz_eAllowSpawn: // This event is called before a player respawns
         {
             bz_AllowSpawnData_V1* allowSpawnData = (bz_AllowSpawnData_V1*)eventData;
 
-            if (!isLeagueMember(allowSpawnData->playerID))
+            if (!isLeagueMember(allowSpawnData->playerID)) // Is the player not part of the league?
             {
+                // Disable their spawning privileges
                 allowSpawnData->handled = true;
                 allowSpawnData->allow   = false;
 
-                if (SPAWN_MSG_ENABLED)
-                {
-                    sendPluginMessage(allowSpawnData->playerID, SPAWN_MSG_ENABLED, NO_SPAWN_MSG, SPAWN);
-                }
+                // Send the player a message, either default or custom based on 'SPAWN_MSG_ENABLED'
+                sendPluginMessage(allowSpawnData->playerID, SPAWN_MSG_ENABLED, NO_SPAWN_MSG, SPAWN);
             }
         }
         break;
@@ -538,6 +590,15 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 logMessage(VERBOSE_LEVEL, "debug", "Official Match Score %s [%i] vs %s [%i]",
                     formatTeam(TEAM_ONE).c_str(), officialMatch->teamOnePoints,
                     formatTeam(TEAM_TWO).c_str(), officialMatch->teamTwoPoints);
+
+                if (captureData->teamCapping == TEAM_ONE)
+                {
+                    TEAM_ONE_LAST_CAP = captureData->eventTime;
+                }
+                else
+                {
+                    TEAM_TWO_LAST_CAP = captureData->eventTime;
+                }
 
                 std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(captureData->playerCapping));
                 MatchEvents capEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
@@ -1592,6 +1653,7 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
     TALK_MSG_ENABLED       = setPluginConfigBool("ENABLE_TALK_MESSAGE", true);
     ROTATION_LEAGUE        = setPluginConfigBool("ROTATIONAL_LEAGUE", false);
     DISABLE_FMS            = setPluginConfigBool("DISABLE_FM_MATCHES", false);
+    PC_PROTECTION_DELAY    = setPluginConfigInt("PC_PROTECTION_DELAY", 15);
     VERBOSE_LEVEL          = setPluginConfigInt("VERBOSE_LEVEL", 4, "DEBUG_ALL");
     DEBUG_LEVEL            = setPluginConfigInt("DEBUG_LEVEL", 1);
 

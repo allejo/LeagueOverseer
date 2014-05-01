@@ -263,7 +263,7 @@ public:
     virtual void URLError (const char* URL, int errorCode, const char *errorString);
 
     // We will be storing events that occur in the match in this struct
-    struct MatchEvents
+    struct MatchEvent
     {
         int         playerID;
 
@@ -272,7 +272,7 @@ public:
                     message,
                     match_time;
 
-        MatchEvents (int _playerID, std::string _bzID, std::string _message, std::string _json, std::string _match_time) :
+        MatchEvent (int _playerID, std::string _bzID, std::string _message, std::string _json, std::string _match_time) :
             playerID(_playerID),
             bzID(_bzID),
             json(_json),
@@ -327,7 +327,7 @@ public:
         std::vector<MatchParticipant> matchParticipants;
 
         // All of the events that occur in this match
-        std::vector<MatchEvents> matchEvents;
+        std::vector<MatchEvent> matchEvents;
 
         // Set the default values for this struct
         OfficialMatch () :
@@ -588,11 +588,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 bz_CTFCaptureEventData_V1* captureData = (bz_CTFCaptureEventData_V1*)eventData;
                 (captureData->teamCapping == TEAM_ONE) ? officialMatch->teamOnePoints++ : officialMatch->teamTwoPoints++;
 
+                // Log the information about the current score to the logs at the verbose level
                 logMessage(VERBOSE_LEVEL, "debug", "%s team scored.", formatTeam(captureData->teamCapping).c_str());
                 logMessage(VERBOSE_LEVEL, "debug", "Official Match Score %s [%i] vs %s [%i]",
                     formatTeam(TEAM_ONE).c_str(), officialMatch->teamOnePoints,
                     formatTeam(TEAM_TWO).c_str(), officialMatch->teamTwoPoints);
 
+                // Keep track of the time of when the flag was captured for each team in order to enable PC protection if the server
+                // is configured with it
                 if (captureData->teamCapping == TEAM_ONE)
                 {
                     TEAM_ONE_LAST_CAP = captureData->eventTime;
@@ -602,11 +605,16 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     TEAM_TWO_LAST_CAP = captureData->eventTime;
                 }
 
+                // Create a player record of the person who captured the flag
                 std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(captureData->playerCapping));
-                MatchEvents capEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
+
+                // Create a MatchEvent with the information relating to the capture
+                MatchEvent capEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
                                      std::string(playerData->callsign.c_str()) + " captured the " + formatTeam(captureData->teamCapped) + " flag",
                                      "{\"event\": {\"type\": \"capture\", \"color\": \"" + formatTeam(captureData->teamCapped) + "\"}}",
                                      getMatchTime());
+
+                // Push the MatchEvent to the matchEvents vector stored in the officialMatch struct
                 officialMatch->matchEvents.push_back(capEvent);
             }
         }
@@ -765,18 +773,20 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "    with %s remaining.", getMatchTime().c_str());
                 logMessage(VERBOSE_LEVEL, "debug", "Match paused at %s by %s.", getMatchTime().c_str(), gamePauseData->actionBy.c_str());
 
-                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(gamePauseData->playerID));
-                MatchEvents capEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
+                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gamePauseData->actionBy));
+                MatchEvent pauseEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
                                      std::string(playerData->callsign.c_str()) + " paused the match at " + getMatchTime(),
                                      "{\"event\": {\"type\": \"pause\"}}",
                                      getMatchTime());
-                officialMatch->matchEvents.push_back(capEvent);
+                officialMatch->matchEvents.push_back(pauseEvent);
             }
         }
         break;
 
         case bz_eGameResumeEvent:
         {
+            bz_GamePauseResumeEventData_V1* gameResumeData = (bz_GamePauseResumeEventData_V1*)eventData;
+
             // We've resumed an official match, so we need to properly edit the start time so we can calculate the roll call
             if (officialMatch != NULL)
             {
@@ -788,6 +798,13 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 officialMatch->matchStart = mktime(&modMatchStart);
                 logMessage(VERBOSE_LEVEL, "debug", "Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
+
+                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gameResumeData->actionBy));
+                MatchEvent resumeEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
+                                     std::string(playerData->callsign.c_str()) + " resumed the match",
+                                     "{\"event\": {\"type\": \"resume\"}}",
+                                     getMatchTime());
+                officialMatch->matchEvents.push_back(resumeEvent);
             }
         }
         break;

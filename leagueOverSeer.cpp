@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 306;
+const int BUILD = 307;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -454,8 +454,9 @@ void LeagueOverseer::Init (const char* commandLine)
     bz_registerCustomSlashCommand("fm", this);
     bz_registerCustomSlashCommand("offi", this);
     bz_registerCustomSlashCommand("official", this);
-    bz_registerCustomSlashCommand("spawn", this);
     bz_registerCustomSlashCommand("showhidden", this);
+    bz_registerCustomSlashCommand("spawn", this);
+    bz_registerCustomSlashCommand("stats", this);
     bz_registerCustomSlashCommand("pause", this);
     bz_registerCustomSlashCommand("resume", this);
 
@@ -529,8 +530,9 @@ void LeagueOverseer::Cleanup (void)
     bz_removeCustomSlashCommand("fm");
     bz_removeCustomSlashCommand("offi");
     bz_removeCustomSlashCommand("official");
-    bz_removeCustomSlashCommand("spawn");
     bz_removeCustomSlashCommand("showhidden");
+    bz_removeCustomSlashCommand("spawn");
+    bz_removeCustomSlashCommand("stats");
     bz_removeCustomSlashCommand("pause");
     bz_removeCustomSlashCommand("resume");
 }
@@ -762,6 +764,13 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 officialMatch->matchPaused = time(NULL);
                 bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "    with %s remaining.", getMatchTime().c_str());
                 logMessage(VERBOSE_LEVEL, "debug", "Match paused at %s by %s.", getMatchTime().c_str(), gamePauseData->actionBy.c_str());
+
+                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(gamePauseData->playerID));
+                MatchEvents capEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
+                                     std::string(playerData->callsign.c_str()) + " paused the match at " + getMatchTime(),
+                                     "{\"event\": {\"type\": \"pause\"}}",
+                                     getMatchTime());
+                officialMatch->matchEvents.push_back(capEvent);
             }
         }
         break;
@@ -1351,6 +1360,35 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         else
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /spawn command.");
+        }
+
+        return true;
+    }
+    else if (command == "stats")
+    {
+        if (isLeagueMember(playerID))
+        {
+            if (officialMatch != NULL)
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "Match Data");
+                bz_sendTextMessage(BZ_SERVER, playerID, "----------");
+
+                for (unsigned int i = 0; i < officialMatch->matchEvents.size(); i++)
+                {
+                    std::string timeStamp = officialMatch->matchEvents.at(i).match_time;
+                    std::string message   = officialMatch->matchEvents.at(i).message;
+
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "  [%s] %s", timeStamp.c_str(), message.c_str());
+                }
+            }
+            else
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "Match data is not recorded for fun matches.");
+            }
+        }
+        else
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /stats command.");
         }
 
         return true;

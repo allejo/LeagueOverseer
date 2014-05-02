@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 307;
+const int BUILD = 312;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -800,7 +800,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 logMessage(VERBOSE_LEVEL, "debug", "Match paused at %s by %s.", getMatchTime().c_str(), gamePauseData->actionBy.c_str());
 
                 // Create a player record of the person who captured the flag
-                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gamePauseData->actionBy));
+                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gamePauseData->actionBy.c_str()));
 
                 // Create a MatchEvent with the information relating to the capture
                 MatchEvent pauseEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
@@ -839,7 +839,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 logMessage(VERBOSE_LEVEL, "debug", "Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
 
                 // Create a player record of the person who captured the flag
-                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gameResumeData->actionBy));
+                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gameResumeData->actionBy.c_str()));
 
                 // Create a MatchEvent with the information relating to the capture
                 MatchEvent resumeEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
@@ -946,7 +946,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (isLeagueMember(playerData->playerID) && isMatchInProgress())
             {
                 // Create a record for the player who just left
-                Player partingPlayer(playerData->bzID, playerData->ipAddress, playerData->team, bz_getCurrentTime());
+                Player partingPlayer(playerData->bzID.c_str(), playerData->ipAddress.c_str(), playerData->team, bz_getCurrentTime());
 
                 // Push the record to our vector
                 playerList.push_back(partingPlayer);

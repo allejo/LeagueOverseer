@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 312;
+const int BUILD = 313;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -266,19 +266,22 @@ public:
     // joining a team during a match
     struct Player
     {
-        std::string  bzID,
-                     ipAddress;
+        std::string  bzID;
 
         bz_eTeamType lastActiveTeam;
 
         double       lastActive;
 
-        Player (std::string _bzID, std::string _ipAddress, bz_eTeamType _lastActiveTeam, double _lastActive) :
+        Player (std::string _bzID, bz_eTeamType _lastActiveTeam, double _lastActive) :
             bzID(_bzID),
-            ipAddress(_ipAddress),
             lastActiveTeam(_lastActiveTeam),
             lastActive(_lastActive)
         {}
+
+        bool operator==(const Player &player)
+        {
+            return (player.bzID == bzID);
+        }
     };
 
     // We will be storing events that occur in the match in this struct
@@ -369,6 +372,7 @@ public:
                         getMatchProgress (void);
 
     virtual bool        setPluginConfigBool (std::string value, bool defaultValue, std::string deprecatedField = "", bool showMsg = false),
+                        playerAlreadyJoined (std::string bzID),
                         isMatchInProgress (void),
                         isOfficialMatch (void),
                         isLeagueMember (int playerID);
@@ -424,7 +428,7 @@ public:
                              NO_SPAWN_MSG;     // The message for users who can't spawn; will be sent when they try to spawn
 
     // The vector that is storing all of the active players
-    std::vector<Player> playerList;
+    std::vector<Player> activePlayerList;
 
     // This is the only pointer of the struct for the official match that we will be using. If this
     // variable is set to NULL, that means that there is currently no official match occurring.
@@ -858,7 +862,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             logMessage(VERBOSE_LEVEL, "debug", "A match has started");
 
             // Empty our list of players since we don't need a history
-            playerList.clear();
+            activePlayerList.clear();
 
             // We started recording a match, so save the status
             RECORDING = bz_startRecBuf();
@@ -888,18 +892,18 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_eGetAutoTeamEvent: // This event is called for each new player is added to a team
         {
             bz_GetAutoTeamEventData_V1* autoTeamData = (bz_GetAutoTeamEventData_V1*)eventData;
+            std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(autoTeamData->playerID));
 
-            // Data
-            // ---
-            //    (int)           playerID  - ID of the player that is being added to the game.
-            //    (bz_ApiString)  callsign  - Callsign of the player that is being added to the game.
-            //    (bz_eTeamType)  team      - The team that the player will be added to. Initialized to the team chosen by the
-            //                                current server team rules, or the effects of a plug-in that has previously processed
-            //                                the event. Plug-ins wishing to override the team should set this value.
-            //    (bool)          handled   - The current state representing if other plug-ins have modified the default team.
-            //                                Plug-ins that modify the team should set this value to true to inform other plug-ins
-            //                                that have not processed yet.
-            //    (double)        eventTime - This value is the local server time of the event.
+            // Only force new players to observer if a match is in progress
+            if (isMatchInProgress())
+            {
+                // Automatically move non-league members or players who just joined to the observer team
+                if (!isLeagueMember(playerData->playerID) || !playerAlreadyJoined(playerData->bzID.c_str()))
+                {
+                    autoTeamData->handled = true;
+                    autoTeamData->team    = eObservers;
+                }
+            }
         }
         break;
 
@@ -945,11 +949,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // Only keep track of the parting player if they are a league member and there is a match in progress
             if (isLeagueMember(playerData->playerID) && isMatchInProgress())
             {
-                // Create a record for the player who just left
-                Player partingPlayer(playerData->bzID.c_str(), playerData->ipAddress.c_str(), playerData->team, bz_getCurrentTime());
+                if (!playerAlreadyJoined(playerData->bzID.c_str()))
+                {
+                    // Create a record for the player who just left
+                    Player partingPlayer(playerData->bzID.c_str(), playerData->team, bz_getCurrentTime());
 
-                // Push the record to our vector
-                playerList.push_back(partingPlayer);
+                    // Push the record to our vector
+                    activePlayerList.push_back(partingPlayer);
+                }
             }
         }
         break;
@@ -1048,9 +1055,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 }
 
                 // If we have players recorded and there's no one around, empty the list
-                if (!playerList.empty())
+                if (!activePlayerList.empty())
                 {
-                    playerList.clear();
+                    activePlayerList.clear();
                 }
 
                 // If there is a countdown active an no tanks are playing, then cancel it
@@ -1743,6 +1750,12 @@ bool LeagueOverseer::isLeagueMember (int playerID)
 {
     std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
+    // If a player isn't verified, then they are for sure not a registered player
+    if (!playerData->verified)
+    {
+        return false;
+    }
+
     for (int i = 0; i < (int)playerData->groups.size(); i++) // Go through all the groups a player belongs to
     {
         std::string group = playerData->groups.get(i).c_str(); // Convert the group into a string
@@ -1877,6 +1890,33 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
 
     logMessage(VERBOSE_LEVEL, "debug", "Debug level set to        : %d", DEBUG_LEVEL);
     logMessage(VERBOSE_LEVEL, "debug", "Verbose level set to      : %d", VERBOSE_LEVEL);
+}
+
+// Check if a player was already on the server within 5 minutes of their last part
+bool LeagueOverseer::playerAlreadyJoined (std::string bzID)
+{
+    // Loop through all of the players on the list
+    for (unsigned int i = 0; i < activePlayerList.size(); i++)
+    {
+        // The player has their BZID saved as being active
+        if (activePlayerList.at(i).bzID == bzID)
+        {
+            // If they left within 5 minutes, then update their last active time and consider them active
+            if (activePlayerList.at(i).lastActive + 300 > bz_getCurrentTime())
+            {
+                activePlayerList.at(i).lastActive = bz_getCurrentTime();
+                return true;
+            }
+            else // Their BZID was saved but it's been more than 5 minutes, remove them and mark them as they were not active
+            {
+                activePlayerList.erase(activePlayerList.begin() + i, activePlayerList.begin() + i + 1);
+                return false;
+            }
+        }
+    }
+
+    // They weren't saved on the list
+    return false;
 }
 
 // Request a team name update for all the members of a team

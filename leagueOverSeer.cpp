@@ -857,6 +857,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             logMessage(VERBOSE_LEVEL, "debug", "A match has started");
 
+            // Empty our list of players since we don't need a history
+            playerList.clear();
+
             // We started recording a match, so save the status
             RECORDING = bz_startRecBuf();
 
@@ -914,9 +917,10 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_ePlayerJoinEvent: // This event is called each time a player joins the game
         {
             bz_PlayerJoinPartEventData_V1* joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
+            std::unique_ptr<bz_BasePlayerRecord> playerData(joinData->record);
 
             // Only notify a player if they exist, have joined the observer team, and there is a match in progress
-            if (isMatchInProgress() && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
+            if (isMatchInProgress() && isValidPlayerID(joinData->playerID) && playerData->team == eObservers)
             {
                 bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** There is currently %s match in progress, please be respectful. ***",
                                     ((officialMatch != NULL) ? "an official" : "a fun"));
@@ -925,9 +929,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (MOTTO_FETCH_ENABLED)
             {
                 // Only send a URL job if the user is verified
-                if (joinData->record->verified)
+                if (playerData->verified)
                 {
-                    requestTeamName(joinData->record->callsign.c_str(), joinData->record->bzID.c_str());
+                    requestTeamName(playerData->callsign.c_str(), playerData->bzID.c_str());
                 }
             }
         }

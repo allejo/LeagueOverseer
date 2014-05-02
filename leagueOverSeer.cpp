@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 314;
+const int BUILD = 315;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -781,6 +781,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             // We're done with the struct, so make it NULL until the next official match
             officialMatch = NULL;
+
+            // Empty our list of players since we don't need a history
+            activePlayerList.clear();
         }
         break;
 

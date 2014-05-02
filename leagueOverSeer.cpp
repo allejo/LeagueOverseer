@@ -262,6 +262,25 @@ public:
     virtual void URLTimeout (const char* URL, int errorCode);
     virtual void URLError (const char* URL, int errorCode, const char *errorString);
 
+    // We will keep a record of all the players on the server to disallow first time players from automatically
+    // joining a team during a match
+    struct Player
+    {
+        std::string  bzID,
+                     ipAddress;
+
+        bz_eTeamType lastActiveTeam;
+
+        double       lastActive;
+
+        Player (std::string _bzID, std::string _ipAddress, bz_eTeamType _lastActiveTeam, double _lastActive) :
+            bzID(_bzID),
+            ipAddress(_ipAddress),
+            lastActiveTeam(_lastActiveTeam),
+            lastActive(_lastActive)
+        {}
+    };
+
     // We will be storing events that occur in the match in this struct
     struct MatchEvent
     {
@@ -404,6 +423,8 @@ public:
     std::vector<std::string> NO_TALK_MSG,      // The message for users who can't talk; will be sent when they try to talk
                              NO_SPAWN_MSG;     // The message for users who can't spawn; will be sent when they try to spawn
 
+    // The vector that is storing all of the active players
+    std::vector<Player> playerList;
 
     // This is the only pointer of the struct for the official match that we will be using. If this
     // variable is set to NULL, that means that there is currently no official match occurring.
@@ -442,8 +463,10 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_eGamePauseEvent);
     Register(bz_eGameResumeEvent);
     Register(bz_eGameStartEvent);
+    Register(bz_eGetAutoTeamEvent);
     Register(bz_eGetPlayerMotto);
     Register(bz_ePlayerJoinEvent);
+    Register(bz_ePlayerPartEvent);
     Register(bz_eRawChatMessageEvent);
     Register(bz_eSlashCommandEvent);
     Register(bz_eTickEvent);
@@ -859,6 +882,24 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         }
         break;
 
+        case bz_eGetAutoTeamEvent: // This event is called for each new player is added to a team
+        {
+            bz_GetAutoTeamEventData_V1* autoTeamData = (bz_GetAutoTeamEventData_V1*)eventData;
+
+            // Data
+            // ---
+            //    (int)           playerID  - ID of the player that is being added to the game.
+            //    (bz_ApiString)  callsign  - Callsign of the player that is being added to the game.
+            //    (bz_eTeamType)  team      - The team that the player will be added to. Initialized to the team chosen by the
+            //                                current server team rules, or the effects of a plug-in that has previously processed
+            //                                the event. Plug-ins wishing to override the team should set this value.
+            //    (bool)          handled   - The current state representing if other plug-ins have modified the default team.
+            //                                Plug-ins that modify the team should set this value to true to inform other plug-ins
+            //                                that have not processed yet.
+            //    (double)        eventTime - This value is the local server time of the event.
+        }
+        break;
+
         case bz_eGetPlayerMotto: // This event is called when the player joins. It gives us the motto of the player
         {
             bz_GetPlayerMottoData_V2* mottoData = (bz_GetPlayerMottoData_V2*)eventData;
@@ -888,6 +929,23 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 {
                     requestTeamName(joinData->record->callsign.c_str(), joinData->record->bzID.c_str());
                 }
+            }
+        }
+        break;
+
+        case bz_ePlayerPartEvent: // This event is called each time a player leaves a game
+        {
+            bz_PlayerJoinPartEventData_V1* partData = (bz_PlayerJoinPartEventData_V1*)eventData;
+            std::unique_ptr<bz_BasePlayerRecord> playerData(partData->record);
+
+            // Only keep track of the parting player if they are a league member and there is a match in progress
+            if (isLeagueMember(playerData->playerID) && isMatchInProgress())
+            {
+                // Create a record for the player who just left
+                Player partingPlayer(playerData->bzID, playerData->ipAddress, playerData->team, bz_getCurrentTime());
+
+                // Push the record to our vector
+                playerList.push_back(partingPlayer);
             }
         }
         break;
@@ -983,6 +1041,12 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 {
                     officialMatch->canceled = true;
                     officialMatch->cancelationReason = "Official match automatically canceled due to all players leaving the match.";
+                }
+
+                // If we have players recorded and there's no one around, empty the list
+                if (!playerList.empty())
+                {
+                    playerList.clear();
                 }
 
                 // If there is a countdown active an no tanks are playing, then cancel it

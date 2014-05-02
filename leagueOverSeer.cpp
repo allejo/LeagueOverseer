@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 313;
+const int BUILD = 314;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -277,11 +277,6 @@ public:
             lastActiveTeam(_lastActiveTeam),
             lastActive(_lastActive)
         {}
-
-        bool operator==(const Player &player)
-        {
-            return (player.bzID == bzID);
-        }
     };
 
     // We will be storing events that occur in the match in this struct

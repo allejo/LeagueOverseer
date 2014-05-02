@@ -751,7 +751,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     logMessage(DEBUG_LEVEL, "debug", "Reporting match data...");
                     bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Reporting match...");
 
-                    //Send the match data to the league website
+                    // Send the match data to the league website
                     bz_addURLJob(MATCH_REPORT_URL.c_str(), this, matchToSend.c_str());
                     MATCH_INFO_SENT = true;
                 }
@@ -769,15 +769,23 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // We've paused an official match, so we need to delay the approxTimeProgress in order to calculate the roll call time properly
             if (officialMatch != NULL)
             {
+                // Get the current UTC time
                 officialMatch->matchPaused = time(NULL);
+
+                // Send the messages
                 bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "    with %s remaining.", getMatchTime().c_str());
                 logMessage(VERBOSE_LEVEL, "debug", "Match paused at %s by %s.", getMatchTime().c_str(), gamePauseData->actionBy.c_str());
 
+                // Create a player record of the person who captured the flag
                 std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gamePauseData->actionBy));
+
+                // Create a MatchEvent with the information relating to the capture
                 MatchEvent pauseEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
                                      std::string(playerData->callsign.c_str()) + " paused the match at " + getMatchTime(),
                                      "{\"event\": {\"type\": \"pause\"}}",
                                      getMatchTime());
+
+                // Push the MatchEvent to the matchEvents vector stored in the officialMatch struct
                 officialMatch->matchEvents.push_back(pauseEvent);
             }
         }
@@ -790,20 +798,33 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // We've resumed an official match, so we need to properly edit the start time so we can calculate the roll call
             if (officialMatch != NULL)
             {
+                // Get the current UTC time
                 time_t now = time(NULL);
+
+                // Do the math to determine how long the match was paused
                 double timePaused = difftime(now, officialMatch->matchPaused);
 
+                // Create a temporary variable to store and manipulate the match start time
                 struct tm modMatchStart = *localtime(&officialMatch->matchStart);
+
+                // Manipulate the time by adding the amount of seconds the match was paused in order to be able to accurately
+                // calculate the amount of time remaining with LeagueOverseer::getMatchTime()
                 modMatchStart.tm_sec += timePaused;
 
+                // Save the manipulated match start time
                 officialMatch->matchStart = mktime(&modMatchStart);
                 logMessage(VERBOSE_LEVEL, "debug", "Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
 
+                // Create a player record of the person who captured the flag
                 std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gameResumeData->actionBy));
+
+                // Create a MatchEvent with the information relating to the capture
                 MatchEvent resumeEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
                                      std::string(playerData->callsign.c_str()) + " resumed the match",
                                      "{\"event\": {\"type\": \"resume\"}}",
                                      getMatchTime());
+
+                // Push the MatchEvent to the matchEvents vector stored in the officialMatch struct
                 officialMatch->matchEvents.push_back(resumeEvent);
             }
         }

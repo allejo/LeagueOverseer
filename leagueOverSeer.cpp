@@ -1380,14 +1380,19 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     {
         if (bz_hasPerm(playerID, "ban"))
         {
-            // Create a list of players on the server
-            bz_APIIntList *playerList = bz_newIntList();
-            bz_getPlayerIndexList(playerList);
+            std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+
+            // Our player list couldn't be created so exit out of here
+            if (!playerList)
+            {
+                logMessage(VERBOSE_LEVEL, "debug", "Oops. I couldn't create a playerlist for some odd reason.");
+                bz_sendTextMessage(BZ_SERVER, playerID, "Seems like I darn goofed, please execute your command again.");
+                return true;
+            }
 
             bz_sendTextMessage(BZ_SERVER, playerID, "Hidden Admins Present");
             bz_sendTextMessage(BZ_SERVER, playerID, "---------------------");
 
-            // Loop through all of the players
             for (unsigned int i = 0; i < playerList->size(); i++)
             {
                 // If the player is hidden, then show them in the list
@@ -1396,8 +1401,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                     bz_sendTextMessagef(BZ_SERVER, playerID, " - %s", bz_getPlayerByIndex(playerList->get(i))->callsign.c_str());
                 }
             }
-
-            bz_deleteIntList(playerList); // Clean up
         }
         else
         {

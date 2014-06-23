@@ -1341,13 +1341,13 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, this server has not be configured for official matches.");
         }
-        else if (playerData->team == eObservers) // Observers can't start matches
-        {
-            bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
-        }
         else if (bz_pollActive())
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You are not allowed to start a match while a poll is active.");
+        }
+        else if (playerData->team == eObservers) // Observers can't start matches
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
         }
         else if (bz_getTeamCount(TEAM_ONE) < 2 || bz_getTeamCount(TEAM_TWO) < 2) // An official match cannot be 1v1 or 2v1
         {

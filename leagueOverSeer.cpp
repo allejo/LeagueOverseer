@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 315;
+const int BUILD = 316;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -175,6 +175,31 @@ static bz_eTeamType getTeamTypeFromFlag(std::string flagAbbr)
     else
     {
         return eNoTeam;
+    }
+}
+
+// Modify the perms of all of the players on the server
+static void modifyPerms(bool grant, std::string perm)
+{
+    // Use a smart pointer so we don't have to worry about freeing up the memory
+    // when we're done. In other words, laziness.
+    std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+
+    // Be sure the playerlist exists
+    if (playerList)
+    {
+        // Loop through all of the players' callsigns
+        for (unsigned int i = 0; i < playerList->size(); i++)
+        {
+            if (grant)
+            {
+                bz_grantPerm(playerList->get(i), perm.c_str());
+            }
+            else
+            {
+                bz_revokePerm(playerList->get(i), perm.c_str());
+            }
+        }
     }
 }
 
@@ -646,6 +671,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_debugMessage(VERBOSE_LEVEL, "A match has ended.");
 
+            // Grant the "poll" perm when the match is over
+            modifyPerms(true, "poll");
+
             // Get the current standard UTC time
             bz_Time standardTime;
             bz_getUTCtime(&standardTime);
@@ -794,6 +822,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // We've paused an official match, so we need to delay the approxTimeProgress in order to calculate the roll call time properly
             if (officialMatch != NULL)
             {
+                // Grant the "poll" perm while a match is paused
+                modifyPerms(true, "poll");
+
                 // Get the current UTC time
                 officialMatch->matchPaused = time(NULL);
 
@@ -823,6 +854,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // We've resumed an official match, so we need to properly edit the start time so we can calculate the roll call
             if (officialMatch != NULL)
             {
+                // Revoke the "poll" perm while a match is active
+                modifyPerms(false, "poll");
+
                 // Get the current UTC time
                 time_t now = time(NULL);
 
@@ -879,6 +913,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // Check if this is an official match
             if (officialMatch != NULL)
             {
+                // Revoke the "poll" perm while a match is active
+                modifyPerms(false, "poll");
+
                 // Reset scores in case Caps happened during countdown delay.
                 officialMatch->teamOnePoints = officialMatch->teamTwoPoints = 0;
                 officialMatch->matchStart = time(NULL);
@@ -1033,6 +1070,10 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             else if (strncmp("/countdown", command.c_str(), 10) == 0)
             {
                 bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown TIME' is disabled, please use /official or /fm instead **");
+            }
+            else if (strncmp("/poll", command.c_str(), 5) == 0 && isOfficialMatch())
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "** '/poll' is disabled during official matches. Please /pause the match in order to start a poll. **");
             }
         }
         break;
@@ -1304,6 +1345,10 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
         }
+        else if (bz_pollActive())
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "You are not allowed to start a match while a poll is active.");
+        }
         else if (bz_getTeamCount(TEAM_ONE) < 2 || bz_getTeamCount(TEAM_TWO) < 2) // An official match cannot be 1v1 or 2v1
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You may not have an official match with less than 2 players per team.");
@@ -1356,7 +1401,11 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "resume")
     {
-        if (!bz_isCountDownPaused())
+        if (bz_pollActive())
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "You are not allowed to resume a match while a poll is active.");
+        }
+        else if (!bz_isCountDownPaused())
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "The match is not paused!");
         }

@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 322;
+const int BUILD = 325;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -233,6 +233,25 @@ static bool isValidPlayerID (int playerID)
 
     // If the pointer doesn't exist, that means the playerID does not exist
     return (playerData) ? true : false;
+}
+
+// Get a player record of a player from either a slot ID or a callsign
+static bz_BasePlayerRecord* getPlayerFromCallsignOrID(std::string callsignOrID)
+{
+    // We have a pound sign followed by a valid player index
+    if (std::string::npos != callsignOrID.find("#") && isValidPlayerID(atoi(callsignOrID.erase(0, 1).c_str())))
+    {
+        // Let's make some easy reference variables
+        int victimPlayerID = atoi(callsignOrID.erase(0, 1).c_str());
+
+        return bz_getPlayerByIndex(victimPlayerID);
+    }
+    else if (bz_getPlayerByCallsign(callsignOrID.c_str()) != NULL) // It's a valid callsign
+    {
+        return bz_getPlayerByCallsign(callsignOrID.c_str());
+    }
+
+    return NULL;
 }
 
 void registerCustomIntBZDB(const char* bzdbVar, int value, int perms = 0, bool persistent = false)
@@ -1451,6 +1470,17 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             {
                 if (params->size() > 0)
                 {
+                    if (params->get(0).c_str() == "grant_perm")
+                    {
+                        if (params->size() == 3)
+                        {
+
+                        }
+                        else
+                        {
+                            bz_sendTextMessagef(BZ_SERVER, playerID, "Syntax: /lodbg grant_perm <player id or callsign> <permission name>");
+                        }
+                    }
                     //params->get(0)
                 }
                 else
@@ -1610,53 +1640,21 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             {
                 logMessage(VERBOSE_LEVEL, "debug", "%s has executed the /spawn command.", playerData->callsign.c_str());
 
-                std::string callsignToLookup; // Store the callsign we're going to search for
+                std::string callsignOrID = params->get(0).c_str(); // Store the callsign we're going to search for
 
-                for (unsigned int i = 0; i < params->size(); i++) // Piece together the callsign from the slash command parameters
+                logMessage(VERBOSE_LEVEL, "debug", "Callsign or Player slot to look for: %s", callsignOrID.c_str());
+
+                std::unique_ptr<bz_BasePlayerRecord> victim(getPlayerFromCallsignOrID(callsignOrID.c_str()));
+
+                if (victim)
                 {
-                    callsignToLookup += params->get(i).c_str();
-
-                    if (i != params->size() - 1) // So we don't stick a whitespace on the end
-                    {
-                        callsignToLookup += " "; // Add a whitespace between each chat text parameter
-                    }
-                }
-
-                logMessage(VERBOSE_LEVEL, "debug", "Callsign or Player slot to look for: %s", callsignToLookup.c_str());
-
-                // We have a pound sign followed by a valid player index
-                if (std::string::npos != std::string(params->get(0).c_str()).find("#") && isValidPlayerID(atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str())))
-                {
-                    // Let's make some easy reference variables
-                    int victimPlayerID = atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str());
-                    std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByIndex(victimPlayerID));
-
-                    if (!victim)
-                    {
-                        bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, something wrong happened to the player after you executed the command.");
-                        return true;
-                    }
-
-                    bz_grantPerm(victim->playerID, "spawn");
-                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), victim->callsign.c_str());
-                }
-                else if (bz_getPlayerByCallsign(callsignToLookup.c_str()) != NULL) // It's a valid callsign
-                {
-                    std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByCallsign(callsignToLookup.c_str()));
-
-                    if (!victim)
-                    {
-                        bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, something wrong happened to the player after you executed the command.");
-                        return true;
-                    }
-
                     bz_grantPerm(victim->playerID, "spawn");
                     bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), victim->callsign.c_str());
                 }
                 else
                 {
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", params->get(0).c_str());
-                    logMessage(VERBOSE_LEVEL, "debug", "Player %s was not found.", callsignToLookup.c_str());
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", callsignOrID.c_str());
+                    logMessage(VERBOSE_LEVEL, "debug", "Player %s was not found.", callsignOrID.c_str());
                 }
             }
             else

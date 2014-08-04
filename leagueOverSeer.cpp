@@ -434,6 +434,7 @@ public:
     PluginConfig PLUGIN_CONFIG;          // The configuration file used by the plugin
 
     bool         PC_PROTECTION_ENABLED,  // Whether or not the PC protection is enabled
+                 IN_GAME_DEBUG_ENABLED,  // Whether or not the "lodgb" command is enabled
                  IS_LEAGUE_MEMBER[256],  // Whether or not the player is a registered player for the league
                  MATCH_REPORT_ENABLED,   // Whether or not to enable automatic match reports if a server is not used as an official match server
                  MOTTO_FETCH_ENABLED,    // Whether or not to set a player's motto to their team name
@@ -467,8 +468,9 @@ public:
                  TEAM_TWO;               //     ONE and TWO
 
     // All of the messages that will be displayed to users on certain events
-    std::vector<std::string> NO_TALK_MSG,      // The message for users who can't talk; will be sent when they try to talk
-                             NO_SPAWN_MSG;     // The message for users who can't spawn; will be sent when they try to spawn
+    std::vector<std::string> SLASH_COMMANDS,   // The slash commands that are supported and used by this plug-in
+                             NO_SPAWN_MSG,     // The message for users who can't spawn; will be sent when they try to spawn
+                             NO_TALK_MSG;      // The message for users who can't talk; will be sent when they try to talk
 
     // The vector that is storing all of the active players
     std::vector<Player> activePlayerList;
@@ -518,17 +520,15 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_eSlashCommandEvent);
     Register(bz_eTickEvent);
 
+    // Add all of the support slash commands so we can easily remove them in the Cleanup() function
+    SLASH_COMMANDS = {"cancel", "f", "finish", "fm", "lodbg", "o", "offi", "official", "p", "pause", "r", "resume", "showhidden", "spawn", "s", "stats"};
+
     // Register our custom slash commands
-    bz_registerCustomSlashCommand("cancel", this);
-    bz_registerCustomSlashCommand("finish", this);
-    bz_registerCustomSlashCommand("fm", this);
-    bz_registerCustomSlashCommand("offi", this);
-    bz_registerCustomSlashCommand("official", this);
-    bz_registerCustomSlashCommand("showhidden", this);
-    bz_registerCustomSlashCommand("spawn", this);
-    bz_registerCustomSlashCommand("stats", this);
-    bz_registerCustomSlashCommand("pause", this);
-    bz_registerCustomSlashCommand("resume", this);
+    for (std::vector<std::string>::const_iterator it = SLASH_COMMANDS.begin(); it != SLASH_COMMANDS.end(); ++it)
+    {
+        std::string currentLine = std::string(*it);
+        bz_registerCustomSlashCommand(currentLine.c_str(), this);
+    }
 
     // Set some default values
     officialMatch = NULL;
@@ -597,16 +597,11 @@ void LeagueOverseer::Cleanup (void)
     Flush(); // Clean up all the events
 
     // Clean up our custom slash commands
-    bz_removeCustomSlashCommand("cancel");
-    bz_removeCustomSlashCommand("finish");
-    bz_removeCustomSlashCommand("fm");
-    bz_removeCustomSlashCommand("offi");
-    bz_removeCustomSlashCommand("official");
-    bz_removeCustomSlashCommand("showhidden");
-    bz_removeCustomSlashCommand("spawn");
-    bz_removeCustomSlashCommand("stats");
-    bz_removeCustomSlashCommand("pause");
-    bz_removeCustomSlashCommand("resume");
+    for (std::vector<std::string>::const_iterator it = SLASH_COMMANDS.begin(); it != SLASH_COMMANDS.end(); ++it)
+    {
+        std::string currentLine = std::string(*it);
+        bz_removeCustomSlashCommand(currentLine.c_str());
+    }
 }
 
 void LeagueOverseer::Event (bz_EventData *eventData)
@@ -1408,7 +1403,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
         return true;
     }
-    else if (command == "fm")
+    else if (command == "f" || command == "fm")
     {
         if (DISABLE_FMS)
         {
@@ -1448,7 +1443,43 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
         return true;
     }
-    else if (command == "offi" || command == "official")
+    else if (command == "lodbg")
+    {
+        if (IN_GAME_DEBUG_ENABLED)
+        {
+            if (bz_hasPerm(playerID, "shutdownserver"))
+            {
+                if (params->size() > 0)
+                {
+                    //params->get(0)
+                }
+                else
+                {
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "League Overseer In-Game Debug Commands");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "--------------------------------------");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "   /lodbg <option> <parameters>");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "   Options");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "   -------");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "     - grant_perm <player id or callsign> <permission name>");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "     - revoke_perm <player id or callsign> <permission name>");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "     - show");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "         - match_stats");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "         - player_stats <player id or callsign>");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "         - config_options");
+                }
+            }
+            else
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /lodbg command.");
+            }
+        }
+        else
+        {
+            bz_sendTextMessagef(BZ_SERVER, playerID, "The League Overseer Debug command is disabled on production servers.");
+        }
+    }
+    else if (command == "o" || command == "offi" || command == "official")
     {
         if (DISABLE_OFFICIALS)
         {
@@ -1495,7 +1526,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
         return true;
     }
-    else if (command == "pause")
+    else if (command == "p" || command == "pause")
     {
         if (bz_isCountDownPaused())
         {
@@ -1512,7 +1543,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
         return true;
     }
-    else if (command == "resume")
+    else if (command == "r" || command == "resume")
     {
         if (bz_pollActive())
         {
@@ -1640,7 +1671,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
         return true;
     }
-    else if (command == "stats")
+    else if (command == "s" || command == "stats")
     {
         if (isLeagueMember(playerID))
         {
@@ -1947,6 +1978,7 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
     MAPCHANGE_PATH         = setPluginConfigString("MAPCHANGE_PATH", "");
     LEAGUE_GROUP           = setPluginConfigString("LEAGUE_GROUP", "VERIFIED");
     PC_PROTECTION_ENABLED  = setPluginConfigBool("PC_PROTECTION_ENABLED", false);
+    IN_GAME_DEBUG_ENABLED  = setPluginConfigBool("ENABLE_IN_GAME_DEBUG", false);
     MATCH_REPORT_ENABLED   = setPluginConfigBool("MATCH_REPORT_ENABLED", true, "DISABLE_MATCH_REPORT", true);
     MOTTO_FETCH_ENABLED    = setPluginConfigBool("MOTTO_FETCH_ENABLED", true, "DISABLE_TEAM_MOTTO", true);
     ALLOW_LIMITED_CHAT     = setPluginConfigBool("ALLOW_LIMITED_CHAT", false);

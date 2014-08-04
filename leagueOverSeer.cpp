@@ -234,6 +234,14 @@ static bool isValidPlayerID (int playerID)
     return (playerData) ? true : false;
 }
 
+void registerCustomIntBZDB(const char* bzdbVar, int value, int perms = 0, bool persistent = false)
+{
+    if (!bz_BZDBItemExists(bzdbVar))
+    {
+        bz_setBZDBInt(bzdbVar, value, perms, persistent);
+    }
+}
+
 // Send a player a message that is stored in a vector
 static void sendPluginMessage (int playerID, bool sendCustomMessage, std::vector<std::string> message, DefaultMsgType msgToSend)
 {
@@ -435,8 +443,7 @@ public:
                  DISABLE_FMS,            // Whether or not fun matches have been disabled on this server
                  RECORDING;              // Whether or not we are recording a match
 
-    double       TEAM_ONE_LAST_CAP,      // The event time of the last time TEAM ONE had their flag captured
-                 TEAM_TWO_LAST_CAP;      //     and TWO, respectively
+    double       LAST_CAP;               // The event time of the last flag capture
 
     int          PC_PROTECTION_DELAY,    // The delay (in seconds) of how long the PC protection will be in effect
                  VERBOSE_LEVEL,          // This is the spamming/ridiculous level of debug that the plugin uses
@@ -451,7 +458,9 @@ public:
                  LEAGUE_GROUP,           // The BZBB group that signifies membership of a league (typically in the format of <something>.LEAGUE)
                  MAP_NAME;               // The name of the map that is currently be played if it's a rotation league (i.e. OpenLeague uses multiple maps)
 
-    bz_eTeamType TEAM_ONE,               // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
+    bz_eTeamType CAP_VICTIM_TEAM,        // The team who had their flag captured most recently
+                 CAP_WINNER_TEAM,        // The team who captured the flag most recently
+                 TEAM_ONE,               // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
                  TEAM_TWO;               //     ONE and TWO
 
 
@@ -577,6 +586,8 @@ void LeagueOverseer::Init (const char* commandLine)
     logMessage(VERBOSE_LEVEL, "debug", "Updating Team name database...");
 
     bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamNameDump.c_str()); // Send the team update request to the league website
+
+    registerCustomIntBZDB("_pcProtectionDelay", 5);
 }
 
 void LeagueOverseer::Cleanup (void)
@@ -608,14 +619,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             if (PC_PROTECTION_ENABLED) // Is the server configured to protect against Pass Camping
             {
-                // Check if TEAM ONE's or TEAM TWO's flag was captured in the last 'PC_PROTECTION_DELAY' seconds
-                if ((TEAM_ONE_LAST_CAP + PC_PROTECTION_DELAY > bz_getCurrentTime()) ||
-                    (TEAM_TWO_LAST_CAP + PC_PROTECTION_DELAY > bz_getCurrentTime()))
+                // Check if the last capture was within the 'PC_PROTECTION_DELAY' amount of seconds
+                if (LAST_CAP + PC_PROTECTION_DELAY > bz_getCurrentTime())
                 {
-                    // If TEAM ONE's or TEAM TWO's flag is grabbed by someone not part of the respective team, disallow it
-                    if ((getTeamTypeFromFlag(flagAbbr) == TEAM_ONE && bz_getPlayerTeam(playerID) != TEAM_ONE) ||
-                        (getTeamTypeFromFlag(flagAbbr) == TEAM_TWO && bz_getPlayerTeam(playerID) != TEAM_TWO))
+                    // Check to see if the flag being grabbed belongs to the team that just had their flag captured AND check
+                    // to see if someone not from the victim team grabbed it
+                    if ((getTeamTypeFromFlag(flagAbbr) == CAP_VICTIM_TEAM && bz_getPlayerTeam(playerID) != CAP_VICTIM_TEAM))
                     {
+                        // Disallow the flag grab if it's being grabbed by an enemy right after a flag capture
                         allowFlagGrabData->allow = false;
                     }
                 }
@@ -653,16 +664,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     formatTeam(TEAM_ONE).c_str(), officialMatch->teamOnePoints,
                     formatTeam(TEAM_TWO).c_str(), officialMatch->teamTwoPoints);
 
-                // Keep track of the time of when the flag was captured for each team in order to enable PC protection if the server
-                // is configured with it
-                if (captureData->teamCapping == TEAM_ONE)
-                {
-                    TEAM_ONE_LAST_CAP = captureData->eventTime;
-                }
-                else
-                {
-                    TEAM_TWO_LAST_CAP = captureData->eventTime;
-                }
+                CAP_VICTIM_TEAM = captureData->teamCapped;
+                CAP_WINNER_TEAM = captureData->teamCapping;
+                LAST_CAP        = captureData->eventTime;
 
                 // Create a player record of the person who captured the flag
                 std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(captureData->playerCapping));

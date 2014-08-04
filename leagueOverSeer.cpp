@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 317;
+const int BUILD = 322;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -52,6 +52,7 @@ enum DefaultMsgType
 {
     CHAT,
     SPAWN,
+    LAST_MSG_TYPE
 };
 
 // Return a literal value of a boolean
@@ -425,6 +426,7 @@ public:
     virtual void        validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team),
                         requestTeamName (std::string callsign, std::string bzID),
                         requestTeamName (bz_eTeamType team),
+                        setLeagueMember (int playerID),
                         loadConfig (const char *cmdLine);
 
 
@@ -432,6 +434,7 @@ public:
     PluginConfig PLUGIN_CONFIG;          // The configuration file used by the plugin
 
     bool         PC_PROTECTION_ENABLED,  // Whether or not the PC protection is enabled
+                 IS_LEAGUE_MEMBER[256],  // Whether or not the player is a registered player for the league
                  MATCH_REPORT_ENABLED,   // Whether or not to enable automatic match reports if a server is not used as an official match server
                  MOTTO_FETCH_ENABLED,    // Whether or not to set a player's motto to their team name
                  ALLOW_LIMITED_CHAT,     // Whether or not to allow limited chat functionality for non-league players
@@ -462,7 +465,6 @@ public:
                  CAP_WINNER_TEAM,        // The team who captured the flag most recently
                  TEAM_ONE,               // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
                  TEAM_TWO;               //     ONE and TWO
-
 
     // All of the messages that will be displayed to users on certain events
     std::vector<std::string> NO_TALK_MSG,      // The message for users who can't talk; will be sent when they try to talk
@@ -655,14 +657,16 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //    (bool)          allow     - Set to false if the player should not be allowed to spawn.
             //    (double)        eventTime - The server time the event occurred (in seconds.)
 
-            if (!isLeagueMember(allowSpawnData->playerID)) // Is the player not part of the league?
+            int playerID = allowSpawnData->playerID;
+
+            if (!isLeagueMember(playerID)) // Is the player not part of the league?
             {
                 // Disable their spawning privileges
                 allowSpawnData->handled = true;
                 allowSpawnData->allow   = false;
 
                 // Send the player a message, either default or custom based on 'SPAWN_MSG_ENABLED'
-                sendPluginMessage(allowSpawnData->playerID, SPAWN_MSG_ENABLED, NO_SPAWN_MSG, SPAWN);
+                sendPluginMessage(playerID, SPAWN_MSG_ENABLED, NO_SPAWN_MSG, SPAWN);
             }
         }
         break;
@@ -993,13 +997,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //                                that have not processed yet.
             //    (double)        eventTime - This value is the local server time of the event.
 
-            std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(autoTeamData->playerID));
+            int playerID = autoTeamData->playerID;
+            std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
             // Only force new players to observer if a match is in progress
             if (isMatchInProgress())
             {
                 // Automatically move non-league members or players who just joined to the observer team
-                if (!isLeagueMember(playerData->playerID) || !playerAlreadyJoined(playerData->bzID.c_str()))
+                if (!isLeagueMember(playerID) || !playerAlreadyJoined(playerData->bzID.c_str()))
                 {
                     autoTeamData->handled = true;
                     autoTeamData->team    = eObservers;
@@ -1036,6 +1041,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //    (double)                eventTime - Time of event.
 
             std::unique_ptr<bz_BasePlayerRecord> playerData(joinData->record);
+            int playerID = joinData->playerID;
+
+            setLeagueMember(playerID);
 
             // Only notify a player if they exist, have joined the observer team, and there is a match in progress
             if (isMatchInProgress() && isValidPlayerID(joinData->playerID) && playerData->team == eObservers)
@@ -1066,10 +1074,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //    (bz_ApiString)          reason    - The reason for leaving, such as a kick or a ban
             //    (double)                eventTime - Time of event.
 
+            int playerID = partData->playerID;
             std::unique_ptr<bz_BasePlayerRecord> playerData(partData->record);
 
             // Only keep track of the parting player if they are a league member and there is a match in progress
-            if (isLeagueMember(playerData->playerID) && isMatchInProgress())
+            if (isLeagueMember(playerID) && isMatchInProgress())
             {
                 if (!playerAlreadyJoined(playerData->bzID.c_str()))
                 {
@@ -1902,25 +1911,7 @@ std::string LeagueOverseer::getMatchTime (void)
 // Check if a player is part of the league
 bool LeagueOverseer::isLeagueMember (int playerID)
 {
-    std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
-
-    // If a player isn't verified, then they are for sure not a registered player
-    if (!playerData->verified)
-    {
-        return false;
-    }
-
-    for (int i = 0; i < (int)playerData->groups.size(); i++) // Go through all the groups a player belongs to
-    {
-        std::string group = playerData->groups.get(i).c_str(); // Convert the group into a string
-
-        if (group == LEAGUE_GROUP) // Player is a part of the *.LEAGUE group
-        {
-            return true;
-        }
-    }
-
-    return false;
+    return IS_LEAGUE_MEMBER[playerID];
 }
 
 // Check if there is a match in progress; even if it's paused
@@ -2055,8 +2046,8 @@ bool LeagueOverseer::playerAlreadyJoined (std::string bzID)
         // The player has their BZID saved as being active
         if (activePlayerList.at(i).bzID == bzID)
         {
-            // If they left within 5 minutes, then update their last active time and consider them active
-            if (activePlayerList.at(i).lastActive + 300 > bz_getCurrentTime())
+            // If they left at least 1 minute ago, then update their last active time and consider them active
+            if (activePlayerList.at(i).lastActive + 60 > bz_getCurrentTime())
             {
                 activePlayerList.at(i).lastActive = bz_getCurrentTime();
                 return true;
@@ -2109,6 +2100,29 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 
     // Send the team update request to the league website
     bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamMotto.c_str());
+}
+
+// Check the player's user groups to see if they belong to the league and save that value
+void LeagueOverseer::setLeagueMember (int playerID)
+{
+    std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
+
+    IS_LEAGUE_MEMBER[playerID] = false;
+
+    // If a player isn't verified, then they are for sure not a registered player
+    if (playerData->verified)
+    {
+        for (int i = 0; i < (int)playerData->groups.size(); i++) // Go through all the groups a player belongs to
+        {
+            std::string group = playerData->groups.get(i).c_str(); // Convert the group into a string
+
+            if (group == LEAGUE_GROUP) // Player is a part of the *.LEAGUE group
+            {
+                IS_LEAGUE_MEMBER[playerID] = true;
+                break;
+            }
+        }
+    }
 }
 
 std::string LeagueOverseer::setPluginConfig (std::string value, std::string defaultValue, std::string deprecatedField, bool showMsg)

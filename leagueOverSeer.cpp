@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 316;
+const int BUILD = 317;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -201,6 +201,18 @@ static void modifyPerms(bool grant, std::string perm)
             }
         }
     }
+}
+
+// Shortcut to call the modifyPerms() function without having to remember the boolean in order to grant perms
+static void grantPermToAll(std::string perm)
+{
+    modifyPerms(true, perm);
+}
+
+// Shortcut to call the modifyPerms() function without having to remember the boolean in order to revoke perms
+static void revokePermFromAll(std::string perm)
+{
+    modifyPerms(false, perm);
 }
 
 // Convert an int to a string
@@ -672,7 +684,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             bz_debugMessage(VERBOSE_LEVEL, "A match has ended.");
 
             // Grant the "poll" perm when the match is over
-            modifyPerms(true, "poll");
+            grantPermToAll("poll");
 
             // Get the current standard UTC time
             bz_Time standardTime;
@@ -823,7 +835,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (officialMatch != NULL)
             {
                 // Grant the "poll" perm while a match is paused
-                modifyPerms(true, "poll");
+                grantPermToAll("poll");
 
                 // Get the current UTC time
                 officialMatch->matchPaused = time(NULL);
@@ -855,7 +867,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (officialMatch != NULL)
             {
                 // Revoke the "poll" perm while a match is active
-                modifyPerms(false, "poll");
+                revokePermFromAll("poll");
 
                 // Get the current UTC time
                 time_t now = time(NULL);
@@ -914,7 +926,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (officialMatch != NULL)
             {
                 // Revoke the "poll" perm while a match is active
-                modifyPerms(false, "poll");
+                revokePermFromAll("poll");
 
                 // Reset scores in case Caps happened during countdown delay.
                 officialMatch->teamOnePoints = officialMatch->teamTwoPoints = 0;

@@ -1991,6 +1991,7 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
     VERBOSE_LEVEL          = setPluginConfigInt("VERBOSE_LEVEL", 4, "DEBUG_ALL");
     DEBUG_LEVEL            = setPluginConfigInt("DEBUG_LEVEL", 1);
 
+    NO_SPAWN_MSG           = split(PLUGIN_CONFIG.item(PLUGIN_SECTION, "NO_SPAWN_MESSAGE"), "\n");
     NO_TALK_MSG            = split(PLUGIN_CONFIG.item(PLUGIN_SECTION, "NO_TALK_MESSAGE"), "\n");
 
     if (!PLUGIN_CONFIG.item(PLUGIN_SECTION, "LEAGUE_OVERSEER_URL").empty())

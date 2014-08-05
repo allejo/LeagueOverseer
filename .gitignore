@@ -21,3 +21,9 @@
 Icon?
 ehthumbs.db
 Thumbs.db
+
+# GNU AutoTools
+.deps
+.libs
+Makefile
+Makefile.in

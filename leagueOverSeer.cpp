@@ -321,6 +321,8 @@ public:
     virtual void Event (bz_EventData *eventData);
     virtual void Cleanup (void);
 
+    virtual int  GeneralCallback (const char* name, void* data);
+
     virtual bool SlashCommand (int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
 
     virtual void URLDone (const char* URL, const void* data, unsigned int size, bool complete);
@@ -434,7 +436,7 @@ public:
     virtual bool        setPluginConfigBool (std::string value, bool defaultValue, std::string deprecatedField = "", bool showMsg = false),
                         playerAlreadyJoined (std::string bzID),
                         isMatchInProgress (void),
-                        isOfficialMatch (void),
+                        isOfficialMatchInProgress (void),
                         isLeagueMember (int playerID);
 
     virtual std::string setPluginConfigString (std::string value, std::string defaultValue, std::string deprecatedField = "", bool showMsg = false),
@@ -1198,7 +1200,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             {
                 bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown TIME' is disabled, please use /official or /fm instead **");
             }
-            else if (strncmp("/poll", command.c_str(), 5) == 0 && isOfficialMatch())
+            else if (strncmp("/poll", command.c_str(), 5) == 0 && isOfficialMatchInProgress())
             {
                 bz_sendTextMessage(BZ_SERVER, playerID, "** '/poll' is disabled during official matches. Please /pause the match in order to start a poll. **");
             }
@@ -1328,6 +1330,25 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
         default: break;
     }
+}
+
+int LeagueOverseer::GeneralCallback (const char* name, void* data)
+{
+    // @TODO Get this to return actual values
+    //
+    // e.x.
+    //   bz_callPluginGenericCallback("LeagueOverseer", "GetMatchTime", &someData);
+
+    if (name == "GetMatchTime")
+    {
+        std::string matchTime = getMatchTime();
+    }
+    else if (name == "IsOfficialMatchInProgress")
+    {
+        bool official = isOfficialMatchInProgress();
+    }
+
+    return 0;
 }
 
 bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiString /*message*/, bz_APIStringList *params)
@@ -1950,7 +1971,7 @@ bool LeagueOverseer::isMatchInProgress (void)
 }
 
 // Check if there is currently an active official match
-bool LeagueOverseer::isOfficialMatch (void)
+bool LeagueOverseer::isOfficialMatchInProgress (void)
 {
     return (isMatchInProgress() && officialMatch != NULL);
 }

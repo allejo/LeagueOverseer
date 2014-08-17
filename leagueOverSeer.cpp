@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 332;
+const int BUILD = 333;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -675,7 +675,7 @@ void LeagueOverseer::Cleanup (void)
 
 int LeagueOverseer::GeneralCallback (const char* name, void* data)
 {
-    logMessage(VERBOSE_LEVEL, "A plug-in has requested the '%s' callback.", name);
+    logMessage(VERBOSE_LEVEL, "callback", "A plug-in has requested the '%s' callback.", name);
 
     // Store the callback that is being called for easy access
     std::string callbackOption = name;
@@ -686,16 +686,16 @@ int LeagueOverseer::GeneralCallback (const char* name, void* data)
 
         strcpy((char*)data, matchTime.c_str());
 
-        logMessage(VERBOSE_LEVEL, "Returning the current match time (%s)...", matchTime.c_str());
+        logMessage(VERBOSE_LEVEL, "callback", "Returning the current match time (%s)...", matchTime.c_str());
         return 1;
     }
     else if (callbackOption == "IsOfficialMatchInProgress")
     {
-        logMessage(VERBOSE_LEVEL, "Returning that an match is %sin progress.", (isOfficialMatchInProgress()) ? "" : "not ");
+        logMessage(VERBOSE_LEVEL, "callback", "Returning that an match is %sin progress.", (isOfficialMatchInProgress()) ? "" : "not ");
         return (int)isOfficialMatchInProgress();
     }
 
-    logMessage(VERBOSE_LEVEL, "The '%s' callback was not found.", name);
+    logMessage(VERBOSE_LEVEL, "callback", "The '%s' callback was not found.", name);
     return 0;
 }
 

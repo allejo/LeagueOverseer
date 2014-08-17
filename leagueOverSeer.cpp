@@ -88,7 +88,7 @@ static bz_BasePlayerRecord* bz_getPlayerByCallsign (const char* callsign)
 {
     // Use a smart pointer so we don't have to worry about freeing up the memory
     // when we're done. In other words, laziness.
-    std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+    std::shared_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
     // Be sure the playerlist exists
     if (playerList)
@@ -184,7 +184,7 @@ static void modifyPerms(bool grant, std::string perm)
 {
     // Use a smart pointer so we don't have to worry about freeing up the memory
     // when we're done. In other words, laziness.
-    std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+    std::shared_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
     // Be sure the playerlist exists
     if (playerList)
@@ -229,7 +229,7 @@ static std::string intToString (int number)
 static bool isValidPlayerID (int playerID)
 {
     // Use another smart pointer so we don't forget about freeing up memory
-    std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
+    std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
     // If the pointer doesn't exist, that means the playerID does not exist
     return (playerData) ? true : false;
@@ -498,7 +498,7 @@ public:
 
     // This is the only pointer of the struct for the official match that we will be using. If this
     // variable is set to NULL, that means that there is currently no official match occurring.
-    std::unique_ptr<OfficialMatch> officialMatch;
+    std::shared_ptr<OfficialMatch> officialMatch;
 
     // We will be using a map to handle the team name mottos in the format of
     // <BZID, Team Name>
@@ -716,7 +716,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 LAST_CAP        = captureData->eventTime;
 
                 // Create a player record of the person who captured the flag
-                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(captureData->playerCapping));
+                std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(captureData->playerCapping));
 
                 // Create a MatchEvent with the information relating to the capture
                 MatchEvent capEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
@@ -901,7 +901,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 logMessage(VERBOSE_LEVEL, "debug", "Match paused at %s by %s.", getMatchTime().c_str(), gamePauseData->actionBy.c_str());
 
                 // Create a player record of the person who captured the flag
-                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gamePauseData->actionBy.c_str()));
+                std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gamePauseData->actionBy.c_str()));
 
                 // Create a MatchEvent with the information relating to the capture
                 MatchEvent pauseEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
@@ -948,7 +948,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 logMessage(VERBOSE_LEVEL, "debug", "Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
 
                 // Create a player record of the person who captured the flag
-                std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gameResumeData->actionBy.c_str()));
+                std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gameResumeData->actionBy.c_str()));
 
                 // Create a MatchEvent with the information relating to the capture
                 MatchEvent resumeEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
@@ -1014,7 +1014,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //    (double)        eventTime - This value is the local server time of the event.
 
             int playerID = autoTeamData->playerID;
-            std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
+            std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
             // Only force new players to observer if a match is in progress
             if (isMatchInProgress())
@@ -1056,7 +1056,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //    (bz_BasePlayerRecord*)  record    - The player record for the joining player
             //    (double)                eventTime - Time of event.
 
-            std::unique_ptr<bz_BasePlayerRecord> playerData(joinData->record);
+            std::shared_ptr<bz_BasePlayerRecord> playerData(joinData->record);
             int playerID = joinData->playerID;
 
             setLeagueMember(playerID);
@@ -1091,7 +1091,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //    (double)                eventTime - Time of event.
 
             int playerID = partData->playerID;
-            std::unique_ptr<bz_BasePlayerRecord> playerData(partData->record);
+            std::shared_ptr<bz_BasePlayerRecord> playerData(partData->record);
 
             // Only keep track of the parting player if they are a league member and there is a match in progress
             if (isLeagueMember(playerID) && isMatchInProgress())
@@ -1247,7 +1247,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 {
                     logMessage(VERBOSE_LEVEL, "debug", "Processing roll call...");
 
-                    std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+                    std::shared_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
                     bool invalidateRollcall, teamOneError, teamTwoError;
                     std::string teamOneMotto, teamTwoMotto;
 
@@ -1263,7 +1263,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                     for (unsigned int i = 0; i < playerList->size(); i++)
                     {
-                        std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
+                        std::shared_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
 
                         if (playerRecord && isLeagueMember(playerRecord->playerID) && bz_getPlayerTeam(playerList->get(i)) != eObservers) // If player is not an observer
                         {
@@ -1353,7 +1353,7 @@ int LeagueOverseer::GeneralCallback (const char* name, void* data)
 
 bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiString /*message*/, bz_APIStringList *params)
 {
-    std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
+    std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
     // For some reason, the player record could not be created
     if (!playerData)
@@ -1624,7 +1624,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     {
         if (bz_hasPerm(playerID, "ban"))
         {
-            std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+            std::shared_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
             // Our player list couldn't be created so exit out of here
             if (!playerList)
@@ -1665,7 +1665,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
                 logMessage(VERBOSE_LEVEL, "debug", "Callsign or Player slot to look for: %s", callsignOrID.c_str());
 
-                std::unique_ptr<bz_BasePlayerRecord> victim(getPlayerFromCallsignOrID(callsignOrID.c_str()));
+                std::shared_ptr<bz_BasePlayerRecord> victim(getPlayerFromCallsignOrID(callsignOrID.c_str()));
 
                 if (victim)
                 {
@@ -2120,7 +2120,7 @@ bool LeagueOverseer::playerAlreadyJoined (std::string bzID)
 void LeagueOverseer::requestTeamName (bz_eTeamType team)
 {
     logMessage(VERBOSE_LEVEL, "debug", "A team name update for the '%s' team has been requested.", formatTeam(team).c_str());
-    std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+    std::shared_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
     // Our player list couldn't be created so exit out of here
     if (!playerList)
@@ -2131,7 +2131,7 @@ void LeagueOverseer::requestTeamName (bz_eTeamType team)
 
     for (unsigned int i = 0; i < playerList->size(); i++)
     {
-        std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
+        std::shared_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
 
         if (playerRecord && playerRecord->team == team) // Only request a new team name for the players of a certain team
         {
@@ -2157,7 +2157,7 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 // Check the player's user groups to see if they belong to the league and save that value
 void LeagueOverseer::setLeagueMember (int playerID)
 {
-    std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
+    std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
     IS_LEAGUE_MEMBER[playerID] = false;
 

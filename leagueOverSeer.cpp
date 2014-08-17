@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 329;
+const int BUILD = 330;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1132,8 +1132,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //    (bz_BasePlayerRecord*)  record    - The player record for the joining player
             //    (double)                eventTime - Time of event.
 
-            std::shared_ptr<bz_BasePlayerRecord> playerData(joinData->record);
             int playerID = joinData->playerID;
+            std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
             setLeagueMember(playerID);
 
@@ -1167,7 +1167,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //    (double)                eventTime - Time of event.
 
             int playerID = partData->playerID;
-            std::shared_ptr<bz_BasePlayerRecord> playerData(partData->record);
+            std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
             // Only keep track of the parting player if they are a league member and there is a match in progress
             if (isLeagueMember(playerID) && isMatchInProgress())

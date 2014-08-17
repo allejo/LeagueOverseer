@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 333;
+const int BUILD = 335;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -1583,6 +1583,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                     bz_sendTextMessagef(BZ_SERVER, playerID, "   -------");
                     bz_sendTextMessagef(BZ_SERVER, playerID, "     - grant_perm <player id or callsign> <permission name>");
                     bz_sendTextMessagef(BZ_SERVER, playerID, "     - revoke_perm <player id or callsign> <permission name>");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "     - set");
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "         - config_option <option> <value>");
                     bz_sendTextMessagef(BZ_SERVER, playerID, "     - show");
                     bz_sendTextMessagef(BZ_SERVER, playerID, "         - match_stats");
                     bz_sendTextMessagef(BZ_SERVER, playerID, "         - player_stats <player id or callsign>");

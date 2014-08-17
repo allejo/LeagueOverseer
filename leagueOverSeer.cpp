@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 325;
+const int BUILD = 329;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -608,9 +608,59 @@ void LeagueOverseer::Init (const char* commandLine)
     std::string teamNameDump = "query=teamDump&apiVersion=" + intToString(API_VERSION);
     logMessage(VERBOSE_LEVEL, "debug", "Updating Team name database...");
 
-    bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamNameDump.c_str()); // Send the team update request to the league website
+    // Send the team update request to the league website
+    bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamNameDump.c_str());
 
+    // Create a new BZDB variable to easily set the amount of seconds team flags are protected after captures
     registerCustomIntBZDB("_pcProtectionDelay", 5);
+
+    // Set a clip field with the full name of the plug-in for other plug-ins to know the exact name of the plug-in
+    // since this plug-in has a versioning system; i.e. League Overseer X.Y.Z (r)
+    bz_setclipFieldString("LeagueOverseer", Name());
+
+
+
+    ///
+    /// Callback testing and examples
+    ///
+
+    // Check if the 'LeagueOverseer' clipfield exists which means the League Overseer plug-in is loaded
+    if (bz_clipFieldExists("LeagueOverseer"))
+    {
+        // We have found the clip field so we can access the plug-in's callbacks
+        bz_debugMessage(0, "'LeagueOverseer' clip field found meaning the League Overseer plug-in is loaded.");
+
+        // Get the name from the clip field and save it for easy access
+        std::string leagueOverseerPluginName = bz_getclipFieldString("LeagueOverseer");
+
+
+        ///
+        /// Get the current match time
+        ///
+
+        char currentMatchTime[256] = {0};
+        int matchTimeReturnValue = bz_callPluginGenericCallback(leagueOverseerPluginName.c_str(), "GetMatchTime", currentMatchTime);
+
+        // When calling the 'GetMatchTime' callback, 1 will be returned if getting the current match time was successful
+        if (matchTimeReturnValue == 1)
+        {
+            std::string matchTime = currentMatchTime;
+
+            // The 'GetMatchTime' callback will give a value of '-00:00' if there is no match in progress
+            if (matchTime == "-00:00")
+            {
+                bz_debugMessagef(0, "There is currently no match in progress.");
+            }
+            else
+            {
+                bz_debugMessagef(0, "The current match time is: %s", currentMatchTime);
+            }
+        }
+        else
+        {
+            bz_debugMessage(0, "The current match time could not be returned for an unknown reason.");
+        }
+    }
 }
 
 void LeagueOverseer::Cleanup (void)
@@ -623,6 +673,32 @@ void LeagueOverseer::Cleanup (void)
         std::string currentLine = std::string(*it);
         bz_removeCustomSlashCommand(currentLine.c_str());
     }
+}
+
+int LeagueOverseer::GeneralCallback (const char* name, void* data)
+{
+    logMessage(VERBOSE_LEVEL, "A plug-in has requested the '%s' callback.", name);
+
+    // Store the callback that is being called for easy access
+    std::string callbackOption = name;
+
+    if (callbackOption == "GetMatchTime")
+    {
+        std::string matchTime = getMatchTime();
+
+        strcpy((char*)data, matchTime.c_str());
+
+        logMessage(VERBOSE_LEVEL, "Returning the current match time (%s)...", matchTime.c_str());
+        return 1;
+    }
+    else if (callbackOption == "IsOfficialMatchInProgress")
+    {
+        logMessage(VERBOSE_LEVEL, "Returning that an match is %sin progress.", (isOfficialMatchInProgress()) ? "" : "not ");
+        return (int)isOfficialMatchInProgress();
+    }
+
+    logMessage(VERBOSE_LEVEL, "The '%s' callback was not found.", name);
+    return 0;
 }
 
 void LeagueOverseer::Event (bz_EventData *eventData)
@@ -1332,25 +1408,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
     }
 }
 
-int LeagueOverseer::GeneralCallback (const char* name, void* data)
-{
-    // @TODO Get this to return actual values
-    //
-    // e.x.
-    //   bz_callPluginGenericCallback("LeagueOverseer", "GetMatchTime", &someData);
-
-    if (name == "GetMatchTime")
-    {
-        std::string matchTime = getMatchTime();
-    }
-    else if (name == "IsOfficialMatchInProgress")
-    {
-        bool official = isOfficialMatchInProgress();
-    }
-
-    return 0;
-}
-
 bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiString /*message*/, bz_APIStringList *params)
 {
     std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
@@ -1931,6 +1988,12 @@ int LeagueOverseer::getMatchProgress (void)
 std::string LeagueOverseer::getMatchTime (void)
 {
     int time = getMatchProgress();
+
+    // We could not get the current match progress
+    if (getMatchProgress() < 0)
+    {
+        return "-00:00";
+    }
 
     // Let's covert the seconds of a match's progress into minutes and seconds
     int minutes = (officialMatch->duration/60) - ceil(time / 60.0);

@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 330;
+const int BUILD = 331;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -404,9 +404,6 @@ public:
         int         teamOnePoints,
                     teamTwoPoints;
 
-        time_t      matchStart,         // The timestamp of when a match was started in order to calculate the timer
-                    matchPaused;        // If the match is paused, it will be stored here in order to update matchStart appropriately for the timer
-
         // We will be storing all of the match participants in this vector
         std::vector<MatchParticipant> matchParticipants;
 
@@ -424,8 +421,6 @@ public:
             matchRollCall(90.0),
             teamOnePoints(0),
             teamTwoPoints(0),
-            matchStart(time(NULL)),
-            matchPaused(time(NULL)),
             matchParticipants()
         {}
     };
@@ -469,6 +464,9 @@ public:
                  RECORDING;              // Whether or not we are recording a match
 
     double       LAST_CAP;               // The event time of the last flag capture
+
+    time_t       MATCH_START,            // The timestamp of when a match was started in order to calculate the timer
+                 MATCH_PAUSED;           // If the match is paused, it will be stored here in order to update MATCH_START appropriately for the timer
 
     int          PC_PROTECTION_DELAY,    // The delay (in seconds) of how long the PC protection will be in effect
                  VERBOSE_LEVEL,          // This is the spamming/ridiculous level of debug that the plugin uses
@@ -963,14 +961,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //    (bz_ApiString) actionBy  - The callsign of whoever triggered the event. By default, it's "SERVER"
             //    (double)       eventTime - The server time the event occurred (in seconds).
 
+            // Get the current UTC time
+            MATCH_PAUSED = time(NULL);
+
             // We've paused an official match, so we need to delay the approxTimeProgress in order to calculate the roll call time properly
             if (officialMatch != NULL)
             {
                 // Grant the "poll" perm while a match is paused
                 grantPermToAll("poll");
-
-                // Get the current UTC time
-                officialMatch->matchPaused = time(NULL);
 
                 // Send the messages
                 bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "    with %s remaining.", getMatchTime().c_str());
@@ -1000,28 +998,29 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //    (bz_ApiString) actionBy  - The callsign of whoever triggered the event. By default, it's "SERVER"
             //    (double)       eventTime - The server time the event occurred (in seconds).
 
+
+            // Get the current UTC time
+            time_t now = time(NULL);
+
+            // Do the math to determine how long the match was paused
+            double timePaused = difftime(now, MATCH_PAUSED);
+
+            // Create a temporary variable to store and manipulate the match start time
+            struct tm modMatchStart = *localtime(&MATCH_START);
+
+            // Manipulate the time by adding the amount of seconds the match was paused in order to be able to accurately
+            // calculate the amount of time remaining with LeagueOverseer::getMatchTime()
+            modMatchStart.tm_sec += timePaused;
+
+            // Save the manipulated match start time
+            MATCH_START = mktime(&modMatchStart);
+            logMessage(VERBOSE_LEVEL, "debug", "Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
+
             // We've resumed an official match, so we need to properly edit the start time so we can calculate the roll call
             if (officialMatch != NULL)
             {
                 // Revoke the "poll" perm while a match is active
                 revokePermFromAll("poll");
-
-                // Get the current UTC time
-                time_t now = time(NULL);
-
-                // Do the math to determine how long the match was paused
-                double timePaused = difftime(now, officialMatch->matchPaused);
-
-                // Create a temporary variable to store and manipulate the match start time
-                struct tm modMatchStart = *localtime(&officialMatch->matchStart);
-
-                // Manipulate the time by adding the amount of seconds the match was paused in order to be able to accurately
-                // calculate the amount of time remaining with LeagueOverseer::getMatchTime()
-                modMatchStart.tm_sec += timePaused;
-
-                // Save the manipulated match start time
-                officialMatch->matchStart = mktime(&modMatchStart);
-                logMessage(VERBOSE_LEVEL, "debug", "Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
 
                 // Create a player record of the person who captured the flag
                 std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gameResumeData->actionBy.c_str()));
@@ -1067,9 +1066,10 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 // Reset scores in case Caps happened during countdown delay.
                 officialMatch->teamOnePoints = officialMatch->teamTwoPoints = 0;
-                officialMatch->matchStart = time(NULL);
                 officialMatch->duration = bz_getTimeLimit();
             }
+
+            MATCH_START = time(NULL);
         }
         break;
 
@@ -1974,11 +1974,11 @@ std::string LeagueOverseer::buildBZIDString (bz_eTeamType team)
 // Return the progress of a match in seconds. For example, 20:00 minutes remaining would return 600
 int LeagueOverseer::getMatchProgress (void)
 {
-    if (officialMatch != NULL)
+    if (isMatchInProgress())
     {
         time_t now = time(NULL);
 
-        return difftime(now, officialMatch->matchStart);
+        return difftime(now, MATCH_START);
     }
 
     return -1;

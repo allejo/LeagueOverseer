@@ -428,13 +428,16 @@ public:
     virtual int         setPluginConfigInt (std::string value, int defaultValue, std::string deprecatedField = "", bool showMsg = false),
                         getMatchProgress (void);
 
-    virtual bool        setPluginConfigBool (std::string value, bool defaultValue, std::string deprecatedField = "", bool showMsg = false),
+    virtual bool        isOfficialMatchInProgress (void),
+                        setPluginConfigBool (std::string value, bool defaultValue, std::string deprecatedField = "", bool showMsg = false),
                         playerAlreadyJoined (std::string bzID),
                         isMatchInProgress (void),
-                        isOfficialMatchInProgress (void),
+                        isOfficialMatch (void),
                         isLeagueMember (int playerID);
 
-    virtual std::string setPluginConfigString (std::string value, std::string defaultValue, std::string deprecatedField = "", bool showMsg = false),
+    virtual std::string getPlayerTeamNameByBZID (std::string bzID),
+                        setPluginConfigString (std::string value, std::string defaultValue, std::string deprecatedField = "", bool showMsg = false),
+                        getPlayerTeamNameByID (int playerID),
                         setPluginConfig (std::string value, std::string defaultValue, std::string deprecatedField = "", bool showMsg = false),
                         buildBZIDString (bz_eTeamType team),
                         getMatchTime (void);
@@ -680,7 +683,14 @@ int LeagueOverseer::GeneralCallback (const char* name, void* data)
     // Store the callback that is being called for easy access
     std::string callbackOption = name;
 
-    if (callbackOption == "GetMatchTime")
+    if (callbackOption == "GetMatchProgress")
+    {
+        int matchProgress = getMatchProgress();
+
+        logMessage(VERBOSE_LEVEL, "callback", "Returning the current match progress (%d)...", matchProgress);
+        return matchProgress;
+    }
+    else if (callbackOption == "GetMatchTime")
     {
         std::string matchTime = getMatchTime();
 
@@ -689,10 +699,12 @@ int LeagueOverseer::GeneralCallback (const char* name, void* data)
         logMessage(VERBOSE_LEVEL, "callback", "Returning the current match time (%s)...", matchTime.c_str());
         return 1;
     }
-    else if (callbackOption == "IsOfficialMatchInProgress")
+    else if (callbackOption == "IsOfficialMatch")
     {
-        logMessage(VERBOSE_LEVEL, "callback", "Returning that an match is %sin progress.", (isOfficialMatchInProgress()) ? "" : "not ");
-        return (int)isOfficialMatchInProgress();
+        bool isOfficial = isOfficialMatch();
+
+        logMessage(VERBOSE_LEVEL, "callback", "Returning that an match is %sin progress.", (isOfficial) ? "" : "not ");
+        return (int)isOfficial;
     }
 
     logMessage(VERBOSE_LEVEL, "callback", "The '%s' callback was not found.", name);
@@ -1117,7 +1129,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             if (MOTTO_FETCH_ENABLED)
             {
-                mottoData->motto = teamMottos[mottoData->record->bzID.c_str()];
+                mottoData->motto = getPlayerTeamNameByBZID(mottoData->record->bzID.c_str());
             }
         }
         break;
@@ -2016,6 +2028,18 @@ std::string LeagueOverseer::getMatchTime (void)
     return minutesLiteral + ":" + secondsLiteral;
 }
 
+std::string LeagueOverseer::getPlayerTeamNameByID (int playerID)
+{
+    std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
+
+    return getPlayerTeamNameByBZID(playerData->bzID.c_str());
+}
+
+std::string LeagueOverseer::getPlayerTeamNameByBZID (std::string bzID)
+{
+    return teamMottos[bzID];
+}
+
 // Check if a player is part of the league
 bool LeagueOverseer::isLeagueMember (int playerID)
 {
@@ -2029,9 +2053,15 @@ bool LeagueOverseer::isMatchInProgress (void)
 }
 
 // Check if there is currently an active official match
+bool LeagueOverseer::isOfficialMatch(void)
+{
+    return (officialMatch != NULL);
+}
+
+// Check if there is currently an active official match
 bool LeagueOverseer::isOfficialMatchInProgress (void)
 {
-    return (isMatchInProgress() && officialMatch != NULL);
+    return (isOfficialMatch() && isMatchInProgress());
 }
 
 // Load the plugin configuration file

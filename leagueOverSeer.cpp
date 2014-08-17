@@ -42,10 +42,10 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 331;
+const int BUILD = 332;
 
 // The API number used to notify the PHP counterpart about how to handle the data
-const int API_VERSION = 1;
+const int API_VERSION = 2;
 
 // The default messages to send based on the case
 enum DefaultMsgType
@@ -1906,11 +1906,6 @@ void LeagueOverseer::URLDone (const char* /*URL*/, const void* data, unsigned in
             }
         }
     }
-    else if (siteData.find("<html>") == std::string::npos)
-    {
-        bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s", siteData.c_str());
-        bz_debugMessagef(DEBUG_LEVEL, "%s", siteData.c_str());
-    }
 }
 
 // The league website is down or is not responding, the request timed out
@@ -2208,8 +2203,8 @@ void LeagueOverseer::requestTeamName (bz_eTeamType team)
 void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 {
     // Build the POST data for the URL job
-    std::string teamMotto = "query=teamNameQuery&apiVersion=" + intToString(API_VERSION);
-    teamMotto += "&teamPlayers=" + std::string(bzID.c_str());
+    std::string teamMotto = "query=teamName&apiVersion=" + intToString(API_VERSION);
+    teamMotto += "&bzid=" + std::string(bzID.c_str());
 
     logMessage(DEBUG_LEVEL, "debug", "Sending motto request for '%s'", callsign.c_str());
 

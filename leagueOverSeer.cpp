@@ -546,10 +546,9 @@ void LeagueOverseer::Init (const char* commandLine)
     SLASH_COMMANDS = {"cancel", "f", "finish", "fm", "lodbg", "o", "offi", "official", "p", "pause", "r", "resume", "showhidden", "spawn", "s", "stats"};
 
     // Register our custom slash commands
-    for (std::vector<std::string>::const_iterator it = SLASH_COMMANDS.begin(); it != SLASH_COMMANDS.end(); ++it)
+    for (auto command : SLASH_COMMANDS)
     {
-        std::string currentLine = std::string(*it);
-        bz_registerCustomSlashCommand(currentLine.c_str(), this);
+        bz_registerCustomSlashCommand(command.c_str(), this);
     }
 
     // Set some default values
@@ -666,13 +665,13 @@ void LeagueOverseer::Init (const char* commandLine)
 
 void LeagueOverseer::Cleanup (void)
 {
-    Flush(); // Clean up all the events
+    // Clean up all the events
+    Flush();
 
     // Clean up our custom slash commands
-    for (std::vector<std::string>::const_iterator it = SLASH_COMMANDS.begin(); it != SLASH_COMMANDS.end(); ++it)
+    for (auto command : SLASH_COMMANDS)
     {
-        std::string currentLine = std::string(*it);
-        bz_removeCustomSlashCommand(currentLine.c_str());
+        bz_removeCustomSlashCommand(command.c_str());
     }
 }
 
@@ -2254,7 +2253,7 @@ void LeagueOverseer::setLeagueMember (int playerID)
     // If a player isn't verified, then they are for sure not a registered player
     if (playerData->verified)
     {
-        for (int i = 0; i < (int)playerData->groups.size(); i++) // Go through all the groups a player belongs to
+        for (int i = 0; i < playerData->groups.size(); i++) // Go through all the groups a player belongs to
         {
             std::string group = playerData->groups.get(i).c_str(); // Convert the group into a string
 

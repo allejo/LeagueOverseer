@@ -1559,18 +1559,28 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             {
                 if (params->size() > 0)
                 {
-                    if (params->get(0).c_str() == "grant_perm")
+                    std::string commandOption = params->get(0).c_str();
+
+                    if (commandOption == "grant_perm" || commandOption == "revoke_perm")
                     {
                         if (params->size() == 3)
                         {
+                            int victimID = getPlayerFromCallsignOrID(params->get(1).c_str())->playerID;
 
+                            if (commandOption == "grant_perm")
+                            {
+                                bz_grantPerm(victimID, params->get(2).c_str());
+                            }
+                            else if (commandOption == "revoke_perm")
+                            {
+                                bz_revokePerm(victimID, params->get(2).c_str());
+                            }
                         }
                         else
                         {
-                            bz_sendTextMessagef(BZ_SERVER, playerID, "Syntax: /lodbg grant_perm <player id or callsign> <permission name>");
+                            bz_sendTextMessagef(BZ_SERVER, playerID, "Syntax: /lodbg %s <player id or callsign> <permission name>", commandOption.c_str());
                         }
                     }
-                    //params->get(0)
                 }
                 else
                 {

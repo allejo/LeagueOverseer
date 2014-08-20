@@ -2290,15 +2290,21 @@ std::string LeagueOverseer::setPluginConfig (std::string value, std::string defa
         {
             std::string deprecatedValue = PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedField); // Get the value from the deprecated field
 
-            logMessage(VERBOSE_LEVEL, "config", "Found deprecated field '%s'. Using value: %s", deprecatedField.c_str(), deprecatedValue.c_str());
+            logMessage(VERBOSE_LEVEL, "config", "Found deprecated field '%s'...", deprecatedField.c_str());
 
             if (showMsg)
             {
                 showDeprecatedConfigValueWarning(deprecatedField, value);
             }
 
-            if (!deprecatedValue.empty()) // If the value isn't empty, return it
+            if (deprecatedValue.empty())
             {
+                logMessage(VERBOSE_LEVEL, "config", "No value found for deprecated field. Using default value: %s", defaultValue.c_str());
+                return defaultValue;
+            }
+            else
+            {
+                logMessage(VERBOSE_LEVEL, "config", "Deprecated field found, using value: %s", deprecatedValue.c_str());
                 return deprecatedValue;
             }
         }

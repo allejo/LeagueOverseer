@@ -775,7 +775,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_eCaptureEvent: // This event is called each time a team's flag has been captured
         {
             // We only need to keep track of the store if it's an official match
-            if (officialMatch != NULL)
+            if (isOfficialMatch())
             {
                 bz_CTFCaptureEventData_V1* captureData = (bz_CTFCaptureEventData_V1*)eventData;
 
@@ -836,7 +836,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 char tempRecordingFileName[512];
 
                 // Let's get started with formatting
-                if (officialMatch != NULL)
+                if (isOfficialMatch())
                 {
                     // If the official match was finished, then mark it as canceled
                     std::string matchCanceled = (officialMatch->canceled) ? "-Canceled" : "",
@@ -976,7 +976,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             MATCH_PAUSED = time(NULL);
 
             // We've paused an official match, so we need to delay the approxTimeProgress in order to calculate the roll call time properly
-            if (officialMatch != NULL)
+            if (isOfficialMatch())
             {
                 // Grant the "poll" perm while a match is paused
                 grantPermToAll("poll");
@@ -1028,7 +1028,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             logMessage(VERBOSE_LEVEL, "debug", "Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
 
             // We've resumed an official match, so we need to properly edit the start time so we can calculate the roll call
-            if (officialMatch != NULL)
+            if (isOfficialMatch())
             {
                 // Revoke the "poll" perm while a match is active
                 revokePermFromAll("poll");
@@ -1070,7 +1070,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             }
 
             // Check if this is an official match
-            if (officialMatch != NULL)
+            if (isOfficialMatch())
             {
                 // Revoke the "poll" perm while a match is active
                 revokePermFromAll("poll");
@@ -1152,7 +1152,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (isMatchInProgress() && isValidPlayerID(joinData->playerID) && playerData->team == eObservers)
             {
                 bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** There is currently %s match in progress, please be respectful. ***",
-                                    ((officialMatch != NULL) ? "an official" : "a fun"));
+                                    ((isOfficialMatch()) ? "an official" : "a fun"));
             }
 
             if (MOTTO_FETCH_ENABLED)
@@ -1303,7 +1303,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (totaltanks == 0)
             {
                 // If there is an official match and no tanks playing, we need to cancel it
-                if (officialMatch != NULL)
+                if (isOfficialMatch())
                 {
                     officialMatch->canceled = true;
                     officialMatch->cancelationReason = "Official match automatically canceled due to all players leaving the match.";
@@ -1324,7 +1324,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             }
 
             // Let's get the roll call only if there is an official match
-            if (officialMatch != NULL)
+            if (isOfficialMatch())
             {
                 // Check if the start time is not negative since our default value for the approxTimeProgress is -1. Also check
                 // if it's time to do a roll call, which is defined as 90 seconds after the start of the match by default,
@@ -1449,7 +1449,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         else if (bz_isCountDownActive()) // We can only cancel a match if the countdown is active
         {
             // We're canceling an official match
-            if (officialMatch != NULL)
+            if (isOfficialMatch())
             {
                 officialMatch->canceled = true;
                 officialMatch->cancelationReason = "Official match cancellation requested by " + std::string(playerData->callsign.c_str());
@@ -1483,7 +1483,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             // We can only '/finish' official matches because I wanted to have a command only dedicated to
             // reporting partially completed matches
-            if (officialMatch != NULL)
+            if (isOfficialMatch())
             {
                 // Let's check if we can report the match, in other words, at least half of the match has been reported
                 if (getMatchProgress() >= officialMatch->duration / 2)
@@ -1521,7 +1521,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
         }
-        else if (officialMatch != NULL || bz_isCountDownActive() || bz_isCountDownInProgress()) // There is already a countdown
+        else if (isOfficialMatch() || bz_isCountDownActive() || bz_isCountDownInProgress()) // There is already a countdown
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
         }
@@ -1628,7 +1628,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You may not have an official match with less than 2 players per team.");
         }
-        else if (officialMatch != NULL || bz_isCountDownActive() || bz_isCountDownInProgress()) // A countdown is in progress already
+        else if (isOfficialMatch() || bz_isCountDownActive() || bz_isCountDownInProgress()) // A countdown is in progress already
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
         }
@@ -1688,7 +1688,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_resumeCountdown(playerData->callsign.c_str());
 
-            if (officialMatch != NULL)
+            if (isOfficialMatch())
             {
                 logMessage(VERBOSE_LEVEL, "debug", "Match resumed by %s.", playerData->callsign.c_str());
             }
@@ -1774,7 +1774,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     {
         if (isLeagueMember(playerID))
         {
-            if (officialMatch != NULL)
+            if (isOfficialMatch())
             {
                 bz_sendTextMessage(BZ_SERVER, playerID, "Match Data");
                 bz_sendTextMessage(BZ_SERVER, playerID, "----------");
@@ -2280,26 +2280,36 @@ std::string LeagueOverseer::setPluginConfig (std::string value, std::string defa
 {
     std::string pluginConfig = PLUGIN_CONFIG.item(PLUGIN_SECTION, value); // Get the value of the config field
 
+    logMessage(VERBOSE_LEVEL, "config", "Searching for '%s' in the configuration file...", value.c_str());
+
     if (pluginConfig.empty()) // If the field is empty...
     {
+        logMessage(VERBOSE_LEVEL, "config", "No value found for '%s'...", value.c_str());
+
         if (!deprecatedField.empty()) // Check if we're looking at a deprecated field
         {
             std::string deprecatedValue = PLUGIN_CONFIG.item(PLUGIN_SECTION, deprecatedField); // Get the value from the deprecated field
+
+            logMessage(VERBOSE_LEVEL, "config", "Found deprecated field '%s'. Using value: %s", deprecatedField.c_str(), deprecatedValue.c_str());
 
             if (showMsg)
             {
                 showDeprecatedConfigValueWarning(deprecatedField, value);
             }
 
-            if (!deprecatedValue.empty()) // If the value isn't empty, return the boolean value of it
+            if (!deprecatedValue.empty()) // If the value isn't empty, return it
             {
                 return deprecatedValue;
             }
         }
 
+        logMessage(VERBOSE_LEVEL, "config", "No suitable configuration option was found for '%s'. Using default value: %s", value.c_str(), defaultValue.c_str());
+
         // If we've had no luck finding a value to use, let's use the default value
         return defaultValue;
     }
+
+    logMessage(VERBOSE_LEVEL, "config", "'%s' set to: %s", value.c_str(), pluginConfig.c_str());
 
     // We found a normal value, let's return the boolean equivalent of it
     return pluginConfig;

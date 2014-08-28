@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 335;
+const int BUILD = 340;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -1273,15 +1273,15 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // use a deprecated slash command
             if (strncmp("/gameover", command.c_str(), 9) == 0)
             {
-                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/gameover' is disabled, please use /finish or /cancel instead **");
+                bz_sendTextMessage(BZ_SERVER, playerID, "** '/gameover' is disabled, please use /finish or /cancel instead **");
             }
             else if (strncmp("/countdown pause", command.c_str(), 16) == 0)
             {
-                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown pause' is disabled, please use /pause instead **");
+                bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown pause' is disabled, please use /pause instead **");
             }
             else if (strncmp("/countdown resume", command.c_str(), 17) == 0)
             {
-                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown resume' is disabled, please use /resume instead **");
+                bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown resume' is disabled, please use /resume instead **");
             }
             else if (strncmp("/countdown", command.c_str(), 10) == 0)
             {
@@ -1584,20 +1584,20 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                 }
                 else
                 {
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "League Overseer In-Game Debug Commands");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "--------------------------------------");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "   /lodbg <option> <parameters>");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "   Options");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "   -------");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "     - grant_perm <player id or callsign> <permission name>");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "     - revoke_perm <player id or callsign> <permission name>");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "     - set");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "         - config_option <option> <value>");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "     - show");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "         - match_stats");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "         - player_stats <player id or callsign>");
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "         - config_options");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "League Overseer In-Game Debug Commands");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "--------------------------------------");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "   /lodbg <option> <parameters>");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "   Options");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "   -------");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "     - grant_perm <player id or callsign> <permission name>");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "     - revoke_perm <player id or callsign> <permission name>");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "     - set");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "         - config_option <option> <value>");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "     - show");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "         - match_stats");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "         - player_stats <player id or callsign>");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "         - config_options");
                 }
             }
             else
@@ -1607,7 +1607,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         }
         else
         {
-            bz_sendTextMessagef(BZ_SERVER, playerID, "The League Overseer Debug command is disabled on production servers.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "The League Overseer Debug command is disabled on production servers.");
         }
     }
     else if (command == "o" || command == "offi" || command == "official")

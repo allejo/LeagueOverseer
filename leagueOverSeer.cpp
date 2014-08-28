@@ -42,7 +42,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 340;
+const int BUILD = 341;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -618,6 +618,13 @@ void LeagueOverseer::Init (const char* commandLine)
     // since this plug-in has a versioning system; i.e. League Overseer X.Y.Z (r)
     bz_setclipFieldString("LeagueOverseer", Name());
 
+    // Check that the server has -autoteam enabled so we can take advantage of the bz_eGetAutoTeamEvent and swap players
+    // before they join
+    if (!bz_isAutoTeamEnabled())
+    {
+        logMessage(0, "warning", "BZFS does not have -autoteam enabled. This plug-in prefers that -autoteam is used");
+        logMessage(0, "warning", "to prevent players from accidentally joining as a player in the middle of a match.");
+    }
 
 
     ///

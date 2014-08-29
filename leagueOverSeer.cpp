@@ -19,17 +19,13 @@ League Overseer
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <json/json.h>
-#include <math.h>
 #include <memory>
 #include <sstream>
 #include <stdarg.h>
-#include <string>
-#include <time.h>
 #include <vector>
 
 #include "bzfsAPI.h"

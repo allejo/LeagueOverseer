@@ -38,7 +38,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 341;
+const int BUILD = 343;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -525,6 +525,7 @@ void LeagueOverseer::Init (const char* commandLine)
     // Register our events with Register()
     Register(bz_eAllowFlagGrab);
     Register(bz_eAllowSpawn);
+    Register(bz_eBZDBChange);
     Register(bz_eCaptureEvent);
     Register(bz_eGameEndEvent);
     Register(bz_eGamePauseEvent);
@@ -771,6 +772,35 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 // Send the player a message, either default or custom based on 'SPAWN_MSG_ENABLED'
                 sendPluginMessage(playerID, SPAWN_MSG_ENABLED, NO_SPAWN_MSG, SPAWN);
+            }
+        }
+        break;
+
+        case bz_eBZDBChange: // This event is called each time a BZDB variable is changed
+        {
+            bz_BZDBChangeData_V1* bzdbData = (bz_BZDBChangeData_V1*)eventData;
+
+            // Data
+            // ---
+            //    (bz_ApiString)  key       - The variable that was changed
+            //    (bz_ApiString)  value     - What the variable was changed too
+            //    (double)        eventTime - This value is the local server time of the event.
+
+            if (bzdbChange->key == "_pcProtectionDelay")
+            {
+                // Save the proposed value in a variable for easy access
+                int proposedValue = atoi(bzdbChange->value.c_str());
+
+                // Our PC protection delay should be between 3 and 15 seconds only, otherwise set it to the default 5 seconds
+                if (proposedValue >= 3 && proposedValue <= 15)
+                {
+                    PC_PROTECTION_DELAY = proposedValue;
+                }
+                else
+                {
+                    PC_PROTECTION_DELAY = 5;
+                    bz_setBZDBInt("_pcProtectionDelay", PC_PROTECTION_DELAY);
+                }
             }
         }
         break;
@@ -2150,6 +2180,16 @@ void LeagueOverseer::loadConfig (const char* cmdLine)
                 logMessage(0, "error", "If you do not wish to team names for mottos, set 'DISABLE_TEAM_MOTTO' to true.");
                 bz_shutdown();
             }
+        }
+    }
+
+    // Sanity check for the PC protection delay
+    if (PC_PROTECTION_ENABLED)
+    {
+        if (PC_PROTECTION_DELAY < 3 && PC_PROTECTION_DELAY > 15)
+        {
+            PC_PROTECTION_DELAY = 5;
+            logMessage(0, "warning", "Invalid value for the PC protection delay. Default value used: %d", PC_PROTECTION_DELAY);
         }
     }
 

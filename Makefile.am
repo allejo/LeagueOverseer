@@ -10,8 +10,8 @@ AM_CFLAGS = $(CONF_CFLAGS)
 AM_CXXFLAGS = $(CONF_CXXFLAGS)
 
 EXTRA_DIST = \
-	LICENSE.markdown \
-	README.markdown \
+	LICENSE.md \
+	README.md \
 	leagueOverSeer.cfg \
 	leagueOverSeer.def
 

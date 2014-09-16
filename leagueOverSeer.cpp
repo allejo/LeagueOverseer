@@ -26,6 +26,7 @@ League Overseer
 #include <memory>
 #include <sstream>
 #include <stdarg.h>
+#include <string>
 #include <vector>
 
 #include "bzfsAPI.h"
@@ -38,7 +39,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 343;
+const int BUILD = 344;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -210,15 +211,6 @@ static void grantPermToAll(std::string perm)
 static void revokePermFromAll(std::string perm)
 {
     modifyPerms(false, perm);
-}
-
-// Convert an int to a string
-static std::string intToString (int number)
-{
-    std::stringstream string;
-    string << number;
-
-    return string.str();
 }
 
 // Return whether or not a specified player ID exists or not
@@ -602,7 +594,7 @@ void LeagueOverseer::Init (const char* commandLine)
     }
 
     // Build the POST data for the URL job
-    std::string teamNameDump = "query=teamDump&apiVersion=" + intToString(API_VERSION);
+    std::string teamNameDump = "query=teamDump&apiVersion=" + std::to_string(API_VERSION);
     logMessage(VERBOSE_LEVEL, "debug", "Updating Team name database...");
 
     // Send the team update request to the league website
@@ -943,9 +935,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     sprintf(matchDate, "%02d-%02d-%02d %02d:%02d:%02d", standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute, standardTime.second);
 
                     // Keep references to values for quick reference
-                    std::string teamOnePointsFinal = intToString(officialMatch->teamOnePoints);
-                    std::string teamTwoPointsFinal = intToString(officialMatch->teamTwoPoints);
-                    std::string matchDuration      = intToString(officialMatch->duration/60);
+                    std::string teamOnePointsFinal = std::to_string(officialMatch->teamOnePoints);
+                    std::string teamTwoPointsFinal = std::to_string(officialMatch->teamTwoPoints);
+                    std::string matchDuration      = std::to_string(officialMatch->duration/60);
 
                     // Store match data in the logs
                     bz_debugMessagef(0, "Match Data :: League Overseer Match Report");
@@ -957,13 +949,13 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                     // Start building POST data to be sent to the league website
                     std::string matchToSend = "query=reportMatch";
-                                matchToSend += "&apiVersion="  + std::string(bz_urlEncode(intToString(API_VERSION).c_str()));
+                                matchToSend += "&apiVersion="  + std::string(bz_urlEncode(std::to_string(API_VERSION).c_str()));
                                 matchToSend += "&teamOneWins=" + std::string(bz_urlEncode(teamOnePointsFinal.c_str()));
                                 matchToSend += "&teamTwoWins=" + std::string(bz_urlEncode(teamTwoPointsFinal.c_str()));
                                 matchToSend += "&duration="    + std::string(bz_urlEncode(matchDuration.c_str()));
                                 matchToSend += "&matchTime="   + std::string(bz_urlEncode(matchDate));
                                 matchToSend += "&server="      + std::string(bz_urlEncode(bz_getPublicAddr().c_str()));
-                                matchToSend += "&port="        + std::string(bz_urlEncode(intToString(bz_getPublicPort()).c_str()));
+                                matchToSend += "&port="        + std::string(bz_urlEncode(std::to_string(bz_getPublicPort()).c_str()));
                                 matchToSend += "&replayFile="  + std::string(bz_urlEncode(recordingFileName.c_str()));
 
                     // Only add this parameter if it's a rotational league such as OpenLeague
@@ -2056,7 +2048,7 @@ std::string LeagueOverseer::getMatchTime (void)
 
     // If the minutes remaining are less than 10 (only has one digit), then prepend a 0 to keep the format properly
     minutesLiteral = (minutes < 10) ? "0" : "";
-    minutesLiteral += intToString(minutes);
+    minutesLiteral += std::to_string(minutes);
 
     // Do some formatting for seconds similarly to minutes
     if (seconds == 60)
@@ -2066,7 +2058,7 @@ std::string LeagueOverseer::getMatchTime (void)
     else
     {
         secondsLiteral = (seconds < 10) ? "0" : "";
-        secondsLiteral += intToString(seconds);
+        secondsLiteral += std::to_string(seconds);
     }
 
     return minutesLiteral + ":" + secondsLiteral;
@@ -2287,7 +2279,7 @@ void LeagueOverseer::requestTeamName (bz_eTeamType team)
 void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 {
     // Build the POST data for the URL job
-    std::string teamMotto = "query=teamName&apiVersion=" + intToString(API_VERSION);
+    std::string teamMotto = "query=teamName&apiVersion=" + std::to_string(API_VERSION);
     teamMotto += "&bzid=" + std::string(bzID.c_str());
 
     logMessage(DEBUG_LEVEL, "debug", "Sending motto request for '%s'", callsign.c_str());
@@ -2375,7 +2367,7 @@ bool LeagueOverseer::setPluginConfigBool (std::string value, bool defaultValue, 
 // Get the value of a configuration int setting or use the default
 int LeagueOverseer::setPluginConfigInt (std::string value, int defaultValue, std::string deprecatedField, bool showMsg)
 {
-    std::string configValue = setPluginConfig(value, intToString(defaultValue), deprecatedField);
+    std::string configValue = setPluginConfig(value, std::to_string(defaultValue), deprecatedField);
 
     return atoi(configValue.c_str());
 }

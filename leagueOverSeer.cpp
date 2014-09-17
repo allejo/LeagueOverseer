@@ -778,10 +778,10 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             //    (bz_ApiString)  value     - What the variable was changed too
             //    (double)        eventTime - This value is the local server time of the event.
 
-            if (bzdbChange->key == "_pcProtectionDelay")
+            if (bzdbData->key == "_pcProtectionDelay")
             {
                 // Save the proposed value in a variable for easy access
-                int proposedValue = atoi(bzdbChange->value.c_str());
+                int proposedValue = atoi(bzdbData->value.c_str());
 
                 // Our PC protection delay should be between 3 and 15 seconds only, otherwise set it to the default 5 seconds
                 if (proposedValue >= 3 && proposedValue <= 15)

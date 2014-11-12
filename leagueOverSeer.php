@@ -114,7 +114,7 @@ if ((!$DISABLE_IP_CHECK && in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS)) || $
         // sending JSON or a INSERT query
         if ($API_VERSION == 1)
         {
-            echo json_encode(array("bzid" => "$player", "team" => preg_replace("/&[^\s]*;/", "", sqlSafeString(getTeamName($teamID)))));
+            echo json_encode(array("bzid" => "$player", "team" => preg_replace("/&[^\s]*;/", "", getTeamName($teamID))));
         }
 
         die();
@@ -133,7 +133,7 @@ if ((!$DISABLE_IP_CHECK && in_array($_SERVER['REMOTE_ADDR'], $ALLOWED_IPS)) || $
             // Store the team name and member list in the array we just created
             while ($entry = mysql_fetch_array($getTeamsQuery))
             {
-                $teamArray[] = array("team" => preg_replace("/&[^\s]*;/", "", sqlSafeString($entry[0])), "members" => $entry[1]);
+                $teamArray[] = array("team" => preg_replace("/&[^\s]*;/", "", $entry[0]), "members" => $entry[1]);
             }
 
             // Return the JSON

@@ -39,7 +39,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 351;
+const int BUILD = 352;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -226,14 +226,14 @@ static bz_BasePlayerRecord* getPlayerFromCallsignOrID(std::string callsignOrID)
 
         return bz_getPlayerByIndex(victimPlayerID);
     }
-    else if (bz_getPlayerByCallsign(callsignOrID.c_str()) != NULL) // It's a valid callsign
-    {
-        return bz_getPlayerByCallsign(callsignOrID.c_str());
-    }
 
-    return NULL;
+    // Attempt to return a player record from a callsign if it isn't a player slot, this will return NULL
+    // if no player is found with the respective callsign
+    return bz_getPlayerByCallsign(callsignOrID.c_str());
 }
 
+// Create a BZDB variable if it doesn't exist. This is used because if the variable already exists via -setforced in
+// the configuration file, then this value would be overloaded and we don't want that
 void registerCustomIntBZDB(const char* bzdbVar, int value, int perms = 0, bool persistent = false)
 {
     if (!bz_BZDBItemExists(bzdbVar))

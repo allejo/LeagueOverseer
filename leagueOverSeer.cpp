@@ -39,7 +39,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 344;
+const int BUILD = 350;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -301,6 +301,34 @@ static bool toBool (std::string str)
     return !str.empty() && (strcasecmp(str.c_str (), "true") == 0 || atoi(str.c_str ()) != 0);
 }
 
+class UrlQuery
+{
+    public:
+        UrlQuery(bz_BaseURLHandler* handler, const char* url) :
+            _handler(handler),
+            _URL(url),
+            _query(queryDefault)
+        {}
+
+        UrlQuery& add(std::string field, int value)         { return query(field, std::to_string(value).c_str()); }
+        UrlQuery& add(std::string field, std::string value) { return query(field, value.c_str()); }
+
+        void submit()
+        {
+            bz_addURLJob(_URL, _handler, _query.c_str()); // Send off the URL job
+            _query = queryDefault;                        // Reset the query so this object can be reused
+        }
+
+    private:
+        const char* queryDefault = "apiVersion=" + API_VERSION;
+
+        bz_BaseURLHandler* _handler;
+        const char*        _URL;
+        std::string        _query;
+
+        UrlQuery& query(std::string field, const char* value) { _query += "&" + field + "=" + std::string(bz_urlEncode(value)); return *this; }
+};
+
 class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
 public:
@@ -313,9 +341,9 @@ public:
 
     virtual bool SlashCommand (int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
 
-    virtual void URLDone (const char* URL, const void* data, unsigned int size, bool complete);
+    virtual void URLDone    (const char* URL, const void* data, unsigned int size, bool complete);
     virtual void URLTimeout (const char* URL, int errorCode);
-    virtual void URLError (const char* URL, int errorCode, const char *errorString);
+    virtual void URLError   (const char* URL, int errorCode, const char *errorString);
 
     // We will keep a record of all the players on the server to disallow first time players from automatically
     // joining a team during a match

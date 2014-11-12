@@ -304,6 +304,7 @@ class UrlQuery
 
         UrlQuery& add(std::string field, int value)         { return query(field, std::to_string(value).c_str()); }
         UrlQuery& add(std::string field, std::string value) { return query(field, value.c_str()); }
+        UrlQuery& add(std::string field, const char* value) { return query(field, value); }
 
         void submit()
         {

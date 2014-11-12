@@ -39,7 +39,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 350;
+const int BUILD = 351;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -58,16 +58,8 @@ static std::string boolToString(bool value)
     return (value) ? "true" : "false";
 }
 
-// A function to simply format the beginning of the debug messages outputted by this plugin
-static std::string formatDebug (std::string msgType)
-{
-    msgType = bz_toupper(msgType.c_str());
-
-    return msgType + " :: " + PLUGIN_NAME + " :: ";
-}
-
 // Output a formatted debug message and make it look nice
-static void logMessage (int debugLevel, std::string msgType, const char* fmt, ...)
+static void logMessage (int debugLevel, const char* msgType, const char* fmt, ...)
 {
     char buffer[4096];
     va_list args;
@@ -75,7 +67,7 @@ static void logMessage (int debugLevel, std::string msgType, const char* fmt, ..
     vsnprintf(buffer, 4096, fmt, args);
     va_end(args);
 
-    std::string message = formatDebug(msgType) + std::string(buffer);
+    std::string message = std::string(bz_toupper(msgType)) + " :: " + PLUGIN_NAME + " :: " + std::string(buffer);
 
     bz_debugMessage(debugLevel, message.c_str());
 }

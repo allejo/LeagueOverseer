@@ -39,7 +39,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 352;
+const int BUILD = 354;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -296,20 +296,32 @@ static bool toBool (std::string str)
 class UrlQuery
 {
     public:
+        UrlQuery() {};
+
         UrlQuery(bz_BaseURLHandler* handler, const char* url) :
             _handler(handler),
             _URL(url),
             _query(queryDefault)
         {}
 
-        UrlQuery& add(std::string field, int value)         { return query(field, std::to_string(value).c_str()); }
-        UrlQuery& add(std::string field, std::string value) { return query(field, value.c_str()); }
-        UrlQuery& add(std::string field, const char* value) { return query(field, value); }
+        UrlQuery& set(std::string field, int value)          { return query(field, std::to_string(value).c_str()); }
+        UrlQuery& set(std::string field, bz_ApiString value) { return query(field, value.c_str()); }
+        UrlQuery& set(std::string field, std::string value)  { return query(field, value.c_str()); }
+        UrlQuery& set(std::string field, const char* value)  { return query(field, value); }
 
         void submit()
         {
             bz_addURLJob(_URL, _handler, _query.c_str()); // Send off the URL job
             _query = queryDefault;                        // Reset the query so this object can be reused
+        }
+
+        UrlQuery operator=(const UrlQuery& rhs)
+        {
+            _handler = rhs._handler;
+            _URL = rhs._URL;
+            _query = rhs._query;
+
+            return *this;
         }
 
     private:
@@ -498,6 +510,9 @@ public:
                  TEAM_ONE,               // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
                  TEAM_TWO;               //     ONE and TWO
 
+    UrlQuery     TeamUrlRepo,
+                 MatchUrlRepo;
+
     // All of the messages that will be displayed to users on certain events
     std::vector<std::string> SLASH_COMMANDS,   // The slash commands that are supported and used by this plug-in
                              NO_SPAWN_MSG,     // The message for users who can't spawn; will be sent when they try to spawn
@@ -614,12 +629,13 @@ void LeagueOverseer::Init (const char* commandLine)
         logMessage(0, "error", "Team colors could not be detected in LeagueOverseer::Init()");
     }
 
-    // Build the POST data for the URL job
-    std::string teamNameDump = "query=teamDump&apiVersion=" + std::to_string(API_VERSION);
-    logMessage(VERBOSE_LEVEL, "debug", "Updating Team name database...");
+    // Set up our UrlQuery objects
+    TeamUrlRepo  = UrlQuery(this, TEAM_NAME_URL.c_str());
+    MatchUrlRepo = UrlQuery(this, MATCH_REPORT_URL.c_str());
 
-    // Send the team update request to the league website
-    bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamNameDump.c_str());
+    // Request the team name database
+    logMessage(VERBOSE_LEVEL, "debug", "Requesting team name database...");
+    TeamUrlRepo.set("query", "teamNameDump").submit();
 
     // Create a new BZDB variable to easily set the amount of seconds team flags are protected after captures
     registerCustomIntBZDB("_pcProtectionDelay", 5);
@@ -968,6 +984,15 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_ONE, true).c_str(), teamOnePointsFinal.c_str());
                     bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_TWO, true).c_str(), teamTwoPointsFinal.c_str());
 
+                    MatchUrlRepo.set("query",       "matchReport")
+                                .set("teamOneWins", officialMatch->teamOnePoints)
+                                .set("teamTwoWins", officialMatch->teamTwoPoints)
+                                .set("duration",    officialMatch->duration/60)
+                                .set("matchTime",   matchDate)
+                                .set("server",      bz_getPublicAddr())
+                                .set("port",        bz_getPublicPort())
+                                .set("replayFile",  recordingFileName);
+
                     // Start building POST data to be sent to the league website
                     std::string matchToSend = "query=reportMatch";
                                 matchToSend += "&apiVersion="  + std::string(bz_urlEncode(std::to_string(API_VERSION).c_str()));
@@ -995,8 +1020,10 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     logMessage(DEBUG_LEVEL, "debug", "Reporting match data...");
                     bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Reporting match...");
 
+                    MatchUrlRepo.submit();
+
                     // Send the match data to the league website
-                    bz_addURLJob(MATCH_REPORT_URL.c_str(), this, matchToSend.c_str());
+                    //  bz_addURLJob(MATCH_REPORT_URL.c_str(), this, matchToSend.c_str());
                     MATCH_INFO_SENT = true;
                 }
             }

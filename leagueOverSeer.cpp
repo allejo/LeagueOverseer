@@ -334,6 +334,170 @@ class UrlQuery
         UrlQuery& query(std::string field, const char* value) { _query += "&" + field + "=" + std::string(bz_urlEncode(value)); return *this; }
 };
 
+class ConfigurationOptions
+{
+    public:
+        bool         PC_PROTECTION_ENABLED,  // Whether or not the PC protection is enabled
+                     IN_GAME_DEBUG_ENABLED,  // Whether or not the "lodgb" command is enabled
+                     MATCH_REPORT_ENABLED,   // Whether or not to enable automatic match reports if a server is not used as an official match server
+                     MOTTO_FETCH_ENABLED,    // Whether or not to set a player's motto to their team name
+                     ALLOW_LIMITED_CHAT,     // Whether or not to allow limited chat functionality for non-league players
+                     SPAWN_MSG_ENABLED,      // Whether or not to send custom messages explaining why players can't spawn
+                     DISABLE_OFFICIALS,      // Whether or not official matches have been disabled on this server
+                     TALK_MSG_ENABLED,       // Whether or not to send custom messages explaining why players can't talk
+                     ROTATION_LEAGUE,        // Whether or not we are watching a league that uses different maps
+                     DISABLE_FMS;            // Whether or not fun matches have been disabled on this server
+
+        int          PC_PROTECTION_DELAY,    // The delay (in seconds) of how long the PC protection will be in effect
+                     VERBOSE_LEVEL,          // This is the spamming/ridiculous level of debug that the plugin uses
+                     DEBUG_LEVEL;            // The DEBUG level the server owner wants the plugin to use for its messages
+
+        std::string  SPAWN_COMMAND_PERM,     // The BZFS permission required to use the /spawn command
+                     SHOW_HIDDEN_PERM,       // The BZFS permission required to use the /showhidden command
+                     MATCH_REPORT_URL,       // The URL the plugin will use to report matches
+                     MAPCHANGE_PATH,         // The path to the file that contains the name of current map being played
+                     TEAM_NAME_URL,          // The URL the plugin will use to fetch team information
+                     LEAGUE_GROUP;           // The BZBB group that signifies membership of a league (typically in the format of <something>.LEAGUE)
+
+        std::vector<std::string> NO_SPAWN_MSG, // The message for users who can't spawn; will be sent when they try to spawn
+                                 NO_TALK_MSG;  // The message for users who can't talk; will be sent when they try to talk
+
+        void readConfigurationFile(const char* filePath)
+        {
+            pluginConfigObj = PluginConfig(filePath);
+
+            if (pluginConfigObj.errors)
+            {
+                logMessage(0, "error", "Your configuration file has one or more errors. Using default configuration values.");
+                return;
+            }
+
+            // A short cut configuration value that will take the value of two separate configuration values
+            if (isOptionSet("LEAGUE_OVERSEER_URL"))
+            {
+                MATCH_REPORT_URL = getString("LEAGUE_OVERSEER_URL");
+                TEAM_NAME_URL    = getString("LEAGUE_OVERSEER_URL");
+            }
+
+            // Set string configuration values
+            if (isOptionSet("SPAWN_COMMAND_PERM")) { SPAWN_COMMAND_PERM = getString("SPAWN_COMMAND_PERM"); }
+            if (isOptionSet("MATCH_REPORT_URL"))   { MATCH_REPORT_URL   = getString("MATCH_REPORT_URL"); }
+            if (isOptionSet("SHOW_HIDDEN_PERM"))   { SHOW_HIDDEN_PERM   = getString("SHOW_HIDDEN_PERM"); }
+            if (isOptionSet("MAPCHANGE_PATH"))     { MAPCHANGE_PATH     = getString("MAPCHANGE_PATH"); }
+            if (isOptionSet("TEAM_NAME_URL"))      { TEAM_NAME_URL      = getString("TEAM_NAME_URL"); }
+            if (isOptionSet("LEAGUE_GROUP"))       { LEAGUE_GROUP       = getString("LEAGUE_GROUP"); }
+
+            // Set boolean configuration values
+            if (isOptionSet("DISABLE_OFFICIAL_MATCHES")) { DISABLE_OFFICIALS     = getBool("DISABLE_OFFICIAL_MATCHES"); }
+            if (isOptionSet("PC_PROTECTION_ENABLED"))    { PC_PROTECTION_ENABLED = getBool("PC_PROTECTION_ENABLED"); }
+            if (isOptionSet("IN_GAME_DEBUG_ENABLED"))    { IN_GAME_DEBUG_ENABLED = getBool("IN_GAME_DEBUG_ENABLED"); }
+            if (isOptionSet("SPAWN_MESSAGE_ENABLED"))    { SPAWN_MSG_ENABLED     = getBool("SPAWN_MESSAGE_ENABLED"); }
+            if (isOptionSet("MATCH_REPORT_ENABLED"))     { MATCH_REPORT_ENABLED  = getBool("MATCH_REPORT_ENABLED"); }
+            if (isOptionSet("TALK_MESSAGE_ENABLED"))     { TALK_MSG_ENABLED      = getBool("TALK_MESSAGE_ENABLED"); }
+            if (isOptionSet("MOTTO_FETCH_ENABLED"))      { MOTTO_FETCH_ENABLED   = getBool("MOTTO_FETCH_ENABLED"); }
+            if (isOptionSet("DISABLE_FUN_MATCHES"))      { DISABLE_FMS           = getBool("DISABLE_FUN_MATCHES"); }
+            if (isOptionSet("ALLOW_LIMITED_CHAT"))       { ALLOW_LIMITED_CHAT    = getBool("ALLOW_LIMITED_CHAT"); }
+            if (isOptionSet("ROTATIONAL_LEAGUE"))        { ROTATION_LEAGUE       = getBool("ROTATIONAL_LEAGUE"); }
+
+            // Set integer configuration values
+            if (isOptionSet("PC_PROTECTION_DELAY")) { PC_PROTECTION_DELAY = getInt("PC_PROTECTION_DELAY"); }
+            if (isOptionSet("VERBOSE_LEVEL"))       { VERBOSE_LEVEL       = getInt("VERBOSE_LEVEL"); }
+            if (isOptionSet("DEBUG_LEVEL"))         { DEBUG_LEVEL         = getInt("DEBUG_LEVEL"); }
+
+            // Set paragraph or longer messages configuration values
+            if (isOptionSet("NO_SPAWN_MESSAGE")) { NO_SPAWN_MSG = split(getString("NO_SPAWN_MESSAGE"), "\n"); }
+            if (isOptionSet("NO_TALK_MESSAGE"))  { NO_TALK_MSG  = split(getString("NO_TALK_MESSAGE"), "\n"); }
+
+            sanityChecks();
+        }
+
+        ConfigurationOptions () :
+            SPAWN_COMMAND_PERM("ban"),
+            SHOW_HIDDEN_PERM("ban"),
+            MAPCHANGE_PATH(""),
+            LEAGUE_GROUP("VERIFIED"),
+            PC_PROTECTION_ENABLED(false),
+            IN_GAME_DEBUG_ENABLED(false),
+            MATCH_REPORT_ENABLED(true),
+            MOTTO_FETCH_ENABLED(true),
+            ALLOW_LIMITED_CHAT(false),
+            SPAWN_MSG_ENABLED(true),
+            DISABLE_OFFICIALS(false),
+            TALK_MSG_ENABLED(true),
+            ROTATION_LEAGUE(false),
+            DISABLE_FMS(false),
+            PC_PROTECTION_DELAY(5),
+            VERBOSE_LEVEL(4),
+            DEBUG_LEVEL(1)
+        {}
+
+    private:
+        PluginConfig pluginConfigObj;
+
+        bool isOptionSet(const char* itemName)
+        {
+            return (!pluginConfigObj.item("leagueOverSeer", itemName).empty());
+        }
+
+        bool getBool(const char* itemName)
+        {
+            return toBool(getString(itemName));
+        }
+
+        int getInt(const char* itemName)
+        {
+            return atoi(getString(itemName).c_str());
+        }
+
+        std::string getString(const char* itemName)
+        {
+            return pluginConfigObj.item("leagueOverSeer", itemName);
+        }
+
+        void sanityChecks()
+        {
+            if (isOptionSet("LEAGUE_OVERSEER_URL") && (isOptionSet("MATCH_REPORT_URL") || isOptionSet("TEAM_NAME_URL")))
+            {
+                logMessage(0, "warning", "You have set the 'LEAGUE_OVERSEER_URL' configuration value but you have also specified");
+                logMessage(0, "warning", "a 'MATCH_REPORT_URL' or 'TEAM_NAME_URL' value. This configuration may lead to unintended");
+                logMessage(0, "warning", "side effects. Please resolve this issue but only setting 'LEAGUE_OVERSEER_URL' OR by");
+                logMessage(0, "warning", "setting 'MATCH_REPORT_URL' and 'TEAM_NAME_URL' manually.");
+            }
+
+            if (MATCH_REPORT_ENABLED && !isOptionSet("MATCH_REPORT_URL"))
+            {
+                logMessage(0, "error", "You are requesting to report matches but you have not specified a URL to report to.");
+                logMessage(0, "error", "Please set the 'MATCH_REPORT_URL' or 'LEAGUE_OVERSEER_URL' option respectively.");
+                logMessage(0, "error", "If you do not wish to report matches, set 'DISABLE_MATCH_REPORT' to true.");
+            }
+
+            if (MOTTO_FETCH_ENABLED && !isOptionSet("TEAM_NAME_URL"))
+            {
+                logMessage(0, "error", "You have requested to fetch team names but have not specified a URL to fetch them from.");
+                logMessage(0, "error", "Please set the 'TEAM_NAME_URL' or 'LEAGUE_OVERSEER_URL' option respectively.");
+                logMessage(0, "error", "If you do not wish to team names for mottos, set 'DISABLE_TEAM_MOTTO' to true.");
+            }
+
+            if (PC_PROTECTION_ENABLED && (PC_PROTECTION_DELAY < 3 && PC_PROTECTION_DELAY > 15))
+            {
+                PC_PROTECTION_DELAY = 5;
+                logMessage(0, "warning", "Invalid value for the PC protection delay. Default value used: %d", PC_PROTECTION_DELAY);
+            }
+
+            if (DEBUG_LEVEL > 4 || DEBUG_LEVEL < 0)
+            {
+                DEBUG_LEVEL = 1;
+                logMessage(0, "warning", "Invalid debug level in the configuration file. Default value used: %d", DEBUG_LEVEL);
+            }
+
+            if (VERBOSE_LEVEL > 4 || VERBOSE_LEVEL < 0)
+            {
+                VERBOSE_LEVEL = 4;
+                logMessage(0, "warning", "Invalid verbose level in the configuration file. Default value used: %d", VERBOSE_LEVEL);
+            }
+        }
+};
+
 class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
 public:
@@ -513,6 +677,8 @@ public:
     UrlQuery     TeamUrlRepo,
                  MatchUrlRepo;
 
+    ConfigurationOptions pluginSettings;
+
     // All of the messages that will be displayed to users on certain events
     std::vector<std::string> SLASH_COMMANDS,   // The slash commands that are supported and used by this plug-in
                              NO_SPAWN_MSG,     // The message for users who can't spawn; will be sent when they try to spawn
@@ -580,7 +746,7 @@ void LeagueOverseer::Init (const char* commandLine)
     officialMatch = NULL;
 
     // Load the configuration data when the plugin is loaded
-    loadConfig(commandLine);
+    pluginSettings.readConfigurationFile(commandLine);
 
     // Check to see if the plugin is for a rotational league
     if (MAPCHANGE_PATH != "" && ROTATION_LEAGUE)
@@ -630,11 +796,11 @@ void LeagueOverseer::Init (const char* commandLine)
     }
 
     // Set up our UrlQuery objects
-    TeamUrlRepo  = UrlQuery(this, TEAM_NAME_URL.c_str());
-    MatchUrlRepo = UrlQuery(this, MATCH_REPORT_URL.c_str());
+    TeamUrlRepo  = UrlQuery(this, pluginSettings.TEAM_NAME_URL.c_str());
+    MatchUrlRepo = UrlQuery(this, pluginSettings.MATCH_REPORT_URL.c_str());
 
     // Request the team name database
-    logMessage(VERBOSE_LEVEL, "debug", "Requesting team name database...");
+    logMessage(pluginSettings.VERBOSE_LEVEL, "debug", "Requesting team name database...");
     TeamUrlRepo.set("query", "teamNameDump").submit();
 
     // Create a new BZDB variable to easily set the amount of seconds team flags are protected after captures

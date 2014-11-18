@@ -339,27 +339,28 @@ class ConfigurationOptions
     public:
         ConfigurationOptions ()
         {
-            stringConfigValues["SPAWN_COMMAND_PERM"]     = "ban";
-            stringConfigValues["MATCH_REPORT_URL"]       = "";
-            stringConfigValues["SHOW_HIDDEN_PERM"]       = "ban";
-            stringConfigValues["MAPCHANGE_PATH"]         = "";
-            stringConfigValues["TEAM_NAME_URL"]          = "";
-            stringConfigValues["LEAGUE_GROUP"]           = "VERIFIED";
+            stringConfigValues["SPAWN_COMMAND_PERM"]       = "ban";
+            stringConfigValues["MATCH_REPORT_URL"]         = "";
+            stringConfigValues["SHOW_HIDDEN_PERM"]         = "ban";
+            stringConfigValues["MAPCHANGE_PATH"]           = "";
+            stringConfigValues["TEAM_NAME_URL"]            = "";
+            stringConfigValues["LEAGUE_GROUP"]             = "VERIFIED";
 
-            boolConfigValues["DISABLE_OFFICIAL_MATCHES"] = false;
-            boolConfigValues["PC_PROTECTION_ENABLED"]    = false;
-            boolConfigValues["IN_GAME_DEBUG_ENABLED"]    = false;
-            boolConfigValues["SPAWN_MESSAGE_ENABLED"]    = true;
-            boolConfigValues["MATCH_REPORT_ENABLED"]     = true;
-            boolConfigValues["TALK_MESSAGE_ENABLED"]     = true;
-            boolConfigValues["MOTTO_FETCH_ENABLED"]      = true;
-            boolConfigValues["DISABLE_FUN_MATCHES"]      = false;
-            boolConfigValues["ALLOW_LIMITED_CHAT"]       = true;
-            boolConfigValues["ROTATIONAL_LEAGUE"]        = false;
+            boolConfigValues["INTER_PLUGIN_COM_API_CHECK"] = false;
+            boolConfigValues["DISABLE_OFFICIAL_MATCHES"]   = false;
+            boolConfigValues["PC_PROTECTION_ENABLED"]      = false;
+            boolConfigValues["IN_GAME_DEBUG_ENABLED"]      = false;
+            boolConfigValues["SPAWN_MESSAGE_ENABLED"]      = true;
+            boolConfigValues["MATCH_REPORT_ENABLED"]       = true;
+            boolConfigValues["TALK_MESSAGE_ENABLED"]       = true;
+            boolConfigValues["MOTTO_FETCH_ENABLED"]        = true;
+            boolConfigValues["DISABLE_FUN_MATCHES"]        = false;
+            boolConfigValues["ALLOW_LIMITED_CHAT"]         = true;
+            boolConfigValues["ROTATIONAL_LEAGUE"]          = false;
 
-            intConfigValues["PC_PROTECTION_DELAY"]       = 5;
-            intConfigValues["VERBOSE_LEVEL"]             = 4;
-            intConfigValues["DEBUG_LEVEL"]               = 1;
+            intConfigValues["PC_PROTECTION_DELAY"]         = 5;
+            intConfigValues["VERBOSE_LEVEL"]               = 4;
+            intConfigValues["DEBUG_LEVEL"]                 = 1;
         }
 
         void readConfigurationFile(const char* filePath)
@@ -393,6 +394,7 @@ class ConfigurationOptions
         std::string getTeamNameURL      (void) { return stringConfigValues["TEAM_NAME_URL"]; }
         std::string getLeagueGroup      (void) { return stringConfigValues["LEAGUE_GROUP"]; }
 
+        bool isInterPluginCheckEnabled  (void) { return boolConfigValues["INTER_PLUGIN_COM_API_CHECK"]; }
         bool isDisableOfficialMatches   (void) { return boolConfigValues["DISABLE_OFFICIAL_MATCHES"]; }
         bool isPcProtectionEnabled      (void) { return boolConfigValues["PC_PROTECTION_ENABLED"]; }
         bool isSpawnMessageEnabled      (void) { return boolConfigValues["IN_GAME_DEBUG_ENABLED"]; }
@@ -422,8 +424,9 @@ class ConfigurationOptions
                                                                         "LEAGUE_GROUP" };           // The BZBB group that signifies membership of a league (typically in the format of <something>.LEAGUE)
 
         std::vector<std::string>                boolConfigOptions   = { "DISABLE_OFFICIAL_MATCHES", // Whether or not official matches have been disabled on this server
-                                                                        "PC_PROTECTION_ENABLED",    // Whether or not the PC protection is enabled
                                                                         "IN_GAME_DEBUG_ENABLED",    // Whether or not the "lodgb" command is enabled
+                                                                        "INTERPLUGIN_API_CHECK",    // Whether or not to check the inter plug-in API to make sure it works when it's first loaded
+                                                                        "PC_PROTECTION_ENABLED",    // Whether or not the PC protection is enabled
                                                                         "SPAWN_MESSAGE_ENABLED",    // Whether or not to send custom messages explaining why players can't spawn
                                                                         "MATCH_REPORT_ENABLED",     // Whether or not to enable automatic match reports if a server is not used as an official match server
                                                                         "TALK_MESSAGE_ENABLED",     // Whether or not to send custom messages explaining why players can't talk
@@ -831,7 +834,7 @@ void LeagueOverseer::Init (const char* commandLine)
     ///
 
     // Check if the 'LeagueOverseer' clipfield exists which means the League Overseer plug-in is loaded
-    if (bz_clipFieldExists("LeagueOverseer"))
+    if (pluginSettings.isInterPluginCheckEnabled() && bz_clipFieldExists("LeagueOverseer"))
     {
         // We have found the clip field so we can access the plug-in's callbacks
         bz_debugMessage(0, "'LeagueOverseer' clip field found meaning the League Overseer plug-in is loaded.");

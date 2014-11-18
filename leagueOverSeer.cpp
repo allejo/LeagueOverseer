@@ -52,13 +52,26 @@ enum DefaultMsgType
     LAST_MSG_TYPE
 };
 
-// Return a literal value of a boolean
+/**
+ * Return a string representation of a boolean
+ *
+ * @param  value The boolean you want to be converted in a string
+ *
+ * @return       The string represenation of a boolean
+ */
 static std::string boolToString(bool value)
 {
     return (value) ? "true" : "false";
 }
 
-// Output a formatted debug message and make it look nice
+/**
+ * Output a formatted debug message that will follow a similar syntax and can be easily found in the log file.
+ *    (example) MSG TYPE :: League Overseer :: A sample message that has been written to the log file
+ *
+ * @param debugLevel The debug level that at which this message will be outputted to the log file
+ * @param msgType    The type of the message. For example: debug, verbose, error, warning
+ * @param fmt        The format of the message that will accept placeholders
+ */
 static void logMessage (int debugLevel, const char* msgType, const char* fmt, ...)
 {
     char buffer[4096];
@@ -72,7 +85,13 @@ static void logMessage (int debugLevel, const char* msgType, const char* fmt, ..
     bz_debugMessage(debugLevel, message.c_str());
 }
 
-// A function that will get the player record by their callsign
+/**
+ * A function that will get the player record by their callsign
+ *
+ * @param  callsign The callsign of the player you want to look up
+ *
+ * @return          A player record of the specified player or NULL of the player wasn't found
+ */
 static bz_BasePlayerRecord* bz_getPlayerByCallsign (const char* callsign)
 {
     // Use a smart pointer so we don't have to worry about freeing up the memory
@@ -98,9 +117,16 @@ static bz_BasePlayerRecord* bz_getPlayerByCallsign (const char* callsign)
     return NULL;
 }
 
-// Convert a bz_eTeamType value into a string literal with the option
-// of adding whitespace to format the string to return
-static std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace = false)
+/**
+ * Convert a bz_eTeamType value into a string literal with the option of adding whitespace to format the string to return
+ *
+ * @param  teamColor       The team color that you want a string representation of
+ * @param  addWhiteSpace   Whether or not to add space after the string representation to have a set amount of characters (used for lining up text)
+ * @param  totalCharacters The total amount of characters both the string respentation and white space should take up together
+ *
+ * @return                 The string representation of a team color with white padding added if specified
+ */
+static std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace = false, int totalCharacters = 7)
 {
     // Because we may have to format the string with white space padding, we need to store
     // the value somewhere
@@ -132,8 +158,8 @@ static std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace = fals
     // We may want to format the team color name with white space for the debug messages
     if (addWhiteSpace)
     {
-        // Our max padding length will be 7 so add white space as needed
-        while (color.length() < 7)
+        // Our max padding length will be 'totalWhiteSpace' so add white space as needed
+        while (color.length() < totalCharacters)
         {
             color += " ";
         }
@@ -143,7 +169,13 @@ static std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace = fals
     return color;
 }
 
-// Get the bz_eTeamType of a flag abbreviation
+/**
+ * Get the bz_eTeamType from a flag abbreviation
+ *
+ * @param  flagAbbr The flag abbreviation we're searching for
+ *
+ * @return          The team the flag belongs to. Return eNoTeam if the flag is not a team flag
+ */
 static bz_eTeamType getTeamTypeFromFlag(std::string flagAbbr)
 {
     if (flagAbbr == "R*")
@@ -162,13 +194,16 @@ static bz_eTeamType getTeamTypeFromFlag(std::string flagAbbr)
     {
         return ePurpleTeam;
     }
-    else
-    {
-        return eNoTeam;
-    }
+
+    return eNoTeam;
 }
 
-// Modify the perms of all of the players on the server
+/**
+ * Modify the perms of all of the players on the server
+ *
+ * @param grant True if you'd like to grant a specific permission. False to remove it.
+ * @param perm  The server permission you'd like to revoke or grant
+ */
 static void modifyPerms(bool grant, std::string perm)
 {
     // Use a smart pointer so we don't have to worry about freeing up the memory
@@ -193,19 +228,33 @@ static void modifyPerms(bool grant, std::string perm)
     }
 }
 
-// Shortcut to call the modifyPerms() function without having to remember the boolean in order to grant perms
+/**
+ * A convenience method for modifyPerms() that will grant permissions
+ *
+ * @param perm The permission that you would like to grant to everyone
+ */
 static void grantPermToAll(std::string perm)
 {
     modifyPerms(true, perm);
 }
 
-// Shortcut to call the modifyPerms() function without having to remember the boolean in order to revoke perms
+/**
+ * A convenience method for modifyPerms() that will revoke permissions
+ *
+ * @param perm The permission that you would like to revoke from everyone
+ */
 static void revokePermFromAll(std::string perm)
 {
     modifyPerms(false, perm);
 }
 
-// Return whether or not a specified player ID exists or not
+/**
+ * Return whether or not a specified player ID exists or not
+ *
+ * @param  playerID The player ID we are checking
+ *
+ * @return          True if a player was found with the specified player ID
+ */
 static bool isValidPlayerID (int playerID)
 {
     // Use another smart pointer so we don't forget about freeing up memory
@@ -215,7 +264,13 @@ static bool isValidPlayerID (int playerID)
     return (playerData) ? true : false;
 }
 
-// Get a player record of a player from either a slot ID or a callsign
+/**
+ * Get a player record of a player from either a slot ID or a callsign
+ *
+ * @param  callsignOrID The callsign of the player or the player slot of the player
+ *
+ * @return              A player record gotten from the specified information
+ */
 static bz_BasePlayerRecord* getPlayerFromCallsignOrID(std::string callsignOrID)
 {
     // We have a pound sign followed by a valid player index
@@ -232,8 +287,17 @@ static bz_BasePlayerRecord* getPlayerFromCallsignOrID(std::string callsignOrID)
     return bz_getPlayerByCallsign(callsignOrID.c_str());
 }
 
-// Create a BZDB variable if it doesn't exist. This is used because if the variable already exists via -setforced in
-// the configuration file, then this value would be overloaded and we don't want that
+/**
+ * Create a BZDB variable if it doesn't exist. This is used because if the variable already exists via -setforced in
+ * the configuration file, then this value would be overloaded and we don't want that
+ *
+ * @param  bzdbVar    The name of the BZDB variable
+ * @param  value      The value of the variable
+ * @param  perms      What to set the permission value to. (Range: 1-3. Using 0 sets it to the default [2], and using a higher number sets it to 3.)
+ * @param  persistent Whether or not the variable will be persistent.
+ *
+ * @return            The value of the BZDB variable
+ */
 int registerCustomIntBZDB(const char* bzdbVar, int value, int perms = 0, bool persistent = false)
 {
     if (!bz_BZDBItemExists(bzdbVar))
@@ -244,7 +308,14 @@ int registerCustomIntBZDB(const char* bzdbVar, int value, int perms = 0, bool pe
     return bz_getBZDBInt(bzdbVar);
 }
 
-// Send a player a message that is stored in a vector
+/**
+ * Send a player a message that is stored in a vector
+ *
+ * @param playerID          The ID of the player who the message is being sent to
+ * @param sendCustomMessage Whether or not to send a custom message. When set to false, the default hard coded message will be sent.
+ * @param message           A vector containing the message sent to player
+ * @param msgToSend         The type of message sent
+ */
 static void sendPluginMessage (int playerID, bool sendCustomMessage, std::vector<std::string> message, DefaultMsgType msgToSend)
 {
     if (sendCustomMessage) // We want to send the players a custom message
@@ -273,15 +344,14 @@ static void sendPluginMessage (int playerID, bool sendCustomMessage, std::vector
     }
 }
 
-// Output a message saying that a configuragion file option has been deprecated and won't be supported in the future
-static void showDeprecatedConfigValueWarning (std::string deprecatedValue, std::string supportedValue)
-{
-    logMessage(0, "warning", "The '%s' configuration file option has been deprecated.", deprecatedValue.c_str());
-    logMessage(0, "warning", "This warning will trigger an error in a future release of the plug-in.");
-    logMessage(0, "warning", "Please use the '%s' option instead.", supportedValue.c_str());
-}
-
-// Split a string by a delimeter and return a vector of elements
+/**
+ * Split a string by a delimeter and return a vector of elements
+ *
+ * @param  string    The string that will be split
+ * @param  delimeter The delimiter that will be used to split a string
+ *
+ * @return           A vector of strings gotten after the original string was split
+ */
 static std::vector<std::string> split (std::string string, std::string delimeter)
 {
     // I love you, JeffM <3
@@ -289,7 +359,13 @@ static std::vector<std::string> split (std::string string, std::string delimeter
     return tokenize(string, delimeter, 0, true);
 }
 
-// Convert a string representation of a boolean to a boolean
+/**
+ * Convert a string representation of a boolean to a boolean
+ *
+ * @param  str The string representation of a boolean
+ *
+ * @return     True if the string is not empty, is equal to "true" or does not equal 0
+ */
 static bool toBool (std::string str)
 {
     return !str.empty() && (strcasecmp(str.c_str (), "true") == 0 || atoi(str.c_str ()) != 0);

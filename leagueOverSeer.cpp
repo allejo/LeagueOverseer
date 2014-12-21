@@ -39,7 +39,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 358;
+const int BUILD = 360;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -436,6 +436,7 @@ class ConfigurationOptions
             boolConfigValues["ALLOW_LIMITED_CHAT"]         = true;
             boolConfigValues["ROTATIONAL_LEAGUE"]          = false;
 
+            intConfigValues["DEFAULT_TIME_LIMIT"]          = 1800;
             intConfigValues["VERBOSE_LEVEL"]               = 4;
             intConfigValues["DEBUG_LEVEL"]                 = 1;
         }
@@ -487,6 +488,7 @@ class ConfigurationOptions
         bool isAllowLimitedChat         (void) { return boolConfigValues["ALLOW_LIMITED_CHAT"]; }
         bool isRotationalLeague         (void) { return boolConfigValues["ROTATIONAL_LEAGUE"]; }
 
+        int  getDefaultTimeLimit        (void) { return intConfigValues["DEFAULT_TIME_LIMIT"]; }
         int  getVerboseLevel            (void) { return intConfigValues["VERBOSE_LEVEL"]; }
         int  getDebugLevel              (void) { return intConfigValues["DEBUG_LEVEL"]; }
 
@@ -515,7 +517,8 @@ class ConfigurationOptions
                                                                         "ALLOW_LIMITED_CHAT",       // Whether or not to allow limited chat functionality for non-league players
                                                                         "ROTATIONAL_LEAGUE" };      // Whether or not we are watching a league that uses different maps
 
-        std::vector<std::string>                intConfigOptions    = { "VERBOSE_LEVEL",            // This is the spamming/ridiculous level of debug that the plugin uses
+        std::vector<std::string>                intConfigOptions    = { "DEFAULT_TIME_LIMIT",       // The default time limit each match will have
+                                                                        "VERBOSE_LEVEL",            // This is the spamming/ridiculous level of debug that the plugin uses
                                                                         "DEBUG_LEVEL" };            // The DEBUG level the server owner wants the plugin to use for its messages
 
         std::map<std::string, std::vector<std::string>>  vectorConfigValues;
@@ -875,12 +878,23 @@ void LeagueOverseer::Init (const char* commandLine)
     // since this plug-in has a versioning system; i.e. League Overseer X.Y.Z (r)
     bz_setclipFieldString("LeagueOverseer", Name());
 
+
+    ///
+    /// Check Server Configuration
+    ///
+
     // Check that the server has -autoteam enabled so we can take advantage of the bz_eGetAutoTeamEvent and swap players
     // before they join
     if (!bz_isAutoTeamEnabled())
     {
         logMessage(0, "warning", "BZFS does not have -autoteam enabled. This plug-in prefers that -autoteam is used");
         logMessage(0, "warning", "to prevent players from accidentally joining as a player in the middle of a match.");
+    }
+
+    // If the map does not have a time limit configured through '-time', we should set it
+    if (bz_getTimeLimit() == 0)
+    {
+        bz_setTimeLimit(pluginSettings.getDefaultTimeLimit());
     }
 
 
@@ -2112,6 +2126,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
         return true;
     }
+
+    return true;
 }
 
 // We got a response from one of our URL jobs

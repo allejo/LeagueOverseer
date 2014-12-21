@@ -1773,8 +1773,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to cancel.");
         }
-
-        return true;
     }
     else if (command == "finish")
     {
@@ -1815,8 +1813,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to end.");
         }
-
-        return true;
     }
     else if (command == "f" || command == "fm")
     {
@@ -1855,8 +1851,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                 bz_startCountdown(10, bz_getTimeLimit(), "Server"); // Start the countdown for the official match
             }
         }
-
-        return true;
     }
     else if (command == "leagueoverseer" || command == "los")
     {
@@ -1981,8 +1975,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                 bz_startCountdown(10, bz_getTimeLimit(), "Server"); // Start the countdown for the official match
             }
         }
-
-        return true;
     }
     else if (command == "p" || command == "pause")
     {
@@ -1998,8 +1990,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to pause right now.");
         }
-
-        return true;
     }
     else if (command == "r" || command == "resume")
     {
@@ -2024,8 +2014,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to resume right now.");
         }
-
-        return true;
     }
     else if (command == "showhidden")
     {
@@ -2057,8 +2045,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /showhidden command.");
         }
-
-        return true;
     }
     else if (command == "spawn")
     {
@@ -2094,8 +2080,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /spawn command.");
         }
-
-        return true;
     }
     else if (command == "s" || command == "stats")
     {
@@ -2123,8 +2107,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /stats command.");
         }
-
-        return true;
     }
 
     return true;

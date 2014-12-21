@@ -1751,7 +1751,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         }
         else if (bz_isCountDownInProgress()) // There's no way to stop a countdown so let's not cancel during a countdown
         {
-            bz_sendTextMessage(BZ_SERVER, playerID, "You may only cancel a match after it has started.");
+            bz_cancelCountdown(playerData->callsign.c_str());
         }
         else if (bz_isCountDownActive()) // We can only cancel a match if the countdown is active
         {

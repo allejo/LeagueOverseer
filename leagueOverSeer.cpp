@@ -403,7 +403,7 @@ class UrlQuery
         }
 
     private:
-        const char* queryDefault = "apiVersion=" + API_VERSION;
+        std::string queryDefault = "apiVersion=" + std::to_string(API_VERSION);
 
         bz_BaseURLHandler* _handler;
         const char*        _URL;
@@ -458,10 +458,37 @@ class ConfigurationOptions
                 stringConfigValues["TEAM_NAME_URL"]    = getString("LEAGUE_OVERSEER_URL");
             }
 
-            for (auto option : stringConfigOptions) { vectorConfigValues[option] = split(getString(option.c_str()), "\\n"); }
-            for (auto option : stringConfigOptions) { stringConfigValues[option] = getString(option.c_str()); }
-            for (auto option : boolConfigOptions)   { boolConfigValues[option]   = getBool(option.c_str()); }
-            for (auto option : intConfigOptions)    { intConfigValues[option]    = getInt(option.c_str()); }
+            for (auto option : stringConfigOptions)
+            {
+                if (isOptionSet(option.c_str()))
+                {
+                    vectorConfigValues[option] = split(getString(option.c_str()), "\\n");
+                }
+            }
+
+            for (auto option : stringConfigOptions)
+            {
+                if (isOptionSet(option.c_str()))
+                {
+                    stringConfigValues[option] = getString(option.c_str());
+                }
+            }
+
+            for (auto option : boolConfigOptions)
+            {
+                if (isOptionSet(option.c_str()))
+                {
+                    boolConfigValues[option] = getBool(option.c_str());
+                }
+            }
+
+            for (auto option : intConfigOptions)
+            {
+                if (isOptionSet(option.c_str()))
+                {
+                    intConfigValues[option] = getInt(option.c_str());
+                }
+            }
 
             sanityChecks();
         }
@@ -478,13 +505,13 @@ class ConfigurationOptions
 
         bool areOfficialMatchesDisabled (void) { return boolConfigValues["DISABLE_OFFICIAL_MATCHES"]; }
         bool isInterPluginCheckEnabled  (void) { return boolConfigValues["INTER_PLUGIN_COM_API_CHECK"]; }
-        bool areFunMatchesDisabled      (void) { return boolConfigValues["MOTTO_FETCH_ENABLED"]; }
+        bool areFunMatchesDisabled      (void) { return boolConfigValues["DISABLE_FUN_MATCHES"]; }
         bool isPcProtectionEnabled      (void) { return boolConfigValues["PC_PROTECTION_ENABLED"]; }
-        bool isSpawnMessageEnabled      (void) { return boolConfigValues["IN_GAME_DEBUG_ENABLED"]; }
-        bool isInGameDebugEnabled       (void) { return boolConfigValues["SPAWN_MESSAGE_ENABLED"]; }
+        bool isSpawnMessageEnabled      (void) { return boolConfigValues["SPAWN_MESSAGE_ENABLED"]; }
+        bool isInGameDebugEnabled       (void) { return boolConfigValues["IN_GAME_DEBUG_ENABLED"]; }
         bool isMatchReportEnabled       (void) { return boolConfigValues["MATCH_REPORT_ENABLED"]; }
         bool isTalkMessageEnabled       (void) { return boolConfigValues["TALK_MESSAGE_ENABLED"]; }
-        bool isMottoFetchEnabled        (void) { return boolConfigValues["DISABLE_FUN_MATCHES"]; }
+        bool isMottoFetchEnabled        (void) { return boolConfigValues["MOTTO_FETCH_ENABLED"]; }
         bool isAllowLimitedChat         (void) { return boolConfigValues["ALLOW_LIMITED_CHAT"]; }
         bool isRotationalLeague         (void) { return boolConfigValues["ROTATIONAL_LEAGUE"]; }
 
@@ -495,12 +522,12 @@ class ConfigurationOptions
     private:
         PluginConfig pluginConfigObj;
 
-        std::vector<std::vector<std::string>>   vectorConfigOptions = { "NO_SPAWN_MESSAGE",         // The message for users who can't spawn; will be sent when they try to spawn
+        std::vector<std::string>                vectorConfigOptions = { "NO_SPAWN_MESSAGE",         // The message for users who can't spawn; will be sent when they try to spawn
                                                                         "NO_TALK_MESSAGE" };        // The message for users who can't talk; will be sent when they try to talk
 
-        std::vector<std::string>                stringConfigOptions = { "SPAWN_COMMAND_PERM",       // The BZFS permission required to use the /showhidden command
-                                                                        "MATCH_REPORT_URL",         // The BZFS permission required to use the /spawn command
-                                                                        "SHOW_HIDDEN_PERM",         // The URL the plugin will use to report matches
+        std::vector<std::string>                stringConfigOptions = { "SPAWN_COMMAND_PERM",       // The BZFS permission required to use the /spawn command
+                                                                        "MATCH_REPORT_URL",         // The URL the plugin will use to report matches
+                                                                        "SHOW_HIDDEN_PERM",         // The BZFS permission required to use the /showhidden command
                                                                         "MAPCHANGE_PATH",           // The path to the file that contains the name of current map being played
                                                                         "TEAM_NAME_URL",            // The URL the plugin will use to fetch team information
                                                                         "LEAGUE_GROUP" };           // The BZBB group that signifies membership of a league (typically in the format of <something>.LEAGUE)
@@ -1520,6 +1547,12 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             int          playerID  = chatData->from,
                          recipient = chatData->to;
 
+            // The server is always allowed to talk
+            if (playerID == BZ_SERVER)
+            {
+                break;
+            }
+
             // A non-league player is attempting to talk
             if (!isLeagueMember(playerID))
             {
@@ -1581,6 +1614,10 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (strncmp("/gameover", command.c_str(), 9) == 0)
             {
                 bz_sendTextMessage(BZ_SERVER, playerID, "** '/gameover' is disabled, please use /finish or /cancel instead **");
+            }
+            else if (strncmp("/countdown cancel", command.c_str(), 17) == 0)
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown cancel' is disabled, please use /cancel instead **");
             }
             else if (strncmp("/countdown pause", command.c_str(), 16) == 0)
             {

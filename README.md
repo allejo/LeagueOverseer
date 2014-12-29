@@ -1,4 +1,4 @@
-League Overseer
+League Overseer [![Current Release](https://img.shields.io/badge/release-v1.1.1-orange.svg)](https://github.com/allejo/leagueOverSeer/releases/tag/v1.1.1.275)
 ================
 
 This is a BZFlag plug-in that allows official league servers to communicate with the league website to automatically transmit match reports and handle team data.

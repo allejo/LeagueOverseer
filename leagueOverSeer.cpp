@@ -39,7 +39,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 371;
+const int BUILD = 372;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -402,7 +402,7 @@ class ConfigurationOptions
             boolConfigValues["ALLOW_LIMITED_CHAT"]         = true;
             boolConfigValues["ROTATIONAL_LEAGUE"]          = false;
 
-            intConfigValues["DEFAULT_TIME_LIMIT"]          = 1800;
+            intConfigValues["DEFAULT_TIME_LIMIT"]          = defaultTimeLimit;
             intConfigValues["VERBOSE_LEVEL"]               = 4;
             intConfigValues["DEBUG_LEVEL"]                 = 1;
         }
@@ -474,6 +474,7 @@ class ConfigurationOptions
         bool areFunMatchesDisabled      (void) { return boolConfigValues["DISABLE_FUN_MATCHES"]; }
         bool isPcProtectionEnabled      (void) { return boolConfigValues["PC_PROTECTION_ENABLED"]; }
         bool isSpawnMessageEnabled      (void) { return boolConfigValues["SPAWN_MESSAGE_ENABLED"]; }
+        bool ignoreTimeSanityCheck      (void) { return boolConfigValues["IGNORE_TIME_CHECKS"]; }
         bool isInGameDebugEnabled       (void) { return boolConfigValues["IN_GAME_DEBUG_ENABLED"]; }
         bool isMatchReportEnabled       (void) { return boolConfigValues["MATCH_REPORT_ENABLED"]; }
         bool isTalkMessageEnabled       (void) { return boolConfigValues["TALK_MESSAGE_ENABLED"]; }
@@ -487,6 +488,7 @@ class ConfigurationOptions
 
     private:
         PluginConfig pluginConfigObj;
+        int defaultTimeLimit = 1800;
 
         std::vector<std::string>                vectorConfigOptions = { "NO_SPAWN_MESSAGE",         // The message for users who can't spawn; will be sent when they try to spawn
                                                                         "NO_TALK_MESSAGE" };        // The message for users who can't talk; will be sent when they try to talk
@@ -508,6 +510,7 @@ class ConfigurationOptions
                                                                         "MOTTO_FETCH_ENABLED",      // Whether or not to set a player's motto to their team name
                                                                         "DISABLE_FUN_MATCHES",      // Whether or not fun matches have been disabled on this server
                                                                         "ALLOW_LIMITED_CHAT",       // Whether or not to allow limited chat functionality for non-league players
+                                                                        "IGNORE_TIME_CHECKS",       // Whether or not to check for the DEFAULT_TIME_LIMIT to be sane
                                                                         "ROTATIONAL_LEAGUE" };      // Whether or not we are watching a league that uses different maps
 
         std::vector<std::string>                intConfigOptions    = { "DEFAULT_TIME_LIMIT",       // The default time limit each match will have
@@ -573,6 +576,15 @@ class ConfigurationOptions
             {
                 intConfigValues["VERBOSE_LEVEL"] = 4;
                 logMessage(0, "warning", "Invalid verbose level in the configuration file. Default value used: %d", getVerboseLevel());
+            }
+
+            if (getDefaultTimeLimit() < 600 && !ignoreTimeSanityCheck())
+            {
+                intConfigValues["DEFAULT_TIME_LIMIT"] = defaultTimeLimit;
+                logMessage(0, "warning", "The default time limit for matches is less than 10 minutes. The default time limit set");
+                logMessage(0, "warning", "to %d minutes. If your league consists of extremely short matches, use the IGNORE_TIME_CHECKS", (getDefaultTimeLimit() / 60));
+                logMessage(0, "warning", "option in your configuration file.");
+                logMessage(0, "warning", "* Please note, DEFAULT_TIME_LIMIT is specified in seconds so calculate accordingly.");
             }
         }
 };
@@ -985,8 +997,11 @@ void LeagueOverseer::Init (const char* commandLine)
     MatchUrlRepo = UrlQuery(this, pluginSettings.getMatchReportURL().c_str());
 
     // Request the team name database
-    logMessage(pluginSettings.getVerboseLevel(), "debug", "Requesting team name database...");
-    TeamUrlRepo.set("query", "teamNameDump").submit();
+    if (pluginSettings.isMottoFetchEnabled())
+    {
+        logMessage(pluginSettings.getVerboseLevel(), "debug", "Requesting team name database...");
+        TeamUrlRepo.set("query", "teamNameDump").submit();
+    }
 
     // Create a new BZDB variable to easily set the amount of seconds team flags are protected after captures
     PC_PROTECTION_DELAY = registerCustomIntBZDB("_pcProtectionDelay", 5);
@@ -1000,6 +1015,16 @@ void LeagueOverseer::Init (const char* commandLine)
     // Set a clip field with the full name of the plug-in for other plug-ins to know the exact name of the plug-in
     // since this plug-in has a versioning system; i.e. League Overseer X.Y.Z (r)
     bz_setclipFieldString("LeagueOverseer", Name());
+
+    // We'll be ignoring the '-time' option as of 1.2.0 so we'll be relying entirely on DEFAULT_TIME_LIMIT from the configuration file
+
+    if (bz_getTimeLimit() > 0.0)
+    {
+        logMessage(0, "warning", "As of League Overseer 1.2.0, the '-time' option is no longer used and is ignored in favor of using");
+        logMessage(0, "warning", "the DEFAULT_TIME_LIMIT option in the configuration file. Default value used: %d minutes", (pluginSettings.getDefaultTimeLimit() / 60));
+    }
+
+    bz_setTimeLimit(pluginSettings.getDefaultTimeLimit());
 
 
     ///
@@ -1034,12 +1059,6 @@ void LeagueOverseer::Init (const char* commandLine)
     {
         logMessage(0, "warning", "BZFS does not have -autoteam enabled. This plug-in prefers that -autoteam is used");
         logMessage(0, "warning", "to prevent players from accidentally joining as a player in the middle of a match.");
-    }
-
-    // If the map does not have a time limit configured through '-time', we should set it
-    if (bz_getTimeLimit() == 0)
-    {
-        bz_setTimeLimit(pluginSettings.getDefaultTimeLimit());
     }
 
 

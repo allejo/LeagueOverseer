@@ -583,14 +583,14 @@ class ConfigurationOptions
                 logMessage(0, "warning", "setting 'MATCH_REPORT_URL' and 'TEAM_NAME_URL' manually.");
             }
 
-            if (isMatchReportEnabled() && !isOptionSet("MATCH_REPORT_URL"))
+            if (isMatchReportEnabled() && getMatchReportURL().empty())
             {
                 logMessage(0, "error", "You are requesting to report matches but you have not specified a URL to report to.");
                 logMessage(0, "error", "Please set the 'MATCH_REPORT_URL' or 'LEAGUE_OVERSEER_URL' option respectively.");
                 logMessage(0, "error", "If you do not wish to report matches, set 'DISABLE_MATCH_REPORT' to true.");
             }
 
-            if (isMottoFetchEnabled() && !isOptionSet("TEAM_NAME_URL"))
+            if (isMottoFetchEnabled() && getTeamNameURL().empty())
             {
                 logMessage(0, "error", "You have requested to fetch team names but have not specified a URL to fetch them from.");
                 logMessage(0, "error", "Please set the 'TEAM_NAME_URL' or 'LEAGUE_OVERSEER_URL' option respectively.");

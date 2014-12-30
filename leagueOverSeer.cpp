@@ -86,38 +86,6 @@ static void logMessage (int debugLevel, const char* msgType, const char* fmt, ..
 }
 
 /**
- * A function that will get the player record by their callsign
- *
- * @param  callsign The callsign of the player you want to look up
- *
- * @return          A player record of the specified player or NULL of the player wasn't found
- */
-static bz_BasePlayerRecord* bz_getPlayerByCallsign (const char* callsign)
-{
-    // Use a smart pointer so we don't have to worry about freeing up the memory
-    // when we're done. In other words, laziness.
-    std::shared_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
-
-    // Be sure the playerlist exists
-    if (playerList)
-    {
-        // Loop through all of the players' callsigns
-        for (unsigned int i = 0; i < playerList->size(); i++)
-        {
-            // Have we found the callsign we're looking for?
-            if (bz_getPlayerByIndex(playerList->get(i))->callsign == callsign)
-            {
-                // Return the record for that player
-                return bz_getPlayerByIndex(playerList->get(i));
-            }
-        }
-    }
-
-    // Return NULL if the callsign was not found
-    return NULL;
-}
-
-/**
  * Convert a bz_eTeamType value into a string literal with the option of adding whitespace to format the string to return
  *
  * @param  teamColor       The team color that you want a string representation of
@@ -283,29 +251,6 @@ static bool isValidPlayerID (int playerID)
 
     // If the pointer doesn't exist, that means the playerID does not exist
     return (playerData) ? true : false;
-}
-
-/**
- * Get a player record of a player from either a slot ID or a callsign
- *
- * @param  callsignOrID The callsign of the player or the player slot of the player
- *
- * @return              A player record gotten from the specified information
- */
-static bz_BasePlayerRecord* getPlayerFromCallsignOrID(std::string callsignOrID)
-{
-    // We have a pound sign followed by a valid player index
-    if (std::string::npos != callsignOrID.find("#") && isValidPlayerID(atoi(callsignOrID.erase(0, 1).c_str())))
-    {
-        // Let's make some easy reference variables
-        int victimPlayerID = atoi(callsignOrID.erase(0, 1).c_str());
-
-        return bz_getPlayerByIndex(victimPlayerID);
-    }
-
-    // Attempt to return a player record from a callsign if it isn't a player slot, this will return NULL
-    // if no player is found with the respective callsign
-    return bz_getPlayerByCallsign(callsignOrID.c_str());
 }
 
 /**
@@ -744,24 +689,31 @@ public:
         {}
     };
 
-    virtual int         getMatchProgress (void);
 
-    virtual bool        isOfficialMatchInProgress (void),
-                        playerAlreadyJoined (std::string bzID),
-                        isMatchInProgress (void),
-                        isOfficialMatch (void),
-                        isLeagueMember (int playerID);
+    virtual bz_BasePlayerRecord  *getPlayerFromCallsignOrID (std::string callsignOrID),
+                                 *bz_getPlayerByCallsign (const char* callsign),
+                                 *bz_getPlayerByBZID (const char* bzID);
 
-    virtual std::string getPlayerTeamNameByBZID (std::string bzID),
-                        getPlayerTeamNameByID (int playerID),
-                        buildBZIDString (bz_eTeamType team),
-                        getMatchTime (void);
+    virtual std::string          getPlayerTeamNameByBZID (std::string bzID),
+                                 getPlayerTeamNameByID (int playerID),
+                                 buildBZIDString (bz_eTeamType team),
+                                 getMatchTime (void);
 
-    virtual void        validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team),
-                        requestTeamName (std::string callsign, std::string bzID),
-                        requestTeamName (bz_eTeamType team),
-                        setLeagueMember (int playerID),
-                        resetTimeLimit (void);
+    virtual bool                 isOfficialMatchInProgress (void),
+                                 playerAlreadyJoined (std::string bzID),
+                                 isMatchInProgress (void),
+                                 isOfficialMatch (void),
+                                 isLeagueMember (int playerID);
+
+    virtual void                 validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team),
+                                 removePlayerInfo (std::string bzID, std::string callsign),
+                                 storePlayerInfo (int playerID, std::string bzID, std::string callsign),
+                                 requestTeamName (std::string callsign, std::string bzID),
+                                 requestTeamName (bz_eTeamType team),
+                                 setLeagueMember (int playerID),
+                                 resetTimeLimit (void);
+
+    virtual int                  getMatchProgress (void);
 
 
     // All the variables that will be used in the plugin
@@ -791,8 +743,12 @@ public:
 
     ConfigurationOptions pluginSettings;
 
-    // All of the messages that will be displayed to users on certain events
-    std::vector<std::string> SLASH_COMMANDS;   // The slash commands that are supported and used by this plug-in
+    // Player database storing BZIDs and callsigns without having to loop through the entire playerlist each time
+    std::map<std::string, int> BZID_MAP;
+    std::map<std::string, int> CALLSIGN_MAP;
+
+    // The slash commands that are supported and used by this plug-in
+    std::vector<std::string> SLASH_COMMANDS;
 
     // The vector that is storing all of the active players
     std::vector<Player> activePlayerList;
@@ -1524,6 +1480,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             int playerID = joinData->playerID;
             std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
+            storePlayerInfo(playerID, playerData->bzID.c_str(), playerData->callsign.c_str());
             setLeagueMember(playerID);
 
             // Only notify a player if they exist, have joined the observer team, and there is a match in progress
@@ -1557,6 +1514,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             int playerID = partData->playerID;
             std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
+
+            removePlayerInfo(partData->record->bzID.c_str(), partData->record->callsign.c_str());
 
             // Only keep track of the parting player if they are a league member and there is a match in progress
             if (isLeagueMember(playerID) && isMatchInProgress())
@@ -2408,6 +2367,39 @@ std::string LeagueOverseer::buildBZIDString (bz_eTeamType team)
     return teamString.erase(teamString.size() - 1);
 }
 
+bz_BasePlayerRecord* LeagueOverseer::bz_getPlayerByCallsign (const char* callsign)
+{
+    return bz_getPlayerByIndex(CALLSIGN_MAP[callsign]);
+}
+
+bz_BasePlayerRecord* LeagueOverseer::bz_getPlayerByBZID (const char* bzID)
+{
+    return bz_getPlayerByIndex(BZID_MAP[bzID]);
+}
+
+/**
+ * Get a player record of a player from either a slot ID or a callsign
+ *
+ * @param  callsignOrID The callsign of the player or the player slot of the player
+ *
+ * @return              A player record gotten from the specified information
+ */
+bz_BasePlayerRecord* LeagueOverseer::getPlayerFromCallsignOrID(std::string callsignOrID)
+{
+    // We have a pound sign followed by a valid player index
+    if (std::string::npos != callsignOrID.find("#") && isValidPlayerID(atoi(callsignOrID.erase(0, 1).c_str())))
+    {
+        // Let's make some easy reference variables
+        int victimPlayerID = atoi(callsignOrID.erase(0, 1).c_str());
+
+        return bz_getPlayerByIndex(victimPlayerID);
+    }
+
+    // Attempt to return a player record from a callsign if it isn't a player slot, this will return NULL
+    // if no player is found with the respective callsign
+    return bz_getPlayerByCallsign(callsignOrID.c_str());
+}
+
 // Return the progress of a match in seconds. For example, 20:00 minutes remaining would return 600
 int LeagueOverseer::getMatchProgress (void)
 {
@@ -2521,6 +2513,13 @@ bool LeagueOverseer::playerAlreadyJoined (std::string bzID)
     return false;
 }
 
+// Forget a player from the local database of player information
+void LeagueOverseer::removePlayerInfo(std::string bzID, std::string callsign)
+{
+    BZID_MAP.erase(bzID);
+    CALLSIGN_MAP.erase(callsign);
+}
+
 // Request a team name update for all the members of a team
 void LeagueOverseer::requestTeamName (bz_eTeamType team)
 {
@@ -2584,6 +2583,13 @@ void LeagueOverseer::setLeagueMember (int playerID)
             }
         }
     }
+}
+
+// Store player information in a local database to avoid looping through a playerlist
+void LeagueOverseer::storePlayerInfo(int playerID, std::string bzID, std::string callsign)
+{
+    BZID_MAP[bzID] = playerID;
+    CALLSIGN_MAP[callsign] = playerID;
 }
 
 // Check if there is any need to invalidate a roll call team

@@ -39,7 +39,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 369;
+const int BUILD = 371;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -575,6 +575,124 @@ class ConfigurationOptions
                 logMessage(0, "warning", "Invalid verbose level in the configuration file. Default value used: %d", getVerboseLevel());
             }
         }
+};
+
+class MatchEvent
+{
+    public:
+        enum LosEventType
+        {
+            CAPTURE,
+            PLAYER_SUB,
+            PLAYER_KILL,
+            PLAYER_JOIN,
+            PLAYER_PART,
+            LAST_LOS_EVENT_TYPE
+        };
+
+        MatchEvent setPlayerID (int _playerID)
+        {
+            playerID = _playerID;
+            return *this;
+        }
+
+    protected:
+        int          playerID;
+
+        std::string  bzID,
+                     message,
+                     matchTime;
+
+        LosEventType eventType;
+
+        json_object  *jsonObj = json_object_new_object();
+
+        MatchEvent setEventType (LosEventType _eventType)
+        {
+            eventType = _eventType;
+
+            json_object *jEventType = json_object_new_string(losEventTypeToString(_eventType));
+
+            json_object_object_add(jsonObj, "type", jEventType);
+
+            return *this;
+        }
+
+        const char* losEventTypeToString(LosEventType _eventType)
+        {
+            switch (_eventType)
+            {
+                case CAPTURE:
+                    return "capture";
+
+                case PLAYER_SUB:
+                    return "substitute";
+
+                case PLAYER_KILL:
+                    return "kill";
+
+                case PLAYER_JOIN:
+                    return "join";
+
+                case PLAYER_PART:
+                    return "part";
+
+                default:
+                    return "noEvent";
+            }
+        }
+};
+
+class KillMatchEvent : MatchEvent
+{
+    public:
+        KillMatchEvent()
+        {
+            this->setEventType(PLAYER_KILL);
+        };
+
+        KillMatchEvent setKiller(std::string _bzID)
+        {
+            killerBZID = _bzID;
+
+            return *this;
+        }
+
+        KillMatchEvent setVictim(std::string _bzID)
+        {
+            victimBZID = _bzID;
+
+            return *this;
+        }
+
+        KillMatchEvent setTime(std::string _matchTime)
+        {
+            matchTime = _matchTime;
+
+            return *this;
+        }
+
+        void save()
+        {
+            json_object *jKillerBZID = json_object_new_string(killerBZID.c_str());
+            json_object *jVictimBZID = json_object_new_string(victimBZID.c_str());
+            json_object *jMatchTime  = json_object_new_string(matchTime.c_str());
+
+            json_object_object_add(jsonData, "killer", jKillerBZID);
+            json_object_object_add(jsonData, "victim", jVictimBZID);
+            json_object_object_add(jsonData, "time", jMatchTime);
+
+            json_object_object_add(jsonObj, "data", jsonData);
+
+            bz_debugMessagef(0, json_object_to_json_string(jsonObj));
+        }
+
+    private:
+        std::string killerBZID,
+                    victimBZID,
+                    matchTime;
+
+        json_object *jsonData = json_object_new_object();
 };
 
 class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler

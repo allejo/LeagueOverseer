@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 1;
-const int BUILD = 275;
+const int BUILD = 277;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -265,7 +265,7 @@ public:
                  DISABLE_REPORT,   // Whether or not to disable automatic match reports if a server is not used as an official match server
                  DISABLE_MOTTO,    // Whether or not to set a player's motto to their team name
                  RECORDING;        // Whether or not we are recording a match
- 
+
     int          DEBUG_LEVEL,      // The DEBUG level the server owner wants the plugin to use for its messages
                  VERBOSE_LEVEL;    // This is the spamming/ridiculous level of debug that the plugin uses
 
@@ -362,6 +362,12 @@ void LeagueOverseer::Init (const char* commandLine)
     ASSERT(TEAM_ONE != eNoTeam && TEAM_TWO != eNoTeam);
 
     updateTeamNames();
+
+    if (bz_getTimeLimit() == 0.0)
+    {
+        bz_debugMessage(DEBUG_LEVEL, "WARNING :: League Overseer :: No time limit is specified with '-time'. Default value used: 1800 seconds.");
+        bz_setTimeLimit(1800);
+    }
 }
 
 void LeagueOverseer::Cleanup (void)
@@ -1403,7 +1409,7 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     {
         bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Fetching Team Names from  : %s", TEAM_NAME_URL.c_str());
     }
-    
+
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Debug level set to        : %d", DEBUG_LEVEL);
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Verbose level set to      : %d", VERBOSE_LEVEL);
 }

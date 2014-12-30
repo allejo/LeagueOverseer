@@ -39,7 +39,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 368;
+const int BUILD = 369;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -926,6 +926,28 @@ void LeagueOverseer::Init (const char* commandLine)
     // Set a clip field with the full name of the plug-in for other plug-ins to know the exact name of the plug-in
     // since this plug-in has a versioning system; i.e. League Overseer X.Y.Z (r)
     bz_setclipFieldString("LeagueOverseer", Name());
+
+
+    ///
+    /// Check for plug-ins that we do not play nicely with
+    ///
+    bz_APIStringList pluginList;
+    int pluginCount = bz_getLoadedPlugins(&pluginList);
+    std::vector<std::string> pluginVictims = {"Record Match", "Time Limit"};
+
+    for (int i = 0; i < pluginCount; i++)
+    {
+        std::string currentPlugin = pluginList.get(i).c_str();
+
+        for (auto plugin : pluginVictims)
+        {
+            if (plugin == currentPlugin)
+            {
+                logMessage(0, "error", "The '%s' plug-in was detected to be loaded. League Overseer replaces the functionality of this plug-in.");
+                logMessage(0, "error", "Please unload that plug-in and allow League Overseer to handle the functionality.");
+            }
+        }
+    }
 
 
     ///

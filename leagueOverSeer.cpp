@@ -39,7 +39,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 372;
+const int BUILD = 373;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -135,6 +135,19 @@ static std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace = fals
 
     // Return the team color with or without the padding
     return color;
+}
+
+static const char* getCurrentTimeStamp(std::string format = "%02d-%02d-%02d %02d:%02d:%02d")
+{
+    // Get the current standard UTC time
+    bz_Time standardTime;
+    bz_getUTCtime(&standardTime);
+
+    // Format the date to -> year-month-day hour:minute:second
+    char matchDate[20];
+    sprintf(matchDate, format.c_str(), standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute, standardTime.second);
+
+    return std::string(matchDate).c_str();
 }
 
 /**
@@ -589,8 +602,11 @@ class ConfigurationOptions
         }
 };
 
+template<class Derived>
 class MatchEvent
 {
+    Derived* This() { return static_cast<Derived*>(this); }
+
     public:
         enum LosEventType
         {
@@ -602,24 +618,20 @@ class MatchEvent
             LAST_LOS_EVENT_TYPE
         };
 
-        MatchEvent setPlayerID (int _playerID)
+        const char* toString()
         {
-            playerID = _playerID;
-            return *this;
+            return json_object_to_json_string(jsonObj);
         }
 
+        virtual Derived& save (void) = 0;
+
     protected:
-        int          playerID;
-
-        std::string  bzID,
-                     message,
-                     matchTime;
-
         LosEventType eventType;
 
         json_object  *jsonObj = json_object_new_object();
+        json_object  *jsonData = json_object_new_object();
 
-        MatchEvent setEventType (LosEventType _eventType)
+        Derived& setEventType (LosEventType _eventType)
         {
             eventType = _eventType;
 
@@ -627,7 +639,7 @@ class MatchEvent
 
             json_object_object_add(jsonObj, "type", jEventType);
 
-            return *this;
+            return *This();
         }
 
         const char* losEventTypeToString(LosEventType _eventType)
@@ -655,36 +667,97 @@ class MatchEvent
         }
 };
 
-class KillMatchEvent : MatchEvent
+class JoinMatchEvent : public MatchEvent<JoinMatchEvent>
 {
     public:
-        KillMatchEvent()
+        JoinMatchEvent ()
+        {
+            this->setEventType(PLAYER_JOIN);
+            this->setTimestamp();
+        };
+
+        JoinMatchEvent& setCallsign (std::string _callsign)
+        {
+            callsign = _callsign;
+
+            return *this;
+        }
+
+        JoinMatchEvent& setBZID (std::string _bzID)
+        {
+            bzID = _bzID;
+
+            return *this;
+        }
+
+        JoinMatchEvent& setIpAddress (std::string _ipAddress)
+        {
+            ipAddress = _ipAddress;
+
+            return *this;
+        }
+
+        JoinMatchEvent& save (void)
+        {
+            json_object *jCallsign   = json_object_new_string(callsign.c_str());
+            json_object *jBZID       = json_object_new_string(bzID.c_str());
+            json_object *jIpAddress  = json_object_new_string(ipAddress.c_str());
+            json_object *iTimestamp  = json_object_new_string(timestamp.c_str());
+
+            json_object_object_add(jsonData, "callsign", jCallsign);
+            json_object_object_add(jsonData, "bzid", jBZID);
+            json_object_object_add(jsonData, "ip", jIpAddress);
+            json_object_object_add(jsonData, "timestamp", iTimestamp);
+
+            json_object_object_add(jsonObj, "data", jsonData);
+
+            return *this;
+        }
+
+    private:
+        std::string ipAddress,
+                    timestamp,
+                    callsign,
+                    bzID;
+
+        JoinMatchEvent& setTimestamp ()
+        {
+            timestamp = getCurrentTimeStamp();
+
+            return *this;
+        }
+};
+
+class KillMatchEvent : public MatchEvent<KillMatchEvent>
+{
+    public:
+        KillMatchEvent ()
         {
             this->setEventType(PLAYER_KILL);
         };
 
-        KillMatchEvent setKiller(std::string _bzID)
+        KillMatchEvent& setKiller (std::string _bzID)
         {
             killerBZID = _bzID;
 
             return *this;
         }
 
-        KillMatchEvent setVictim(std::string _bzID)
+        KillMatchEvent& setVictim (std::string _bzID)
         {
             victimBZID = _bzID;
 
             return *this;
         }
 
-        KillMatchEvent setTime(std::string _matchTime)
+        KillMatchEvent& setTime (std::string _matchTime)
         {
             matchTime = _matchTime;
 
             return *this;
         }
 
-        void save()
+        KillMatchEvent& save (void)
         {
             json_object *jKillerBZID = json_object_new_string(killerBZID.c_str());
             json_object *jVictimBZID = json_object_new_string(victimBZID.c_str());
@@ -696,15 +769,13 @@ class KillMatchEvent : MatchEvent
 
             json_object_object_add(jsonObj, "data", jsonData);
 
-            bz_debugMessagef(0, json_object_to_json_string(jsonObj));
+            return *this;
         }
 
     private:
         std::string killerBZID,
                     victimBZID,
                     matchTime;
-
-        json_object *jsonData = json_object_new_object();
 };
 
 class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
@@ -1059,6 +1130,12 @@ void LeagueOverseer::Init (const char* commandLine)
     {
         logMessage(0, "warning", "BZFS does not have -autoteam enabled. This plug-in prefers that -autoteam is used");
         logMessage(0, "warning", "to prevent players from accidentally joining as a player in the middle of a match.");
+    }
+
+    if (!bz_isTimeManualStart())
+    {
+        logMessage(0, "error", "BZFS does not have -timemanual enabled. This plug-in cannot function without the server");
+        logMessage(0, "error", "configured to have a manual countdowns.");
     }
 
 
@@ -1619,6 +1696,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             storePlayerInfo(playerID, playerData->bzID.c_str(), playerData->callsign.c_str());
             setLeagueMember(playerID);
+
+            JoinMatchEvent joinEvent = JoinMatchEvent().setCallsign(playerData->callsign.c_str())
+                                                       .setIpAddress(playerData->ipAddress.c_str())
+                                                       .setBZID(playerData->bzID.c_str())
+                                                       .save();
 
             // Only notify a player if they exist, have joined the observer team, and there is a match in progress
             if (isMatchInProgress() && isValidPlayerID(joinData->playerID) && playerData->team == eObservers)

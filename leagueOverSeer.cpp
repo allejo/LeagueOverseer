@@ -39,7 +39,7 @@ const std::string PLUGIN_NAME = "League Overseer";
 const int MAJOR = 1;
 const int MINOR = 2;
 const int REV = 0;
-const int BUILD = 360;
+const int BUILD = 368;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 2;
@@ -246,6 +246,27 @@ static void grantPermToAll(std::string perm)
 static void revokePermFromAll(std::string perm)
 {
     modifyPerms(false, perm);
+}
+
+/**
+ * Check if a string is an integer
+ *
+ * @param  str The string in question
+ *
+ * @return     Returns true if the string is an integer
+ */
+static bool isInteger(std::string str)
+{
+    try
+    {
+        int i = std::stoi(str);
+    }
+    catch (std::exception const &e)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 /**
@@ -739,7 +760,8 @@ public:
     virtual void        validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team),
                         requestTeamName (std::string callsign, std::string bzID),
                         requestTeamName (bz_eTeamType team),
-                        setLeagueMember (int playerID);
+                        setLeagueMember (int playerID),
+                        resetTimeLimit (void);
 
 
     // All the variables that will be used in the plugin
@@ -822,7 +844,7 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_eTickEvent);
 
     // Add all of the support slash commands so we can easily remove them in the Cleanup() function
-    SLASH_COMMANDS = {"cancel", "f", "finish", "fm", "lodbg", "leagueoverseer", "los", "o", "offi", "official", "p", "pause", "r", "resume", "showhidden", "spawn", "s", "stats"};
+    SLASH_COMMANDS = {"cancel", "f", "finish", "fm", "lodbg", "leagueoverseer", "los", "o", "offi", "official", "p", "pause", "r", "resume", "showhidden", "spawn", "s", "stats", "timelimit"};
 
     // Register our custom slash commands
     for (auto command : SLASH_COMMANDS)
@@ -2145,6 +2167,43 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /stats command.");
         }
     }
+    else if (command == "timelimt")
+    {
+        if (isMatchInProgress())
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "A match is already in progress, you cannot change the match duration now.");
+            return true;
+        }
+
+        if (params->size() != 1)
+        {
+            bz_sendTextMessagef (BZ_SERVER, playerID, "Usage: /timelimit <minutes>|show|reset");
+            return true;
+        }
+
+        bool timeChanged = false;
+        std::string commandOption = params->get(0).c_str();
+
+        if (commandOption == "show")
+        {
+            bz_sendTextMessagef(BZ_SERVER, playerID, "Match duration is set to %.0f minute(s)", (bz_getTimeLimit() / 60));
+        }
+        else if (commandOption == "reset")
+        {
+            resetTimeLimit();
+            timeChanged = true;
+        }
+        else if (isInteger(commandOption))
+        {
+            bz_setTimeLimit(std::stoi(commandOption) * 60);
+            timeChanged = true;
+        }
+
+        if (timeChanged)
+        {
+            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Match duration set to %.0f minute(s) by %s", (bz_getTimeLimit() / 60), bz_getPlayerCallsign(playerID));
+        }
+    }
 
     return true;
 }
@@ -2158,16 +2217,6 @@ void LeagueOverseer::URLDone (const char* /*URL*/, const void* data, unsigned in
     // Convert the data we get from the URL job to a std::string
     std::string siteData = (const char*)(data);
     logMessage(pluginSettings.getVerboseLevel(), "debug", "URL Job returned: %s", siteData.c_str());
-
-    /*
-        For whenever <regex> gets pushed out in the new version of GCC...
-
-        // Let's store this regex since that's how we'll get our team name data
-        std::regex teamNameRegex ("\\{\"bzid\":\"\\d+\",\"team\":\"[\\w\\s]+\"\\}");
-
-        // The data returned matches an expected regex syntax meaning we got team name information
-        if (std::regex_match(siteData, teamNameRegex))
-    */
 
     // The returned data starts with a '{' and ends with a '}' so chances are it's JSON data
     if (siteData.at(0) == '{' && siteData.at(siteData.length() - 1) == '}')
@@ -2484,6 +2533,12 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
     TeamUrlRepo.set("query", "teamName")
                .set("bzid", bzID)
                .submit();
+}
+
+// Reset the time limit to what is in the plug-in configuration
+void LeagueOverseer::resetTimeLimit()
+{
+    bz_setTimeLimit(pluginSettings.getDefaultTimeLimit() * 60);
 }
 
 // Check the player's user groups to see if they belong to the league and save that value

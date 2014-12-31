@@ -132,7 +132,7 @@ int  ConfigurationOptions::getDebugLevel              (void) { return intConfigV
 
 bool ConfigurationOptions::isOptionSet(const char* itemName)
 {
-    return (!pluginConfigObj.item("leagueOverSeer", itemName).empty());
+    return (!pluginConfigObj.item("LeagueOverseer", itemName).empty());
 }
 
 bool ConfigurationOptions::getBool(const char* itemName)
@@ -147,7 +147,7 @@ int ConfigurationOptions::getInt(const char* itemName)
 
 std::string ConfigurationOptions::getString(const char* itemName)
 {
-    return pluginConfigObj.item("leagueOverSeer", itemName);
+    return pluginConfigObj.item("LeagueOverseer", itemName);
 }
 
 void ConfigurationOptions::sanityChecks()

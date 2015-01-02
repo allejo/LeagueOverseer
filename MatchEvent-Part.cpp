@@ -16,33 +16,39 @@ League Overseer
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __MATCH_JOIN_EVENT_H__
-#define __MATCH_JOIN_EVENT_H__
+#include <json/json.h>
 
-#include <string>
+#include "MatchEvent-Part.h"
 
-#include "MatchEvent.h"
-
-class JoinMatchEvent : public MatchEvent<JoinMatchEvent>
+PartMatchEvent::PartMatchEvent ()
 {
-    public:
-        JoinMatchEvent ();
+    setEventType(PLAYER_PART);
+    setTimestamp();
+}
 
-        JoinMatchEvent& setIpAddress (std::string _ipAddress);
-        JoinMatchEvent& setCallsign  (std::string _callsign);
-        JoinMatchEvent& setVerified  (bool _verified);
-        JoinMatchEvent& setBZID      (std::string _bzID);
-        JoinMatchEvent& save         (void);
+PartMatchEvent& PartMatchEvent::setBZID (std::string _bzID)
+{
+    bzID = _bzID;
 
-    private:
-        bool        verified;
+    return *this;
+}
 
-        std::string ipAddress,
-                    timestamp,
-                    callsign,
-                    bzID;
+PartMatchEvent& PartMatchEvent::save (void)
+{
+    json_object *jTimestamp = json_object_new_string(timestamp.c_str());
+    json_object *jBZID      = json_object_new_string(bzID.c_str());
 
-        JoinMatchEvent& setTimestamp (void);
-};
+    json_object_object_add(jsonData, "timestamp", jTimestamp);
+    json_object_object_add(jsonData, "bzid", jBZID);
 
-#endif
+    json_object_object_add(jsonObj, "data", jsonData);
+
+    return *this;
+}
+
+PartMatchEvent& PartMatchEvent::setTimestamp ()
+{
+    timestamp = getCurrentTimeStamp();
+
+    return *this;
+}

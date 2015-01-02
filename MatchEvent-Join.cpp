@@ -22,13 +22,27 @@ League Overseer
 
 JoinMatchEvent::JoinMatchEvent ()
 {
-    this->setEventType(PLAYER_JOIN);
-    this->setTimestamp();
-};
+    setEventType(PLAYER_JOIN);
+    setTimestamp();
+}
+
+JoinMatchEvent& JoinMatchEvent::setIpAddress (std::string _ipAddress)
+{
+    ipAddress = _ipAddress;
+
+    return *this;
+}
 
 JoinMatchEvent& JoinMatchEvent::setCallsign (std::string _callsign)
 {
     callsign = _callsign;
+
+    return *this;
+}
+
+JoinMatchEvent& JoinMatchEvent::setVerified (bool _verified)
+{
+    verified = _verified;
 
     return *this;
 }
@@ -40,23 +54,18 @@ JoinMatchEvent& JoinMatchEvent::setBZID (std::string _bzID)
     return *this;
 }
 
-JoinMatchEvent& JoinMatchEvent::setIpAddress (std::string _ipAddress)
-{
-    ipAddress = _ipAddress;
-
-    return *this;
-}
-
 JoinMatchEvent& JoinMatchEvent::save (void)
 {
     json_object *jCallsign   = json_object_new_string(callsign.c_str());
     json_object *jBZID       = json_object_new_string(bzID.c_str());
     json_object *jIpAddress  = json_object_new_string(ipAddress.c_str());
     json_object *iTimestamp  = json_object_new_string(timestamp.c_str());
+    json_object *jVerified   = json_object_new_boolean(verified);
 
     json_object_object_add(jsonData, "callsign", jCallsign);
     json_object_object_add(jsonData, "bzid", jBZID);
     json_object_object_add(jsonData, "ip", jIpAddress);
+    json_object_object_add(jsonData, "verified", jVerified);
     json_object_object_add(jsonData, "timestamp", iTimestamp);
 
     json_object_object_add(jsonObj, "data", jsonData);

@@ -16,33 +16,31 @@ League Overseer
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __MATCH_JOIN_EVENT_H__
-#define __MATCH_JOIN_EVENT_H__
+#ifndef __MATCH_SUB_EVENT_H__
+#define __MATCH_SUB_EVENT_H__
 
 #include <string>
 
 #include "MatchEvent.h"
 
-class JoinMatchEvent : public MatchEvent<JoinMatchEvent>
+class SubMatchEvent : public MatchEvent<SubMatchEvent>
 {
     public:
-        JoinMatchEvent ();
+        SubMatchEvent ();
 
-        JoinMatchEvent& setIpAddress (std::string _ipAddress);
-        JoinMatchEvent& setCallsign  (std::string _callsign);
-        JoinMatchEvent& setVerified  (bool _verified);
-        JoinMatchEvent& setBZID      (std::string _bzID);
-        JoinMatchEvent& save         (void);
+        SubMatchEvent& setMatchTime (std::string _matchTime);
+        SubMatchEvent& setGoingOut  (void);
+        SubMatchEvent& setGoingIn   (void);
+        SubMatchEvent& setTeamID    (int _teamID);
+        SubMatchEvent& setBZID      (std::string _bzID);
+        SubMatchEvent& save         (void);
 
     private:
-        bool        verified;
+        int         teamID;
 
-        std::string ipAddress,
-                    timestamp,
-                    callsign,
+        std::string matchTime,
+                    action,
                     bzID;
-
-        JoinMatchEvent& setTimestamp (void);
 };
 
 #endif

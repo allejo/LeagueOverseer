@@ -18,43 +18,43 @@ League Overseer
 
 #include <json/json.h>
 
-#include "MatchEvent-Kill.h"
+#include "MatchEvent-Capture.h"
 
-KillMatchEvent::KillMatchEvent ()
+CaptureMatchEvent::CaptureMatchEvent ()
 {
-    setEventType(PLAYER_KILL);
+    setEventType(CAPTURE);
 }
 
-KillMatchEvent& KillMatchEvent::setKiller (std::string _bzID)
+CaptureMatchEvent& CaptureMatchEvent::setTeamID (int _teamID)
 {
-    killerBZID = _bzID;
+    teamID = _teamID;
 
     return *this;
 }
 
-KillMatchEvent& KillMatchEvent::setVictim (std::string _bzID)
+CaptureMatchEvent& CaptureMatchEvent::setTime (std::string _time)
 {
-    victimBZID = _bzID;
+    matchTime = _time;
 
     return *this;
 }
 
-KillMatchEvent& KillMatchEvent::setTime (std::string _matchTime)
+CaptureMatchEvent& CaptureMatchEvent::setBZID (std::string _bzID)
 {
-    matchTime = _matchTime;
+    bzID = _bzID;
 
     return *this;
 }
 
-KillMatchEvent& KillMatchEvent::save (void)
+CaptureMatchEvent& CaptureMatchEvent::save (void)
 {
-    json_object *jKillerBZID = json_object_new_string(killerBZID.c_str());
-    json_object *jVictimBZID = json_object_new_string(victimBZID.c_str());
-    json_object *jMatchTime  = json_object_new_string(matchTime.c_str());
+    json_object *jMatchTime = json_object_new_string(matchTime.c_str());
+    json_object *jTeamID    = json_object_new_int(teamID);
+    json_object *jBZID      = json_object_new_string(bzID.c_str());
 
-    json_object_object_add(jsonData, "killer", jKillerBZID);
-    json_object_object_add(jsonData, "victim", jVictimBZID);
     json_object_object_add(jsonData, "match-time", jMatchTime);
+    json_object_object_add(jsonData, "team-id", jTeamID);
+    json_object_object_add(jsonData, "bzid", jBZID);
 
     json_object_object_add(jsonObj, "data", jsonData);
 

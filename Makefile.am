@@ -14,10 +14,16 @@ LeagueOverseer_la_SOURCES = \
 	ConfigurationOptions.h \
 	ConfigurationOptions.cpp \
 	MatchEvent.h \
+	MatchEvent-Capture.h \
+	MatchEvent-Capture.cpp \
 	MatchEvent-Join.h \
 	MatchEvent-Join.cpp \
 	MatchEvent-Kill.h \
 	MatchEvent-Kill.cpp \
+	MatchEvent-Part.h \
+	MatchEvent-Part.cpp \
+	MatchEvent-Substitute.h \
+	MatchEvent-Substitute.cpp \
 	UrlQuery.h \
 	UrlQuery.cpp
 LeagueOverseer_la_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/plugins/plugin_utils

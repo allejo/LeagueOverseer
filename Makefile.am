@@ -13,6 +13,8 @@ LeagueOverseer_la_SOURCES = \
 	LeagueOverseer-WebAPI.cpp \
 	ConfigurationOptions.h \
 	ConfigurationOptions.cpp \
+	Match.h \
+	Match.cpp \
 	MatchEvent.h \
 	MatchEvent-Capture.h \
 	MatchEvent-Capture.cpp \

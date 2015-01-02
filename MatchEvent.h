@@ -39,9 +39,14 @@ class MatchEvent
             LAST_LOS_EVENT_TYPE
         };
 
-        const char* toString()
+        const char* toString (void)
         {
             return json_object_to_json_string(jsonObj);
+        }
+
+        json_object *getJsonObject (void)
+        {
+            return jsonData;
         }
 
         virtual Derived& save (void) = 0;
@@ -63,7 +68,7 @@ class MatchEvent
             return *This();
         }
 
-        const char* losEventTypeToString(LosEventType _eventType)
+        const char* losEventTypeToString (LosEventType _eventType)
         {
             switch (_eventType)
             {

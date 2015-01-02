@@ -33,7 +33,7 @@ These individuals have assisted significantly with guiding the project in its cu
 
 ## Compiling
 
-Regardless of the size, complexity of this plug-in, and file count of this plugin, the plug-in can be easily compiled with 
+Regardless of the size, complexity, and size of this plugin, the plug-in can still be easily compiled with a simple `make`.
 
 ### Requirements
 

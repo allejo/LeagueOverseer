@@ -34,8 +34,6 @@ class PartMatchEvent : public MatchEvent<PartMatchEvent>
     private:
         std::string timestamp,
                     bzID;
-
-        PartMatchEvent& setTimestamp (void);
 };
 
 #endif

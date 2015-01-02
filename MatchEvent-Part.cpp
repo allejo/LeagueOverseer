@@ -22,8 +22,9 @@ League Overseer
 
 PartMatchEvent::PartMatchEvent ()
 {
+    timestamp = getCurrentTimeStamp();
+
     setEventType(PLAYER_PART);
-    setTimestamp();
 }
 
 PartMatchEvent& PartMatchEvent::setBZID (std::string _bzID)
@@ -44,13 +45,6 @@ PartMatchEvent& PartMatchEvent::save (void)
     json_object_object_add(jsonData, "bzid", jBZID);
 
     json_object_object_add(jsonObj, "data", jsonData);
-
-    return *this;
-}
-
-PartMatchEvent& PartMatchEvent::setTimestamp ()
-{
-    timestamp = getCurrentTimeStamp();
 
     return *this;
 }

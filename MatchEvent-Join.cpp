@@ -23,8 +23,9 @@ League Overseer
 
 JoinMatchEvent::JoinMatchEvent ()
 {
+    timestamp = getCurrentTimeStamp();
+
     setEventType(PLAYER_JOIN);
-    setTimestamp();
 }
 
 JoinMatchEvent& JoinMatchEvent::setIpAddress (std::string _ipAddress)
@@ -72,13 +73,6 @@ JoinMatchEvent& JoinMatchEvent::save (void)
     json_object_object_add(jsonData, "ip", jIpAddress);
 
     json_object_object_add(jsonObj, "data", jsonData);
-
-    return *this;
-}
-
-JoinMatchEvent& JoinMatchEvent::setTimestamp ()
-{
-    timestamp = getCurrentTimeStamp();
 
     return *this;
 }

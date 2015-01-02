@@ -41,8 +41,6 @@ class JoinMatchEvent : public MatchEvent<JoinMatchEvent>
                     timestamp,
                     callsign,
                     bzID;
-
-        JoinMatchEvent& setTimestamp (void);
 };
 
 #endif

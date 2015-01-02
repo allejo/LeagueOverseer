@@ -203,8 +203,15 @@ bool LeagueOverseer::playerAlreadyJoined (std::string bzID)
 // Forget a player from the local database of player information
 void LeagueOverseer::removePlayerInfo(std::string bzID, std::string callsign)
 {
-    BZID_MAP.erase(bzID);
-    CALLSIGN_MAP.erase(callsign);
+    if (BZID_MAP.find(bzID) != BZID_MAP.end())
+    {
+        BZID_MAP.erase(bzID);
+    }
+
+    if (CALLSIGN_MAP.find(callsign) != CALLSIGN_MAP.end())
+    {
+        CALLSIGN_MAP.erase(callsign);
+    }
 }
 
 // Request a team name update for all the members of a team
@@ -259,7 +266,7 @@ void LeagueOverseer::setLeagueMember (int playerID)
     // If a player isn't verified, then they are for sure not a registered player
     if (playerData->verified)
     {
-        for (int i = 0; i < playerData->groups.size(); i++) // Go through all the groups a player belongs to
+        for (unsigned int i = 0; i < playerData->groups.size(); i++) // Go through all the groups a player belongs to
         {
             std::string group = playerData->groups.get(i).c_str(); // Convert the group into a string
 
@@ -275,8 +282,11 @@ void LeagueOverseer::setLeagueMember (int playerID)
 // Store player information in a local database to avoid looping through a playerlist
 void LeagueOverseer::storePlayerInfo(int playerID, std::string bzID, std::string callsign)
 {
-    BZID_MAP[bzID] = playerID;
-    CALLSIGN_MAP[callsign] = playerID;
+    if (isLeagueMember(playerID))
+    {
+        BZID_MAP[bzID] = playerID;
+        CALLSIGN_MAP[callsign] = playerID;
+    }
 }
 
 // Check if there is any need to invalidate a roll call team

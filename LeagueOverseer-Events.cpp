@@ -488,10 +488,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             int playerID = joinData->playerID;
             std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
-            storePlayerInfo(playerID, playerData->bzID.c_str(), playerData->callsign.c_str());
             setLeagueMember(playerID);
+            storePlayerInfo(playerID, playerData->bzID.c_str(), playerData->callsign.c_str());
 
             JoinMatchEvent joinEvent = JoinMatchEvent().setCallsign(playerData->callsign.c_str())
+                                                       .setVerified(playerData->verified)
                                                        .setIpAddress(playerData->ipAddress.c_str())
                                                        .setBZID(playerData->bzID.c_str())
                                                        .save();

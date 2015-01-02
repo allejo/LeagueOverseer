@@ -18,6 +18,7 @@ League Overseer
 
 #include <json/json.h>
 
+#include "bzfsAPI.h"
 #include "MatchEvent-Join.h"
 
 JoinMatchEvent::JoinMatchEvent ()
@@ -56,17 +57,19 @@ JoinMatchEvent& JoinMatchEvent::setBZID (std::string _bzID)
 
 JoinMatchEvent& JoinMatchEvent::save (void)
 {
-    json_object *jCallsign   = json_object_new_string(callsign.c_str());
-    json_object *jBZID       = json_object_new_string(bzID.c_str());
+    json_object *jServerAddr = json_object_new_string(bz_getPublicAddr().c_str());
     json_object *jIpAddress  = json_object_new_string(ipAddress.c_str());
-    json_object *iTimestamp  = json_object_new_string(timestamp.c_str());
+    json_object *jTimestamp  = json_object_new_string(timestamp.c_str());
+    json_object *jCallsign   = json_object_new_string(callsign.c_str());
     json_object *jVerified   = json_object_new_boolean(verified);
+    json_object *jBZID       = json_object_new_string(bzID.c_str());
 
+    json_object_object_add(jsonData, "timestamp", jTimestamp);
     json_object_object_add(jsonData, "callsign", jCallsign);
+    json_object_object_add(jsonData, "verified", jVerified);
+    json_object_object_add(jsonData, "server", jServerAddr);
     json_object_object_add(jsonData, "bzid", jBZID);
     json_object_object_add(jsonData, "ip", jIpAddress);
-    json_object_object_add(jsonData, "verified", jVerified);
-    json_object_object_add(jsonData, "timestamp", iTimestamp);
 
     json_object_object_add(jsonObj, "data", jsonData);
 

@@ -35,10 +35,12 @@ PartMatchEvent& PartMatchEvent::setBZID (std::string _bzID)
 
 PartMatchEvent& PartMatchEvent::save (void)
 {
-    json_object *jTimestamp = json_object_new_string(timestamp.c_str());
-    json_object *jBZID      = json_object_new_string(bzID.c_str());
+    json_object *jServerAddr = json_object_new_string(bz_getPublicAddr().c_str());
+    json_object *jTimestamp  = json_object_new_string(timestamp.c_str());
+    json_object *jBZID       = json_object_new_string(bzID.c_str());
 
     json_object_object_add(jsonData, "timestamp", jTimestamp);
+    json_object_object_add(jsonData, "server", jServerAddr);
     json_object_object_add(jsonData, "bzid", jBZID);
 
     json_object_object_add(jsonObj, "data", jsonData);

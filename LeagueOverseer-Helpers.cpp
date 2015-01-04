@@ -39,7 +39,7 @@ std::string boolToString(bool value)
     return (value) ? "true" : "false";
 }
 
-std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace, int totalCharacters)
+std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace, unsigned int totalCharacters)
 {
     // Because we may have to format the string with white space padding, we need to store
     // the value somewhere
@@ -196,7 +196,7 @@ bool isInteger(std::string str)
 {
     try
     {
-        int i = std::stoi(str);
+        std::stoi(str);
     }
     catch (std::exception const &e)
     {

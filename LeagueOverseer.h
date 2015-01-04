@@ -73,8 +73,8 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 
             MatchEvent (int _playerID, std::string _bzID, std::string _message, std::string _json, std::string _match_time) :
                 playerID(_playerID),
-                bzID(_bzID),
                 json(_json),
+                bzID(_bzID),
                 message(_message),
                 match_time(_match_time)
             {}

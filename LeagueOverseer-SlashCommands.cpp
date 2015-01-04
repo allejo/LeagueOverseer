@@ -401,7 +401,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 	        bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /stats command.");
 	    }
 	}
-	else if (command == "timelimt")
+	else if (command == "timelimit")
 	{
 	    if (isMatchInProgress())
 	    {

@@ -20,6 +20,7 @@ League Overseer
 #define __MATCH_OBJ_H__
 
 #include <json/json.h>
+#include <map>
 #include <memory>
 #include <string>
 
@@ -46,6 +47,7 @@ class Match
         Match& setTeamOneID (int _teamID);
         Match& setTeamTwoID (int _teamID);
         Match& setOfficial (void);
+        Match& cancelMatch (std::string reason);
         Match& savePlayer (bz_BasePlayerRecord *pr);
         Match& saveEvent (json_object eventObject);
         Match& setFM (void);
@@ -67,7 +69,28 @@ class Match
             {}
         };
 
+        struct PlayerStats {
+            std::map <std::string, int> killsAgainst,
+                                        deathsAgainst;
+
+            std::string bzid;
+
+            int captureCount,
+                deathCount,
+                killCount,
+                teamKills,
+                selfKills;
+
+            PlayerStats (std::string _bzID);
+
+            void stats_flagCapture (void);
+            void stats_playerDeath (int playerID);
+            void stats_playerKill (int playerID);
+        };
+
         std::vector<Player> matchParticipants;
+
+        std::map <std::string, PlayerStats> matchPlayerStats;
 
         json_object *jMaster = json_object_new_object();
         json_object *jEvents = json_object_new_array();
@@ -82,7 +105,7 @@ class Match
         bool        playersRecorded,
                     matchCanceled,
                     official;
-        
+
         int         teamOneScore,
                     teamTwoScore;
 };

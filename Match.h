@@ -40,8 +40,6 @@ class Match
         std::string getTeamTwoName (void);
         std::string toString (void);
 
-        Match& incrementTeamOneScore (void);
-        Match& incrementTeamTwoScore (void);
         Match& setTeamOneName (std::string _teamName);
         Match& setTeamTwoName (std::string _teamName);
         Match& setTeamOneID (int _teamID);
@@ -51,7 +49,14 @@ class Match
         Match& savePlayer (bz_BasePlayerRecord *pr);
         Match& saveEvent (json_object eventObject);
         Match& setFM (void);
-        Match& save (void);
+
+        void stats_createPlayer (int playerID);
+        void stats_flagCapture (int playerID);
+        void stats_playerKill (int killerID, int victimID);
+
+        void incrementTeamOneScore (void);
+        void incrementTeamTwoScore (void);
+        void save (void);
 
     private:
         struct Player {
@@ -60,32 +65,19 @@ class Match
                          ipAddress;
 
             bz_eTeamType teamColor;
-
-            Player (std::string _bzID, std::string _callsign, std::string _ipAddress, bz_eTeamType _teamColor) :
-                bzID(_bzID),
-                callsign(_callsign),
-                ipAddress(_ipAddress),
-                teamColor(_teamColor)
-            {}
         };
 
         struct PlayerStats {
             std::map <std::string, int> killsAgainst,
                                         deathsAgainst;
 
-            std::string bzid;
+            std::string bzID;
 
             int captureCount,
                 deathCount,
                 killCount,
                 teamKills,
                 selfKills;
-
-            PlayerStats (std::string _bzID);
-
-            void stats_flagCapture (void);
-            void stats_playerDeath (int playerID);
-            void stats_playerKill (int playerID);
         };
 
         std::vector<Player> matchParticipants;

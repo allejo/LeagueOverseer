@@ -18,4 +18,99 @@ League Overseer
 
 #include "Match.h"
 
+#include <json/json.h>
+#include <map>
+#include <memory>
+#include <string>
+
 #include "bzfsAPI.h"
+
+bool Match::isOfficial (void)
+{
+    return official;
+}
+
+bool Match::isFM (void)
+{
+    return !official;
+}
+
+Match& Match::setOfficial (void)
+{
+    official = true;
+
+    return *this;
+}
+
+Match& Match::savePlayer (bz_BasePlayerRecord *pr)
+{
+    Player currentPlayer;
+
+    currentPlayer.bzID      = pr->bzID.c_str();
+    currentPlayer.callsign  = pr->callsign.c_str();
+    currentPlayer.ipAddress = pr->ipAddress.c_str();
+    currentPlayer.teamColor = pr->team;
+
+    return *this;
+}
+
+Match& Match::setFM (void)
+{
+    official = false;
+
+    return *this;
+}
+
+void Match::stats_createPlayer (int playerID)
+{
+    std::string bzID = bz_getPlayerByIndex(playerID)->callsign.c_str();
+
+    PlayerStats playerStats;
+    playerStats.bzID = bzID;
+
+    matchPlayerStats[bzID] = playerStats;
+}
+
+void Match::stats_flagCapture (int playerID)
+{
+    std::string bzID = bz_getPlayerByIndex(playerID)->callsign.c_str();
+
+    matchPlayerStats[bzID].captureCount++;
+}
+
+void Match::stats_playerKill (int killerID, int victimID)
+{
+    std::shared_ptr<bz_BasePlayerRecord> killer(bz_getPlayerByIndex(killerID));
+    std::shared_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByIndex(victimID));
+
+    std::string killerBZID = killer->bzID.c_str();
+    std::string victimBZID = victim->bzID.c_str();
+
+    if (killerID == victimID)
+    {
+        matchPlayerStats[killerBZID].selfKills++;
+    }
+    else
+    {
+        if (killer->team == victim->team)
+        {
+            matchPlayerStats[killerBZID].teamKills++;
+        }
+
+        matchPlayerStats[killerBZID].killsAgainst[victimBZID]++;
+        matchPlayerStats[victimBZID].deathsAgainst[killerBZID]++;
+
+        matchPlayerStats[killerBZID].killCount++;
+        matchPlayerStats[victimBZID].deathCount++;
+    }
+}
+
+void Match::incrementTeamOneScore (void)
+{
+    teamTwoScore++;
+}
+
+void Match::incrementTeamTwoScore (void)
+{
+    teamOneScore++;
+}

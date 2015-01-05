@@ -44,6 +44,13 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 	    }
 	    else if (bz_isCountDownInProgress()) // There's no way to stop a countdown so let's not cancel during a countdown
 	    {
+	        // We're canceling an official match
+	        if (isOfficialMatch())
+	        {
+	            officialMatch->canceled = true;
+	            officialMatch->cancelationReason = "Official match cancellation requested by " + std::string(playerData->callsign.c_str());
+	        }
+
 	        bz_cancelCountdown(playerData->callsign.c_str());
 	    }
 	    else if (bz_isCountDownActive()) // We can only cancel a match if the countdown is active
@@ -401,7 +408,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 	        bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /stats command.");
 	    }
 	}
-	else if (command == "timelimt")
+	else if (command == "timelimit")
 	{
 	    if (isMatchInProgress())
 	    {

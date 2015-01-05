@@ -61,7 +61,7 @@ std::string boolToString (bool value);
  *
  * @return                 The string representation of a team color with white padding added if specified
  */
-std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace = false, int totalCharacters = 7);
+std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace = false, unsigned int totalCharacters = 7);
 
 /**
  * Get the current time stamp in the specified format

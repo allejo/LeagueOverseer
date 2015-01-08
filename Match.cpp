@@ -63,7 +63,7 @@ Match& Match::setFM (void)
 
 void Match::stats_createPlayer (int playerID)
 {
-    std::string bzID = bz_getPlayerByIndex(playerID)->callsign.c_str();
+    std::string bzID = bz_getPlayerByIndex(playerID)->bzID.c_str();
 
     PlayerStats playerStats;
     playerStats.bzID = bzID;
@@ -73,7 +73,7 @@ void Match::stats_createPlayer (int playerID)
 
 void Match::stats_flagCapture (int playerID)
 {
-    std::string bzID = bz_getPlayerByIndex(playerID)->callsign.c_str();
+    std::string bzID = bz_getPlayerByIndex(playerID)->bzID.c_str();
 
     matchPlayerStats[bzID].captureCount++;
 }

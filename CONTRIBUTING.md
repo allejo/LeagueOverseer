@@ -81,7 +81,7 @@ std::string aString = "Hello World";
 int         number  = 42;
 ```
 
-- Do not use `using namespace`; always specify the namespace.
+- Do not use `using namespace`; always specify the namespace
 
 ```c++
 std::string aString = "Hello World";
@@ -112,7 +112,7 @@ being addressed.
 
 Some things that will increase the chance that your pull request is accepted.
 
-- Follows the [specified coding style](#Coding-Style) properly
+- Follows the [specified coding style](#coding-style) properly
 - Update the documentation, the surrounding comments/docs, examples elsewhere, guides, 
   whatever is affected by your contribution
 

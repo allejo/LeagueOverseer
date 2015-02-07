@@ -10,7 +10,7 @@ LeagueOverseer is far from being finished and there are lot of things planned. I
 
 - Track match data and submit it to the league website as MatchEvents.
 - More configuration options to server owners to configure
-- Support protecting against `pass-camping`
+- Support protecting against "pass-camping"
 - Better team management on BZFS servers
 - Add an API for other plugins to be able to communicate with LeagueOverseer
 - Show more meaningful messages to unregistered players

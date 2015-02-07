@@ -17,6 +17,7 @@ LeagueOverseer is far from being finished and there are lot of things planned. I
 - Allow unregistered players to participate with restrictions
 - Allow for player suspensions
 - Warn server owners about incorrectly configured servers
+- New website with proper documentation explaining all of the options and features
 
 ### Version 2.0.x
 

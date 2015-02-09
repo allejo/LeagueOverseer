@@ -1,8 +1,8 @@
 {
-	"folders":
-	[
-		{
-        	"follow_symlinks": true,
+    "folders":
+    [
+        {
+            "follow_symlinks": true,
             "path": "."
         }
     ],

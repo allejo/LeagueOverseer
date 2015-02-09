@@ -2,10 +2,10 @@
 	"folders":
 	[
 		{
-			"follow_symlinks": true,
-			"path": "."
-		}
-	],
+        	"follow_symlinks": true,
+            "path": "."
+        }
+    ],
     "settings":
     {
         "tab_size": 4,

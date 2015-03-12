@@ -1,0 +1,76 @@
+{
+    "LeagueOverseer": {
+        "guest_spawning": {
+            "during_official": {
+                "allowed": false,
+                "message": [
+                    "Sorry, you're not allowed to spawn during a match.",
+                    "This is an official match server for a BZFlag League and only",
+                    "league members may spawn while a match is in progress."
+                ]
+            },
+            "during_fm": {
+                "allowed": false,
+                "message": [
+                    "<%= LeagueOverseer.guest_spawning.during_official.message %>"
+                ]
+            },
+            "idle": {
+                "allowed": true,
+                "message": [
+                    "Sorry, you're not allowed to spawn on this server.",
+                    "This is an official match server for a BZFlag League and only",
+                    "league members may spawn on this server."
+                ]
+            }
+        },
+        "guest_messaging": {
+            "during_official": {
+                "limit_to": "Observer",
+                "message": [
+                    "You are not allowed to talk publicly during a match. Your message has",
+                    "been sent to the observers only."
+                ]
+            },
+            "during_fm": {
+                "limit_to": "ObserverOnly",
+                "message": [
+                    "<%= LeagueOverseer.guest_messaging.during_official.message %>"
+                ]
+            },
+            "idle": {
+                "limit_to": "All",
+                "message": [
+                    "Sorry, you're not allowed to talk on this server.",
+                    "This is an official match server for a BZFlag League and only",
+                    "league members may speak on this server."
+                ]
+            }
+        },
+        "time_limits": {
+            "hix.conf": [ 20, 30 ],
+            "duc.conf": [ 15, 20, 30 ]
+        },
+        "spawn_command_perm": "ban",
+        "match_report_url": "",
+        "show_hidden_perm": "ban",
+        "mapchange_path": "",
+        "team_name_url": "",
+        "league_group": "VERIFIED",
+        "motto_format": "{team} | {motto}",
+        "inter_plugin_com_api_check": false,
+        "disable_official_matches": false,
+        "pc_protection_enabled": false,
+        "in_game_debug_enabled": false,
+        "spawn_message_enabled": true,
+        "match_report_enabled": true,
+        "talk_message_enabled": true,
+        "motto_fetch_enabled": true,
+        "disable_fun_matches": false,
+        "allow_limited_chat": true,
+        "rotational_league": true,
+        "default_time_limit": 1800,
+        "verbose_level": 4,
+        "debug_level": 1
+    }
+}

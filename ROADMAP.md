@@ -4,7 +4,7 @@ LeagueOverseer is far from being finished and there are lot of things planned. I
 
 ### Version 2.0.0
 
-**Planned Release**: Mid-March 2015
+**Planned Release**: Mid-April 2015
 
 **Features**
 
@@ -18,6 +18,7 @@ LeagueOverseer is far from being finished and there are lot of things planned. I
 - Allow for player suspensions
 - Warn server owners about incorrectly configured servers
 - New website with proper documentation explaining all of the options and features
+- Use new JSON based configuration
 
 ### Version 2.0.x
 

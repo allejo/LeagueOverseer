@@ -149,6 +149,18 @@ std::string LeagueOverseer::getPlayerTeamNameByBZID (std::string bzID)
     return teamMottos[bzID];
 }
 
+// A convenience method to check if it's not an official match
+bool LeagueOverseer::isFunMatch (void)
+{
+    return (!isOfficialMatch());
+}
+
+// A convenience method to check an official match is in progress
+bool LeagueOverseer::isFunMatchInProgress (void)
+{
+    return (isMatchInProgress() && isFunMatch());
+}
+
 // Check if a player is part of the league
 bool LeagueOverseer::isLeagueMember (int playerID)
 {

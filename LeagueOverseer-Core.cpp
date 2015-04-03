@@ -57,7 +57,6 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_ePlayerJoinEvent);
     Register(bz_ePlayerPartEvent);
     Register(bz_eRawChatMessageEvent);
-    Register(bz_eSlashCommandEvent);
     Register(bz_eTickEvent);
 
     // Add all of the support slash commands so we can easily remove them in the Cleanup() function

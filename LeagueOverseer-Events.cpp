@@ -161,9 +161,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             logMessage(pluginSettings.getVerboseLevel(), "debug", "A match has ended.");
 
-            // Grant the "poll" perm when the match is over
-            grantPermToAll("poll");
-
             // Get the current standard UTC time
             bz_Time standardTime;
             bz_getUTCtime(&standardTime);
@@ -320,9 +317,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // We've paused an official match, so we need to delay the approxTimeProgress in order to calculate the roll call time properly
             if (isOfficialMatch())
             {
-                // Grant the "poll" perm while a match is paused
-                grantPermToAll("poll");
-
                 // Send the messages
                 bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "    with %s remaining.", getMatchTime().c_str());
                 logMessage(pluginSettings.getVerboseLevel(), "debug", "Match paused at %s by %s.", getMatchTime().c_str(), gamePauseData->actionBy.c_str());
@@ -372,9 +366,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // We've resumed an official match, so we need to properly edit the start time so we can calculate the roll call
             if (isOfficialMatch())
             {
-                // Revoke the "poll" perm while a match is active
-                revokePermFromAll("poll");
-
                 // Create a player record of the person who captured the flag
                 std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gameResumeData->actionBy.c_str()));
 
@@ -414,9 +405,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // Check if this is an official match
             if (isOfficialMatch())
             {
-                // Revoke the "poll" perm while a match is active
-                revokePermFromAll("poll");
-
                 // Reset scores in case Caps happened during countdown delay.
                 officialMatch->teamOnePoints = officialMatch->teamTwoPoints = 0;
                 officialMatch->duration = bz_getTimeLimit();
@@ -608,49 +596,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     chatData->message = "";
                     sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT); // Send them a message
                 }
-            }
-        }
-        break;
-
-        case bz_eSlashCommandEvent: // This event is called each time a player sends a slash command
-        {
-            bz_SlashCommandEventData_V1* slashCommandData = (bz_SlashCommandEventData_V1*)eventData;
-
-            // Data
-            // ---
-            //    (int)           from      - The player who sent the slash command
-            //    (bz_ApiString)  message   - The full text of the chat message for the slash command, containing the command and all associated parameters
-            //    (double)        eventTime - The local server time of the event
-
-            // Store the information in variables for quick reference
-            int         playerID = slashCommandData->from;
-            std::string command  = slashCommandData->message.c_str();
-
-            // Because players have quick keys and players of habit, send them a notification in the case they
-            // use a deprecated slash command
-            if (strncmp("/gameover", command.c_str(), 9) == 0)
-            {
-                bz_sendTextMessage(BZ_SERVER, playerID, "** '/gameover' is disabled, please use /finish or /cancel instead **");
-            }
-            else if (strncmp("/countdown cancel", command.c_str(), 17) == 0)
-            {
-                bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown cancel' is disabled, please use /cancel instead **");
-            }
-            else if (strncmp("/countdown pause", command.c_str(), 16) == 0)
-            {
-                bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown pause' is disabled, please use /pause instead **");
-            }
-            else if (strncmp("/countdown resume", command.c_str(), 17) == 0)
-            {
-                bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown resume' is disabled, please use /resume instead **");
-            }
-            else if (strncmp("/countdown", command.c_str(), 10) == 0)
-            {
-                bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown TIME' is disabled, please use /official or /fm instead **");
-            }
-            else if (strncmp("/poll", command.c_str(), 5) == 0 && isOfficialMatchInProgress())
-            {
-                bz_sendTextMessage(BZ_SERVER, playerID, "** '/poll' is disabled during official matches. Please /pause the match in order to start a poll. **");
             }
         }
         break;

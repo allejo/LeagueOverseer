@@ -155,10 +155,12 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
                                      getMatchTime (void);
 
         virtual bool                 isOfficialMatchInProgress (void),
+                                     isFunMatchInProgress (void),
                                      playerAlreadyJoined (std::string bzID),
                                      isMatchInProgress (void),
                                      isOfficialMatch (void),
-                                     isLeagueMember (int playerID);
+                                     isLeagueMember (int playerID)
+                                     isFunMatch (void);
 
         virtual void                 validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team),
                                      removePlayerInfo (std::string bzID, std::string callsign),

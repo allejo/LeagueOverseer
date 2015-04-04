@@ -1,4 +1,4 @@
-League Overseer [![Current Release](https://img.shields.io/badge/release-v1.1.1-orange.svg)](https://github.com/allejo/LeagueOverseer/releases/tag/v1.1.1.275)[![Minimum BZFlag Version](https://img.shields.io/badge/BZFlag-v2.4.3+-blue.svg)]
+League Overseer [![Current Release](https://img.shields.io/badge/release-v1.1.1-orange.svg)](https://github.com/allejo/LeagueOverseer/releases/tag/v1.1.1.275)![Minimum BZFlag Version](https://img.shields.io/badge/BZFlag-v2.4.3+-blue.svg)
 ================
 
 League Overseer is a BZFlag plug-in that allows league servers to communicate with league websites to track player information, stats, match reports, and handle team data.

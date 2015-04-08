@@ -21,6 +21,7 @@ League Overseer
 #include "bzfsAPI.h"
 
 #include "ConfigurationOptions.h"
+#include "Match.h"
 #include "UrlQuery.h"
 
 class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
@@ -61,86 +62,6 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
             {}
         };
 
-        // We will be storing events that occur in the match in this struct
-        struct MatchEvent
-        {
-            int         playerID;
-
-            std::string json,
-                        bzID,
-                        message,
-                        match_time;
-
-            MatchEvent (int _playerID, std::string _bzID, std::string _message, std::string _json, std::string _match_time) :
-                playerID(_playerID),
-                json(_json),
-                bzID(_bzID),
-                message(_message),
-                match_time(_match_time)
-            {}
-        };
-
-        // We will be storing information about the players who participated in a match so we will
-        // be storing that information inside a struct
-        struct MatchParticipant
-        {
-            std::string  bzID,
-                         callsign,
-                         ipAddress,
-                         teamName;
-
-            bz_eTeamType teamColor;
-
-            MatchParticipant (std::string _bzID, std::string _callsign, std::string _ipAddress, std::string _teamName, bz_eTeamType _teamColor) :
-                bzID(_bzID),
-                callsign(_callsign),
-                ipAddress(_ipAddress),
-                teamName(_teamName),
-                teamColor(_teamColor)
-            {}
-        };
-
-        // Simply out of preference, we will be storing all the information regarding a match inside
-        // of a struct where the struct will be NULL if it is current a fun match
-        struct OfficialMatch
-        {
-            bool        playersRecorded,    // Whether or not the players participating in the match have been recorded or not
-                        canceled;           // Whether or not the official match was canceled
-
-            std::string cancelationReason,  // If the match was canceled, store the reason as to why it was canceled
-                        teamOneName,        // We'll be doing our best to store the team names of who's playing so store the names for
-                        teamTwoName;        //     each team respectively
-
-            double      duration,           // The length of the match in seconds. Used when reporting a match to the server
-                        matchRollCall;      // The amount of seconds that need to pass in a match before the first roll call
-
-            // We keep the number of points scored in the case where all the members of a team leave and their team
-            // score get reset to 0
-            int         teamOnePoints,
-                        teamTwoPoints;
-
-            // We will be storing all of the match participants in this vector
-            std::vector<MatchParticipant> matchParticipants;
-
-            // All of the events that occur in this match
-            std::vector<MatchEvent> matchEvents;
-
-            // Set the default values for this struct
-            OfficialMatch () :
-                playersRecorded(false),
-                canceled(false),
-                cancelationReason(""),
-                teamOneName("Team-A"),
-                teamTwoName("Team-B"),
-                duration(-1.0f),
-                matchRollCall(90.0),
-                teamOnePoints(0),
-                teamTwoPoints(0),
-                matchParticipants()
-            {}
-        };
-
-
         ///
         /// Custom functions defined
         ///
@@ -159,10 +80,11 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
                                      playerAlreadyJoined (std::string bzID),
                                      isMatchInProgress (void),
                                      isOfficialMatch (void),
-                                     isLeagueMember (int playerID)
+                                     isLeagueMember (int playerID),
                                      isFunMatch (void);
 
-        virtual void                 validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team),
+        // @TODO Rewrite this function...
+        virtual void                 /*validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team),*/
                                      removePlayerInfo (std::string bzID, std::string callsign),
                                      storePlayerInfo (int playerID, std::string bzID, std::string callsign),
                                      requestTeamName (std::string callsign, std::string bzID),
@@ -170,7 +92,8 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
                                      setLeagueMember (int playerID),
                                      resetTimeLimit (void);
 
-        virtual int                  getMatchProgress (void);
+        virtual int                  getTeamIdFromBZID (std::string _bzID),
+                                     getMatchProgress (void);
 
 
         ///
@@ -200,6 +123,7 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
                      MatchUrlRepo;
 
         ConfigurationOptions pluginSettings;
+        Match currentMatch;
 
         // Player database storing BZIDs and callsigns without having to loop through the entire playerlist each time
         std::map<std::string, int> BZID_MAP;
@@ -211,12 +135,11 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
         // The vector that is storing all of the active players
         std::vector<Player> activePlayerList;
 
-        // This is the only pointer of the struct for the official match that we will be using. If this
-        // variable is set to NULL, that means that there is currently no official match occurring.
-        std::shared_ptr<OfficialMatch> officialMatch;
-
         // We will be using a map to handle the team name mottos in the format of
         // <BZID, Team Name>
         typedef std::map<std::string, std::string> TeamNameMottoMap;
         TeamNameMottoMap teamMottos;
+
+        // @TODO Actually get and fill this map
+        std::map<std::string, int> TEAM_ID_MAP;
 };

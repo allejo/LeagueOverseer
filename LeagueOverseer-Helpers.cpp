@@ -39,6 +39,27 @@ std::string boolToString(bool value)
     return (value) ? "true" : "false";
 }
 
+std::string eTeamToString(bz_eTeamType teamColor)
+{
+    switch (teamColor)
+    {
+        case eBlueTeam:
+            return "Blue";
+
+        case eGreenTeam:
+            return "Green";
+
+        case ePurpleTeam:
+            return "Purple";
+
+        case eRedTeam:
+            return "Red";
+
+        default:
+            return "NoTeam";
+    }
+}
+
 std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace, unsigned int totalCharacters)
 {
     // Because we may have to format the string with white space padding, we need to store

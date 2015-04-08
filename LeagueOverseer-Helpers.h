@@ -56,6 +56,15 @@ std::string boolToString (bool value);
  * Convert a bz_eTeamType value into a string literal with the option of adding whitespace to format the string to return
  *
  * @param  teamColor       The team color that you want a string representation of
+ *
+ * @return A string representation of a team color
+ */
+std::string eTeamToString(bz_eTeamType teamColor);
+
+/**
+ * Convert a bz_eTeamType value into a string literal with the option of adding whitespace to format the string to return
+ *
+ * @param  teamColor       The team color that you want a string representation of
  * @param  addWhiteSpace   Whether or not to add space after the string representation to have a set amount of characters (used for lining up text)
  * @param  totalCharacters The total amount of characters both the string respentation and white space should take up together
  *

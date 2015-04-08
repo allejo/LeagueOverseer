@@ -37,10 +37,12 @@ AM_CFLAGS = $(CONF_CFLAGS)
 AM_CXXFLAGS = $(CONF_CXXFLAGS)
 
 EXTRA_DIST = \
-	README.txt \
+	CONTRIBUTING.md \
 	LeagueOverseer.def \
 	LeagueOverseer.sln \
-	LeagueOverseer.vcxproj
+	LeagueOverseer.vcxproj \
+	README.md \
+	ROADMAP.md
 
 MAINTAINERCLEANFILES =	\
 	Makefile.in

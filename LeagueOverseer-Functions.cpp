@@ -22,10 +22,14 @@ League Overseer
 #include "LeagueOverseer.h"
 #include "LeagueOverseer-Helpers.h"
 
+// @TODO Figure out what to do with this function...
 // We are building a string of BZIDs from the people who matched in the match that just occurred
 // and we're also writing the player information to the server logs while we're at it. Efficiency!
 std::string LeagueOverseer::buildBZIDString (bz_eTeamType team)
 {
+    return "";
+
+    /*
     // The string of BZIDs separated by commas
     std::string teamString;
 
@@ -52,6 +56,7 @@ std::string LeagueOverseer::buildBZIDString (bz_eTeamType team)
     // add an extra comma at the end. If we leave it, it will cause issues with the PHP counterpart
     // which tokenizes the BZIDs by commas and we don't want an empty BZID
     return teamString.erase(teamString.size() - 1);
+    */
 }
 
 bz_BasePlayerRecord* LeagueOverseer::bz_getPlayerByCallsign (const char* callsign)
@@ -112,7 +117,7 @@ std::string LeagueOverseer::getMatchTime (void)
     }
 
     // Let's covert the seconds of a match's progress into minutes and seconds
-    int minutes = (officialMatch->duration/60) - ceil(time / 60.0);
+    int minutes = (int)((currentMatch.getMatchDuration()/60) - ceil(time / 60.0));
     int seconds = 60 - (time % 60);
 
     // We need to store the literal values
@@ -135,6 +140,11 @@ std::string LeagueOverseer::getMatchTime (void)
     }
 
     return minutesLiteral + ":" + secondsLiteral;
+}
+
+int LeagueOverseer::getTeamIdFromBZID(std::string _bzID)
+{
+    return TEAM_ID_MAP[_bzID];
 }
 
 std::string LeagueOverseer::getPlayerTeamNameByID (int playerID)
@@ -176,7 +186,7 @@ bool LeagueOverseer::isMatchInProgress (void)
 // Check if there is currently an active official match
 bool LeagueOverseer::isOfficialMatch(void)
 {
-    return (officialMatch != NULL);
+    return (currentMatch.isOfficial());
 }
 
 // Check if there is currently an active official match
@@ -301,8 +311,9 @@ void LeagueOverseer::storePlayerInfo(int playerID, std::string bzID, std::string
     }
 }
 
+// @TODO Rewrite this function
 // Check if there is any need to invalidate a roll call team
-void LeagueOverseer::validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team)
+/*void LeagueOverseer::validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team)
 {
     logMessage(pluginSettings.getVerboseLevel(), "debug", "Starting validation of the %s team.", formatTeam(team).c_str());
 
@@ -331,4 +342,4 @@ void LeagueOverseer::validateTeamName (bool &invalidate, bool &teamError, MatchP
     {
         logMessage(pluginSettings.getVerboseLevel(), "debug", "Player '%s' belongs to the '%s' team.", currentPlayer.callsign.c_str(), currentPlayer.teamName.c_str());
     }
-}
+}*/

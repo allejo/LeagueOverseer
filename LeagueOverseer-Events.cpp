@@ -21,7 +21,9 @@ League Overseer
 #include "LeagueOverseer.h"
 #include "LeagueOverseer-Helpers.h"
 
+#include "MatchEvent-Capture.h"
 #include "MatchEvent-Join.h"
+#include "MatchEvent-Kill.h"
 
 void LeagueOverseer::Event (bz_EventData *eventData)
 {
@@ -73,6 +75,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             int playerID = allowSpawnData->playerID;
 
+            // @TODO Add support for guest spawning
             if (!isLeagueMember(playerID)) // Is the player not part of the league?
             {
                 // Disable their spawning privileges
@@ -116,43 +119,40 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
         case bz_eCaptureEvent: // This event is called each time a team's flag has been captured
         {
-            // We only need to keep track of the store if it's an official match
-            if (isOfficialMatch())
+            if (isMatchInProgress())
             {
                 bz_CTFCaptureEventData_V1* captureData = (bz_CTFCaptureEventData_V1*)eventData;
+                std::shared_ptr<bz_BasePlayerRecord> capperData(bz_getPlayerByIndex(captureData->playerCapping));
 
-                // Data
-                // ---
-                //    (bz_eTeamType)  teamCapped    - The team whose flag was captured.
-                //    (bz_eTeamType)  teamCapping   - The team who did the capturing.
-                //    (int)           playerCapping - The player who captured the flag.
-                //    (float[3])      pos           - The world position(X,Y,Z) where the flag has been captured
-                //    (float)         rot           - The rotational orientation of the capturing player
-                //    (double)        eventTime     - This value is the local server time of the event.
+                // Keep score
+                (captureData->teamCapping == TEAM_ONE) ? currentMatch.incrementTeamOneScore() : currentMatch.incrementTeamTwoScore();
 
-                (captureData->teamCapping == TEAM_ONE) ? officialMatch->teamOnePoints++ : officialMatch->teamTwoPoints++;
-
-                // Log the information about the current score to the logs at the verbose level
-                logMessage(pluginSettings.getVerboseLevel(), "debug", "%s team scored.", formatTeam(captureData->teamCapping).c_str());
-                logMessage(pluginSettings.getVerboseLevel(), "debug", "Official Match Score %s [%i] vs %s [%i]",
-                    formatTeam(TEAM_ONE).c_str(), officialMatch->teamOnePoints,
-                    formatTeam(TEAM_TWO).c_str(), officialMatch->teamTwoPoints);
-
+                // Store data for PC Protection
                 CAP_VICTIM_TEAM = captureData->teamCapped;
                 CAP_WINNER_TEAM = captureData->teamCapping;
                 LAST_CAP        = captureData->eventTime;
 
-                // Create a player record of the person who captured the flag
-                std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(captureData->playerCapping));
+                logMessage(pluginSettings.getDebugLevel(), "debug", "%s captured the flag at %s",
+                        capperData->callsign.c_str(), getMatchTime().c_str());
+                logMessage(pluginSettings.getDebugLevel(), "debug", "Match Score %s [%i] vs %s [%i]",
+                        currentMatch.getTeamOneName().c_str(), currentMatch.getTeamOneScore(),
+                        currentMatch.getTeamTwoName().c_str(), currentMatch.getTeamTwoScore());
 
-                // Create a MatchEvent with the information relating to the capture
-                MatchEvent capEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
-                                     std::string(playerData->callsign.c_str()) + " captured the " + formatTeam(captureData->teamCapped) + " flag",
-                                     "{\"event\": {\"type\": \"capture\", \"color\": \"" + formatTeam(captureData->teamCapped) + "\"}}",
-                                     getMatchTime());
+                CaptureMatchEvent capEvent = CaptureMatchEvent().setBZID(capperData->bzID.c_str())
+                                                                .setTime(getMatchTime());
 
-                // Push the MatchEvent to the matchEvents vector stored in the officialMatch struct
-                officialMatch->matchEvents.push_back(capEvent);
+                // If it's an official match, save the team ID
+                if (isOfficialMatch())
+                {
+                    int teamID = (captureData->teamCapping == TEAM_ONE) ? currentMatch.getTeamOneID() : currentMatch.getTeamTwoID();
+
+                    capEvent.setTeamID(teamID);
+                }
+
+                capEvent.save();
+
+                currentMatch.saveEvent(capEvent.getJsonObject());
+                currentMatch.stats_flagCapture(captureData->playerCapping);
             }
         }
         break;
@@ -178,9 +178,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 if (isOfficialMatch())
                 {
                     // If the official match was finished, then mark it as canceled
-                    std::string matchCanceled = (officialMatch->canceled) ? "-Canceled" : "",
-                                _teamOneName  = officialMatch->teamOneName.c_str(),
-                                _teamTwoName  = officialMatch->teamTwoName.c_str(),
+                    std::string matchCanceled = (currentMatch.matchCanceled()) ? "-Canceled" : "",
+                                _teamOneName  = currentMatch.getTeamOneName().c_str(),
+                                _teamTwoName  = currentMatch.getTeamTwoName().c_str(),
                                 _matchTeams   = "";
 
                     // We want to standardize the names, so replace all spaces with underscores and
@@ -188,7 +188,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     std::replace(_teamOneName.begin(), _teamOneName.end(), ' ', '_');
                     std::replace(_teamTwoName.begin(), _teamTwoName.end(), ' ', '_');
 
-                    if (!officialMatch->matchParticipants.empty())
+                    if (!currentMatch.isRosterEmpty())
                     {
                         _matchTeams = _teamOneName + "-vs-" + _teamTwoName + "-";
                     }
@@ -218,84 +218,46 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Match saved as: %s", recordingFileName.c_str());
             }
 
+            // Format the date to -> year-month-day hour:minute:second
+            char matchDate[20];
+            sprintf(matchDate, "%02d-%02d-%02d %02d:%02d:%02d", standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute, standardTime.second);
+
+            currentMatch.save(matchDate, recordingFileName);
+
             if (pluginSettings.isMatchReportEnabled())
             {
-                if (officialMatch == NULL)
+                if (!currentMatch.isRosterEmpty())
                 {
-                    // It was a fun match, so there is no need to do anything
+                    MatchUrlRepo.set("query", "matchReport")
+                                .set("data", bz_urlEncode(currentMatch.toString().c_str()))
+                                .submit();
 
-                    logMessage(pluginSettings.getDebugLevel(), "debug", "Fun match has completed.");
-                }
-                else if (officialMatch->canceled)
-                {
-                    // The match was canceled for some reason so output the reason to both the players and the server logs
-
-                    logMessage(pluginSettings.getDebugLevel(), "debug", "%s", officialMatch->cancelationReason.c_str());
-                    bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, officialMatch->cancelationReason.c_str());
-                }
-                else if (officialMatch->matchParticipants.empty())
-                {
-                    // Oops... I darn goofed. Somehow the players were not recorded properly
-
-                    logMessage(pluginSettings.getDebugLevel(), "debug", "No recorded players for this official match.");
-                    bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match could not be reported due to not having a list of valid match participants.");
-                }
-                else
-                {
-                    // This was an official match, so let's report it
-
-                    // Format the date to -> year-month-day hour:minute:second
-                    char matchDate[20];
-                    sprintf(matchDate, "%02d-%02d-%02d %02d:%02d:%02d", standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute, standardTime.second);
-
-                    // Keep references to values for quick reference
-                    std::string teamOnePointsFinal = std::to_string(officialMatch->teamOnePoints);
-                    std::string teamTwoPointsFinal = std::to_string(officialMatch->teamTwoPoints);
-                    std::string matchDuration      = std::to_string(officialMatch->duration/60);
-
-                    // Store match data in the logs
-                    bz_debugMessagef(0, "Match Data :: League Overseer Match Report");
-                    bz_debugMessagef(0, "Match Data :: -----------------------------");
-                    bz_debugMessagef(0, "Match Data :: Match Time      : %s", matchDate);
-                    bz_debugMessagef(0, "Match Data :: Duration        : %s", matchDuration.c_str());
-                    bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_ONE, true).c_str(), teamOnePointsFinal.c_str());
-                    bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_TWO, true).c_str(), teamTwoPointsFinal.c_str());
-
-                    MatchUrlRepo.set("query",       "matchReport")
-                                .set("teamOneWins", officialMatch->teamOnePoints)
-                                .set("teamTwoWins", officialMatch->teamTwoPoints)
-                                .set("duration",    officialMatch->duration/60)
-                                .set("matchTime",   matchDate)
-                                .set("server",      bz_getPublicAddr())
-                                .set("port",        bz_getPublicPort())
-                                .set("replayFile",  recordingFileName);
-
-                    // Only add this parameter if it's a rotational league such as OpenLeague
-                    if (pluginSettings.isRotationalLeague())
+                    if (currentMatch.isFM())
                     {
-                        MatchUrlRepo.set("mapPlayed", MAP_NAME);
+                        // It was a fun match, so there is no need to do anything
+
+                        logMessage(pluginSettings.getVerboseLevel(), "debug", "Fun match has completed.");
                     }
+                    else if (currentMatch.matchCanceled())
+                    {
+                        // The match was canceled for some reason so output the reason to both the players and the server logs
 
-                    // Build a string of BZIDs and also output the BZIDs to the server logs while we're at it
-                    MatchUrlRepo.set("teamOnePlayers", buildBZIDString(TEAM_ONE));
-                    MatchUrlRepo.set("teamTwoPlayers", buildBZIDString(TEAM_TWO));
+                        logMessage(pluginSettings.getDebugLevel(), "debug", "%s", currentMatch.getCancelation().c_str());
+                        bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, currentMatch.getCancelation().c_str());
+                    }
+                    else
+                    {
+                        logMessage(pluginSettings.getDebugLevel(), "debug", "Reporting match data...");
+                        bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Reporting match...");
 
-                    // Finish prettifying the server logs
-                    bz_debugMessagef(0, "Match Data :: -----------------------------");
-                    bz_debugMessagef(0, "Match Data :: End of Match Report");
-                    logMessage(pluginSettings.getDebugLevel(), "debug", "Reporting match data...");
-                    bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Reporting match...");
-
-                    // Send off the match
-                    MatchUrlRepo.submit();
-
-                    // Send the match data to the league website
-                    MATCH_INFO_SENT = true;
+                        // Send the match data to the league website
+                        MATCH_INFO_SENT = true;
+                    }
                 }
             }
 
-            // We're done with the struct, so make it NULL until the next official match
-            officialMatch = NULL;
+            // Reset our match data
+            currentMatch = Match();
 
             // Empty our list of players since we don't need a history
             activePlayerList.clear();
@@ -321,17 +283,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "    with %s remaining.", getMatchTime().c_str());
                 logMessage(pluginSettings.getVerboseLevel(), "debug", "Match paused at %s by %s.", getMatchTime().c_str(), gamePauseData->actionBy.c_str());
 
-                // Create a player record of the person who captured the flag
-                std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gamePauseData->actionBy.c_str()));
-
-                // Create a MatchEvent with the information relating to the capture
-                MatchEvent pauseEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
-                                     std::string(playerData->callsign.c_str()) + " paused the match at " + getMatchTime(),
-                                     "{\"event\": {\"type\": \"pause\"}}",
-                                     getMatchTime());
-
-                // Push the MatchEvent to the matchEvents vector stored in the officialMatch struct
-                officialMatch->matchEvents.push_back(pauseEvent);
+                // @TODO Add a MatchPauseEvent
             }
         }
         break;
@@ -363,21 +315,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             MATCH_START = mktime(&modMatchStart);
             logMessage(pluginSettings.getVerboseLevel(), "debug", "Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
 
-            // We've resumed an official match, so we need to properly edit the start time so we can calculate the roll call
-            if (isOfficialMatch())
-            {
-                // Create a player record of the person who captured the flag
-                std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByCallsign(gameResumeData->actionBy.c_str()));
 
-                // Create a MatchEvent with the information relating to the capture
-                MatchEvent resumeEvent(playerData->playerID, std::string(playerData->bzID.c_str()),
-                                     std::string(playerData->callsign.c_str()) + " resumed the match",
-                                     "{\"event\": {\"type\": \"resume\"}}",
-                                     getMatchTime());
-
-                // Push the MatchEvent to the matchEvents vector stored in the officialMatch struct
-                officialMatch->matchEvents.push_back(resumeEvent);
-            }
+            // @TODO Add MatchResumeEvent
         }
         break;
 
@@ -402,13 +341,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 logMessage(0, "error", "This match could not be recorded");
             }
 
-            // Check if this is an official match
-            if (isOfficialMatch())
-            {
-                // Reset scores in case Caps happened during countdown delay.
-                officialMatch->teamOnePoints = officialMatch->teamTwoPoints = 0;
-                officialMatch->duration = bz_getTimeLimit();
-            }
+            currentMatch.setMatchDuration((int) bz_getTimeLimit());
 
             MATCH_START = time(NULL);
         }
@@ -460,6 +393,18 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             {
                 mottoData->motto = getPlayerTeamNameByBZID(mottoData->record->bzID.c_str());
             }
+        }
+        break;
+
+        case bz_ePlayerDieEvent: // This event is called each time a tank is killed
+        {
+            bz_PlayerDieEventData_V1* dieData = (bz_PlayerDieEventData_V1*)eventData;
+            std::shared_ptr<bz_BasePlayerRecord> victimData(bz_getPlayerByIndex(dieData->playerID));
+            std::shared_ptr<bz_BasePlayerRecord> killerData(bz_getPlayerByIndex(dieData->killerID));
+
+            // @TODO Complete this event
+            KillMatchEvent killEvent = KillMatchEvent().setKiller(killerData->bzID.c_str())
+                                                       .setVictim(victimData->bzID.c_str());
         }
         break;
 
@@ -603,16 +548,15 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_eTickEvent: // This event is called once for each BZFS main loop
         {
             // Get the total number of tanks playing
-            int totaltanks = bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
+            int totalTanks = bz_getTeamCount(eRedTeam) + bz_getTeamCount(eGreenTeam) + bz_getTeamCount(eBlueTeam) + bz_getTeamCount(ePurpleTeam);
 
             // If there are no tanks playing, then we need to do some clean up
-            if (totaltanks == 0)
+            if (totalTanks == 0)
             {
                 // If there is an official match and no tanks playing, we need to cancel it
                 if (isOfficialMatch())
                 {
-                    officialMatch->canceled = true;
-                    officialMatch->cancelationReason = "Official match automatically canceled due to all players leaving the match.";
+                    currentMatch.cancelMatch("Official match automatically canceled due to all players leaving the match.");
                 }
 
                 // If we have players recorded and there's no one around, empty the list
@@ -635,16 +579,18 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 // Check if the start time is not negative since our default value for the approxTimeProgress is -1. Also check
                 // if it's time to do a roll call, which is defined as 90 seconds after the start of the match by default,
                 // and make sure we don't have any match participants recorded and the match isn't paused
-                if (getMatchProgress() > officialMatch->matchRollCall && officialMatch->matchParticipants.empty() &&
+                if (getMatchProgress() > currentMatch.getMatchRollCall() && currentMatch.isRosterEmpty() &&
                     !bz_isCountDownPaused() && !bz_isCountDownInProgress())
                 {
                     logMessage(pluginSettings.getVerboseLevel(), "debug", "Processing roll call...");
 
+                    // @TODO Make sure all of these variables are used
                     std::shared_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
-                    bool invalidateRollcall, teamOneError, teamTwoError;
+                    bool invalidateRollCall, teamOneError, teamTwoError;
                     std::string teamOneMotto, teamTwoMotto;
+                    int teamOneID, teamTwoID;
 
-                    invalidateRollcall = teamOneError = teamTwoError = false;
+                    invalidateRollCall = teamOneError = teamTwoError = false;
                     teamOneMotto = teamTwoMotto = "";
 
                     // We can't do a roll call if the player list wasn't created
@@ -656,65 +602,48 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                     for (unsigned int i = 0; i < playerList->size(); i++)
                     {
-                        std::shared_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
+                        bz_BasePlayerRecord* playerRecord = bz_getPlayerByIndex(playerList->get(i));
 
                         if (playerRecord && isLeagueMember(playerRecord->playerID) && bz_getPlayerTeam(playerList->get(i)) != eObservers) // If player is not an observer
                         {
-                            MatchParticipant currentPlayer(playerRecord->bzID.c_str(), playerRecord->callsign.c_str(),
-                                                           playerRecord->ipAddress.c_str(), teamMottos[playerRecord->bzID.c_str()],
-                                                           playerRecord->team);
+                            currentMatch.savePlayer(playerRecord, getTeamIdFromBZID(playerRecord->bzID.c_str()));
 
-                            // In order to see what is going wrong with the roll call if anything, display all of the player's information
-                            logMessage(pluginSettings.getVerboseLevel(), "debug", "Adding player '%s' to roll call...", currentPlayer.callsign.c_str());
-                            logMessage(pluginSettings.getVerboseLevel(), "debug", "  >  BZID       : %s", currentPlayer.bzID.c_str());
-                            logMessage(pluginSettings.getVerboseLevel(), "debug", "  >  IP Address : %s", currentPlayer.ipAddress.c_str());
-                            logMessage(pluginSettings.getVerboseLevel(), "debug", "  >  Team Name  : %s", currentPlayer.teamName.c_str());
-                            logMessage(pluginSettings.getVerboseLevel(), "debug", "  >  Team Color : %s", formatTeam(currentPlayer.teamColor).c_str());
-
+                            // @TODO Rewrite this function to be updated
                             // Check if there is any need to invalidate a roll call from a team
-                            validateTeamName(invalidateRollcall, teamOneError, currentPlayer, teamOneMotto, TEAM_ONE);
-                            validateTeamName(invalidateRollcall, teamTwoError, currentPlayer, teamTwoMotto, TEAM_TWO);
-
-                            if (currentPlayer.bzID.empty()) // Someone is playing without a BZID, how did this happen?
-                            {
-                                invalidateRollcall = true;
-                                logMessage(pluginSettings.getVerboseLevel(), "error", "Roll call has been marked as invalid due to '%s' not having a valid BZID.", currentPlayer.callsign.c_str());
-                            }
-
-                            // Add the player to the struct of participants
-                            officialMatch->matchParticipants.push_back(currentPlayer);
-                            logMessage(pluginSettings.getVerboseLevel(), "debug", "Player '%s' successfully added to the roll call.", currentPlayer.callsign.c_str());
+                            //validateTeamName(invalidateRollCall, teamOneError, currentPlayer, teamOneMotto, TEAM_ONE);
+                            //validateTeamName(invalidateRollCall, teamTwoError, currentPlayer, teamTwoMotto, TEAM_TWO);
                         }
+
+                        bz_freePlayerRecord(playerRecord);
                     }
 
                     // We were asked to invalidate the roll call because of some issue so let's check if there is still time for
                     // another roll call
-                    if (invalidateRollcall && officialMatch->matchRollCall + 60 < officialMatch->duration)
+                    if (invalidateRollCall && currentMatch.incrementMatchRollCall(60) < currentMatch.getMatchDuration())
                     {
                         logMessage(pluginSettings.getDebugLevel(), "debug", "Invalid player found on field at %s.", getMatchTime().c_str());
 
                         // There was an error with one of the members of either team, so request a team name update for all of
                         // the team members to try to fix any inconsistencies of different team names
-                        if (teamOneError) { requestTeamName(TEAM_ONE); }
-                        if (teamTwoError) { requestTeamName(TEAM_TWO); }
+                        //if (teamOneError) { requestTeamName(TEAM_ONE); }
+                        //if (teamTwoError) { requestTeamName(TEAM_TWO); }
 
                         // Delay the next roll call by 60 seconds
-                        officialMatch->matchRollCall += 60;
                         logMessage(pluginSettings.getVerboseLevel(), "debug", "Match roll call time has been delayed by 60 seconds.");
 
                         // Clear the struct because it's useless data
-                        officialMatch->matchParticipants.clear();
+                        currentMatch.clearPlayerRoster();
                         logMessage(pluginSettings.getVerboseLevel(), "debug", "Match participants have been cleared.");
                     }
 
                     // There is no need to invalidate the roll call so the team names must be right so save them in the struct
-                    if (!invalidateRollcall)
+                    if (!invalidateRollCall)
                     {
-                        officialMatch->teamOneName = teamOneMotto;
-                        officialMatch->teamTwoName = teamTwoMotto;
+                        currentMatch.setTeamOneID(teamOneID).setTeamOneName(teamOneMotto)
+                                    .setTeamTwoID(teamTwoID).setTeamTwoName(teamTwoMotto);
 
-                        logMessage(pluginSettings.getVerboseLevel(), "debug", "Team One set to: %s", officialMatch->teamOneName.c_str());
-                        logMessage(pluginSettings.getVerboseLevel(), "debug", "Team Two set to: %s", officialMatch->teamTwoName.c_str());
+                        logMessage(pluginSettings.getVerboseLevel(), "debug", "Team One set to: %s", currentMatch.getTeamOneName().c_str());
+                        logMessage(pluginSettings.getVerboseLevel(), "debug", "Team Two set to: %s", currentMatch.getTeamTwoName().c_str());
                     }
                 }
             }

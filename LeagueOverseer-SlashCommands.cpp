@@ -85,13 +85,13 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to cancel matches.");
         }
-        else if (bz_isCountDownInProgress()) // There's no way to stop a countdown so let's not cancel during a countdown
+        else if (bz_isCountDownInProgress()) // We need to cancel differently if we're in a countdown
         {
             // We're canceling an official match
             if (isOfficialMatch())
             {
-                officialMatch->canceled = true;
-                officialMatch->cancelationReason = "Official match cancellation requested by " + std::string(playerData->callsign.c_str());
+                currentMatch.reportMatch(false)
+                            .cancelMatch("Official match cancellation requested by " + std::string(playerData->callsign.c_str()));
             }
 
             bz_cancelCountdown(playerData->callsign.c_str());
@@ -101,8 +101,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             // We're canceling an official match
             if (isOfficialMatch())
             {
-                officialMatch->canceled = true;
-                officialMatch->cancelationReason = "Official match cancellation requested by " + std::string(playerData->callsign.c_str());
+                currentMatch.cancelMatch("Official match cancellation requested by " + std::string(playerData->callsign.c_str()));
             }
             else // Cancel the fun match like normal
             {
@@ -134,7 +133,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             if (isOfficialMatch())
             {
                 // Let's check if we can report the match, in other words, at least half of the match has been reported
-                if (getMatchProgress() >= officialMatch->duration / 2)
+                if (getMatchProgress() >= currentMatch.getMatchDuration() / 2)
                 {
                     logMessage(pluginSettings.getDebugLevel(), "debug", "Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
                     bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match ended early by %s", playerData->callsign.c_str());
@@ -174,7 +173,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         else // They are verified, not an observer, there is no match. So start one
         {
             // We signify an FM whenever the 'officialMatch' variable is set to NULL so set it to null
-            officialMatch = NULL;
+            currentMatch = Match();
+            currentMatch.setFM();
 
             // Log the actions
             logMessage(pluginSettings.getDebugLevel(), "debug", "Fun match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
@@ -298,7 +298,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         }
         else // They are verified non-observer with valid team sizes and no existing match. Start one!
         {
-            officialMatch.reset(new OfficialMatch()); // It's an official match
+            currentMatch = Match();
+            currentMatch.setOfficial();
 
             // Log the actions so admins can bug brad to look at detailed information
             logMessage(pluginSettings.getDebugLevel(), "debug", "Official match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
@@ -433,13 +434,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                 bz_sendTextMessage(BZ_SERVER, playerID, "Match Data");
                 bz_sendTextMessage(BZ_SERVER, playerID, "----------");
 
-                for (unsigned int i = 0; i < officialMatch->matchEvents.size(); i++)
-                {
-                    std::string timeStamp = officialMatch->matchEvents.at(i).match_time;
-                    std::string message   = officialMatch->matchEvents.at(i).message;
-
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "  [%s] %s", timeStamp.c_str(), message.c_str());
-                }
+                // @TODO Need to write this
             }
             else
             {

@@ -29,25 +29,37 @@ League Overseer
 class Match
 {
     public:
+        bool isRosterEmpty (void);
+        bool matchCanceled (void);
+        bool reportMatch (void);
         bool isOfficial (void);
         bool isFM (void);
 
-        int getTeamIdByPlayerIndex (int playerID);
+        int incrementMatchRollCall (int _newRollCall);
+        int getMatchRollCall (void);
+        int getMatchDuration (void);
+        int getTeamOneScore (void);
+        int getTeamTwoScore (void);
         int getTeamOneID (void);
         int getTeamTwoID (void);
 
         std::string getTeamOneName (void);
         std::string getTeamTwoName (void);
+        std::string getCancelation (void);
         std::string toString (void);
 
+        Match& setMatchDuration (int _duration);
+        Match& setVerboseLevel (int _verbose);
         Match& setTeamOneName (std::string _teamName);
         Match& setTeamTwoName (std::string _teamName);
+        Match& setDebugLevel (int _debug);
         Match& setTeamOneID (int _teamID);
         Match& setTeamTwoID (int _teamID);
         Match& setOfficial (void);
         Match& cancelMatch (std::string reason);
-        Match& savePlayer (bz_BasePlayerRecord *pr);
-        Match& saveEvent (json_object eventObject);
+        Match& reportMatch (bool _report);
+        Match& savePlayer (bz_BasePlayerRecord *pr, int teamID);
+        Match& saveEvent (json_object *eventObject);
         Match& setFM (void);
 
         void stats_createPlayer (int playerID);
@@ -56,10 +68,14 @@ class Match
 
         void incrementTeamOneScore (void);
         void incrementTeamTwoScore (void);
-        void save (void);
+        void clearPlayerRoster (void);
+        void save (std::string _timestamp, std::string _replayFile);
+
 
     private:
         struct Player {
+            int          teamID;
+
             std::string  bzID,
                          callsign,
                          ipAddress;
@@ -89,17 +105,22 @@ class Match
 
         std::string cancelationReason,
                     teamOneName,
-                    teamTwoName;
-
-        double      matchRollCall,
-                    matchDuration;
+                    teamTwoName,
+                    mapPlayed;
 
         bool        playersRecorded,
-                    matchCanceled,
+                    isMatchCanceled,
+                    reportTheMatch = true,
                     official;
 
-        int         teamOneScore,
-                    teamTwoScore;
+        int         matchDuration,
+                    matchRollCall = 15,
+                    verboseLevel,
+                    teamOneScore = 0,
+                    teamTwoScore = 0,
+                    debugLevel,
+                    teamOneID,
+                    teamTwoID;
 };
 
 #endif

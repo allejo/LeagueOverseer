@@ -215,65 +215,6 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to modify the League Overseer configuration.");
         }
     }
-    else if (command == "lodbg")
-    {
-        if (pluginSettings.isInGameDebugEnabled())
-        {
-            if (bz_hasPerm(playerID, "shutdownserver"))
-            {
-                if (params->size() > 0)
-                {
-                    std::string commandOption = params->get(0).c_str();
-
-                    if (commandOption == "grant_perm" || commandOption == "revoke_perm")
-                    {
-                        if (params->size() == 3)
-                        {
-                            int victimID = getPlayerFromCallsignOrID(params->get(1).c_str())->playerID;
-
-                            if (commandOption == "grant_perm")
-                            {
-                                bz_grantPerm(victimID, params->get(2).c_str());
-                            }
-                            else if (commandOption == "revoke_perm")
-                            {
-                                bz_revokePerm(victimID, params->get(2).c_str());
-                            }
-                        }
-                        else
-                        {
-                            bz_sendTextMessagef(BZ_SERVER, playerID, "Syntax: /lodbg %s <player id or callsign> <permission name>", commandOption.c_str());
-                        }
-                    }
-                }
-                else
-                {
-                    bz_sendTextMessage(BZ_SERVER, playerID, "League Overseer In-Game Debug Commands");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "--------------------------------------");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "   /lodbg <option> <parameters>");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "   Options");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "   -------");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "     - grant_perm <player id or callsign> <permission name>");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "     - revoke_perm <player id or callsign> <permission name>");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "     - set");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "         - config_option <option> <value>");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "     - show");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "         - match_stats");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "         - player_stats <player id or callsign>");
-                    bz_sendTextMessage(BZ_SERVER, playerID, "         - config_options");
-                }
-            }
-            else
-            {
-                bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /lodbg command.");
-            }
-        }
-        else
-        {
-            bz_sendTextMessage(BZ_SERVER, playerID, "The League Overseer Debug command is disabled on production servers.");
-        }
-    }
     else if (command == "o" || command == "offi" || command == "official")
     {
         if (pluginSettings.areOfficialMatchesDisabled())

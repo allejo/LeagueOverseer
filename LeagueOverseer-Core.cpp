@@ -61,7 +61,7 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_eTickEvent);
 
     // Add all of the support slash commands so we can easily remove them in the Cleanup() function
-    SLASH_COMMANDS = {"cancel", "countdown", "f", "finish", "fm", "gameover", "leagueoverseer", "los", "o", "offi", "official", "p", "pause", "poll", "r", "resume", "showhidden", "spawn", "s", "stats", "timelimit"};
+    SLASH_COMMANDS = {"ban", "cancel", "countdown", "f", "finish", "fm", "gameover", "kick", "leagueoverseer", "los", "mute", "o", "offi", "official", "p", "pause", "poll", "r", "resume", "showhidden", "spawn", "s", "stats", "timelimit", "unmute"};
 
     // Register our custom slash commands
     for (auto command : SLASH_COMMANDS)

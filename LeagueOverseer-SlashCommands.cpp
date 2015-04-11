@@ -29,7 +29,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         return true;
     }
 
-    // Slashcommands we'll be overloading and/or disabling
+    // Slash commands we'll be overloading and/or disabling
     if (command == "gameover")
     {
         bz_sendTextMessage(BZ_SERVER, playerID, "The '/gameover' command has been disabled on this server.");
@@ -79,7 +79,18 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         return true;
     }
 
-    if (command == "cancel")
+    if (command == "ban")
+    {
+        if ((bz_hasPerm(playerID, "ban") || bz_hasPerm(playerID, "shortBan")) && bz_hasPerm(playerID, "hideAdmin"))
+        {
+            // @TODO Implement this functionality
+
+            return true;
+        }
+
+        return false;
+    }
+    else if (command == "cancel")
     {
         if (playerData->team == eObservers) // Observers can't cancel matches
         {
@@ -156,44 +167,16 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to end.");
         }
     }
-    else if (command == "f" || command == "fm")
+    else if (command == "kick")
     {
-        if (pluginSettings.areFunMatchesDisabled())
+        if (bz_hasPerm(playerID, "kick") && bz_hasPerm(playerID, "hideAdmin"))
         {
-            bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, this server has not be configured for fun matches.");
-        }
-        else if (playerData->team == eObservers) // Observers can't start matches
-        {
-            bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
-        }
-        else if (isOfficialMatch() || bz_isCountDownActive() || bz_isCountDownInProgress()) // There is already a countdown
-        {
-            bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
-        }
-        else // They are verified, not an observer, there is no match. So start one
-        {
-            // We signify an FM whenever the 'officialMatch' variable is set to NULL so set it to null
-            currentMatch = Match();
-            currentMatch.setFM();
+            // @TODO Implement this functionality
 
-            // Log the actions
-            logMessage(pluginSettings.getDebugLevel(), "debug", "Fun match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
-            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Fun match started by %s.", playerData->callsign.c_str());
-
-            // The amount of seconds the countdown should take
-            int timeToStart = (params->size() == 1) ? atoi(params->get(0).c_str()) : 10;
-
-            // Sanity check...
-            if (timeToStart <= 60 && timeToStart >= 10)
-            {
-                bz_startCountdown(timeToStart, bz_getTimeLimit(), "Server"); // Start the countdown with a custom countdown time limit under 1 minute
-            }
-            else
-            {
-                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds or less than 10.");
-                bz_startCountdown(10, bz_getTimeLimit(), "Server"); // Start the countdown for the official match
-            }
+            return true;
         }
+
+        return false;
     }
     else if (command == "leagueoverseer" || command == "los")
     {
@@ -215,13 +198,37 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to modify the League Overseer configuration.");
         }
     }
-    else if (command == "o" || command == "offi" || command == "official")
+    else if (command == "f" || command == "fm" || command == "o" || command == "offi" || command == "official")
     {
-        if (pluginSettings.areOfficialMatchesDisabled())
+        bool officialMatchRequested = (command == "o" || command == "offi" || command == "official");
+
+        if (officialMatchRequested)
         {
-            bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, this server has not be configured for official matches.");
+            if (pluginSettings.areOfficialMatchesDisabled())
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, this server has not be configured for official matches.");
+
+                return true;
+            }
+
+            if (bz_getTeamCount(TEAM_ONE) < 2 || bz_getTeamCount(TEAM_TWO) < 2) // An official match cannot be 1v1 or 2v1
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "You may not have an official match with less than 2 players per team.");
+
+                return true;
+            }
         }
-        else if (bz_pollActive())
+        else
+        {
+            if (pluginSettings.areFunMatchesDisabled())
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, this server has not be configured for fun matches.");
+
+                return true;
+            }
+        }
+
+        if (bz_pollActive())
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You are not allowed to start a match while a poll is active.");
         }
@@ -229,37 +236,81 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
         }
-        else if (bz_getTeamCount(TEAM_ONE) < 2 || bz_getTeamCount(TEAM_TWO) < 2) // An official match cannot be 1v1 or 2v1
-        {
-            bz_sendTextMessage(BZ_SERVER, playerID, "You may not have an official match with less than 2 players per team.");
-        }
-        else if (isOfficialMatch() || bz_isCountDownActive() || bz_isCountDownInProgress()) // A countdown is in progress already
+        else if (isMatchInProgress()) // A countdown is in progress already
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
         }
-        else // They are verified non-observer with valid team sizes and no existing match. Start one!
+        else
         {
             currentMatch = Match();
-            currentMatch.setOfficial();
 
-            // Log the actions so admins can bug brad to look at detailed information
-            logMessage(pluginSettings.getDebugLevel(), "debug", "Official match started by %s (%s).", playerData->callsign.c_str(), playerData->ipAddress.c_str());
-            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match started by %s.", playerData->callsign.c_str());
+            (officialMatchRequested) ? currentMatch.setOfficial() : currentMatch.setFM();
 
-            // The amount of seconds the countdown should take
-            int timeToStart = (params->size() == 1) ? atoi(params->get(0).c_str()) : 10;
+            logMessage(pluginSettings.getDebugLevel(), "debug", "%s match started by %s (%s).",
+                    (officialMatchRequested ? "Official" : "Fun"),
+                    playerData->callsign.c_str(),
+                    playerData->ipAddress.c_str());
 
-            // Sanity check...
-            if (timeToStart <= 60 && timeToStart >= 10)
+            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s match started by %s.",
+                    (officialMatchRequested ? "Official" : "Fun"),
+                    playerData->callsign.c_str());
+
+            // The default countdown will be 10 seconds
+            int timeToStart = 10;
+            std::string requestedTime = params->get(0).c_str();
+
+            if (params->size() == 1)
             {
-                bz_startCountdown(timeToStart, bz_getTimeLimit(), "Server"); // Start the countdown with a custom countdown time limit under 1 minute
+                try
+                {
+                    int proposedTime = std::stoi(requestedTime);
+
+                    if (proposedTime <= 60 && proposedTime >= 10)
+                    {
+                        timeToStart = proposedTime;
+                    }
+                    else
+                    {
+                        bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds or less than 10.");
+                    }
+                }
+                catch (std::exception const &e)
+                {
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "Unrecognized time '%s' for countdown provided. Using default countdown of %d seconds", requestedTime.c_str(), timeToStart);
+                }
+            }
+            else if (params->size() > 1)
+            {
+                bz_sendTextMessagef(BZ_SERVER, playerID, "Unrecognized amount of parameters given. Using default countdown of %d seconds", timeToStart);
+            }
+
+            bz_startCountdown(timeToStart, bz_getTimeLimit(), "Server");
+        }
+    }
+    else if (command == "mute")
+    {
+        if (bz_hasPerm(playerID, "mute") && bz_hasPerm(playerID, "hideAdmin"))
+        {
+            std::string callsignOrID = params->get(0).c_str();
+            std::shared_ptr<bz_BasePlayerRecord> victim(getPlayerFromCallsignOrID(callsignOrID.c_str()));
+
+            if (victim)
+            {
+                bz_revokePerm(victim->playerID, "privateMessage");
+                bz_revokePerm(victim->playerID, "talk");
+
+                bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s has muted %s.", playerData->callsign.c_str(), victim->callsign.c_str());
+                bz_sendTextMessage(BZ_SERVER, victim->playerID, "You have been muted for abuse.");
             }
             else
             {
-                bz_sendTextMessage(BZ_SERVER, playerID, "Holy sanity check, Batman! Let's not have a countdown last longer than 60 seconds or less than 10.");
-                bz_startCountdown(10, bz_getTimeLimit(), "Server"); // Start the countdown for the official match
+                bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", callsignOrID.c_str());
             }
+
+            return true;
         }
+
+        return false;
     }
     else if (command == "p" || command == "pause")
     {
@@ -424,6 +475,17 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Match duration set to %.0f minute(s) by %s", (bz_getTimeLimit() / 60), bz_getPlayerCallsign(playerID));
         }
     }
+    else if (command == "unmute")
+    {
+        if (bz_hasPerm(playerID, "unmute") && bz_hasPerm(playerID, "hideAdmin"))
+        {
+            // @TODO Implement this functionality
 
-    return true;
+            return true;
+        }
+
+        return false;
+    }
+
+    return false;
 }

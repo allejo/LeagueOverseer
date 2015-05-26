@@ -47,7 +47,7 @@ Regardless of the size, complexity, and size of this plugin, the plug-in can sti
 
 1. Check out the 2.4.x BZFlag source code from GitHub, if you do not already have it on your server. If you are still using SVN, it is recommended you switch to using Git because all future development of BZFlag will use Git.
 
-        git clone -b v2_4_x https://github.com/BZFlag-Dev/bzflag-import-3.git bzflag
+        git clone -b 2.4 https://github.com/BZFlag-Dev/bzflag.git
 
 2. Go into the newly checked out source code and then the plugins directory.
         

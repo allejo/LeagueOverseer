@@ -71,6 +71,13 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
         return false;
     }
+    
+    // Players are warned not to spawn yet when a 2in is called.
+    
+    if (isOfficialMatchInProgress() || isFunMatchInProgress())
+    {
+        bz_sendTextMessage(BZ_SERVER, playerID, "Please wait for your second before spawning.");
+    }
 
     // If the player is not verified and does not have the spawn permission, they can't use any of the commands
     if (!playerData->verified || !isLeagueMember(playerID))

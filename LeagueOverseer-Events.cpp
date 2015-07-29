@@ -576,6 +576,12 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // Let's get the roll call only if there is an official match
             if (isOfficialMatch())
             {
+                
+                // Check if 2in
+                if (isFunMatchInProgress() && bz_ePlayerJoinEvent) {
+                    bz_sendTextMessage(BZ_SERVER, playerID, "Please wait for your second before spawning.");
+                }
+                
                 // Check if the start time is not negative since our default value for the approxTimeProgress is -1. Also check
                 // if it's time to do a roll call, which is defined as 90 seconds after the start of the match by default,
                 // and make sure we don't have any match participants recorded and the match isn't paused

@@ -32,15 +32,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_eAllowFlagGrab: // This event is called each time a player attempts to grab a flag
         {
             bz_AllowFlagGrabData_V1* allowFlagGrabData = (bz_AllowFlagGrabData_V1*)eventData;
-
-            // Data
-            // ---
-            //    (int)          playerID  - The ID of the player who is grabbing the flag
-            //    (int)          flagID    - The ID of the flag that is going to be grabbed
-            //    (const char*)  flagType  - The type of the flag about to be grabbed
-            //    (bool)         allow     - Whether or not to allow the flag grab
-            //    (double)       eventTime - The server time at which the event occurred (in seconds).
-
             std::string              flagAbbr          = allowFlagGrabData->flagType;
             int                      playerID          = allowFlagGrabData->playerID;
 
@@ -64,16 +55,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_eAllowSpawn: // This event is called before a player respawns
         {
             bz_AllowSpawnData_V1* allowSpawnData = (bz_AllowSpawnData_V1*)eventData;
-
-            // Data
-            // ---
-            //    (int)           playerID  - This value is the player ID for the joining player.
-            //    (bz_eTeamType)  team      - The team the player belongs to.
-            //    (bool)          handled   - Whether or not the plugin will be handling the respawn or not.
-            //    (bool)          allow     - Set to false if the player should not be allowed to spawn.
-            //    (double)        eventTime - The server time the event occurred (in seconds.)
-
-            int playerID = allowSpawnData->playerID;
+            int                   playerID       = allowSpawnData->playerID;
 
             // @TODO Add support for guest spawning
             if (!isLeagueMember(playerID)) // Is the player not part of the league?
@@ -91,12 +73,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_eBZDBChange: // This event is called each time a BZDB variable is changed
         {
             bz_BZDBChangeData_V1* bzdbData = (bz_BZDBChangeData_V1*)eventData;
-
-            // Data
-            // ---
-            //    (bz_ApiString)  key       - The variable that was changed
-            //    (bz_ApiString)  value     - What the variable was changed too
-            //    (double)        eventTime - This value is the local server time of the event.
 
             if (bzdbData->key == "_pcProtectionDelay")
             {
@@ -153,6 +129,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 currentMatch.saveEvent(capEvent.getJsonObject());
                 currentMatch.stats_flagCapture(captureData->playerCapping);
+
+                logMessage(pluginSettings.getVerboseLevel(), "debug", "CaptureMatchEvent JSON -> %s", capEvent.toString());
             }
         }
         break;
@@ -268,11 +246,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_GamePauseResumeEventData_V1* gamePauseData = (bz_GamePauseResumeEventData_V1*)eventData;
 
-            // Data
-            // ---
-            //    (bz_ApiString) actionBy  - The callsign of whoever triggered the event. By default, it's "SERVER"
-            //    (double)       eventTime - The server time the event occurred (in seconds).
-
             // Get the current UTC time
             MATCH_PAUSED = time(NULL);
 
@@ -291,12 +264,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_eGameResumeEvent:
         {
             bz_GamePauseResumeEventData_V1* gameResumeData = (bz_GamePauseResumeEventData_V1*)eventData;
-
-            // Data
-            // ---
-            //    (bz_ApiString) actionBy  - The callsign of whoever triggered the event. By default, it's "SERVER"
-            //    (double)       eventTime - The server time the event occurred (in seconds).
-
 
             // Get the current UTC time
             time_t now = time(NULL);
@@ -351,18 +318,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_GetAutoTeamEventData_V1* autoTeamData = (bz_GetAutoTeamEventData_V1*)eventData;
 
-            // Data
-            // ---
-            //    (int)           playerID  - ID of the player that is being added to the game.
-            //    (bz_ApiString)  callsign  - Callsign of the player that is being added to the game.
-            //    (bz_eTeamType)  team      - The team that the player will be added to. Initialized to the team chosen by the
-            //                                current server team rules, or the effects of a plug-in that has previously processed
-            //                                the event. Plug-ins wishing to override the team should set this value.
-            //    (bool)          handled   - The current state representing if other plug-ins have modified the default team.
-            //                                Plug-ins that modify the team should set this value to true to inform other plug-ins
-            //                                that have not processed yet.
-            //    (double)        eventTime - This value is the local server time of the event.
-
             int playerID = autoTeamData->playerID;
             std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
@@ -382,12 +337,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_eGetPlayerMotto: // This event is called when the player joins. It gives us the motto of the player
         {
             bz_GetPlayerMottoData_V2* mottoData = (bz_GetPlayerMottoData_V2*)eventData;
-
-            // Data
-            // ---
-            //    (bz_ApiString)         motto     - The motto of the joining player. This value may ve overwritten to change the motto of a player.
-            //    (bz_BasePlayerRecord)  record    - The player record for the player using the motto.
-            //    (double)               eventTime - The server time the event occurred (in seconds).
 
             if (pluginSettings.isMottoFetchEnabled())
             {
@@ -412,12 +361,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_PlayerJoinPartEventData_V1* joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
 
-            // Data
-            // ---
-            //    (int)                   playerID  - The player ID that is joining
-            //    (bz_BasePlayerRecord*)  record    - The player record for the joining player
-            //    (double)                eventTime - Time of event.
-
             int playerID = joinData->playerID;
             std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
@@ -427,8 +370,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             JoinMatchEvent joinEvent = JoinMatchEvent().setCallsign(playerData->callsign.c_str())
                                                        .setVerified(playerData->verified)
                                                        .setIpAddress(playerData->ipAddress.c_str())
-                                                       .setBZID(playerData->bzID.c_str())
-                                                       .save();
+                                                       .setBZID(playerData->bzID.c_str());
+            joinEvent.save();
 
             // Only notify a player if they exist, have joined the observer team, and there is a match in progress
             if (isMatchInProgress() && isValidPlayerID(joinData->playerID) && playerData->team == eObservers)
@@ -451,13 +394,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_ePlayerPartEvent: // This event is called each time a player leaves a game
         {
             bz_PlayerJoinPartEventData_V1* partData = (bz_PlayerJoinPartEventData_V1*)eventData;
-
-            // Data
-            // ---
-            //    (int)                   playerID  - The player ID that is leaving
-            //    (bz_BasePlayerRecord*)  record    - The player record for the leaving player
-            //    (bz_ApiString)          reason    - The reason for leaving, such as a kick or a ban
-            //    (double)                eventTime - Time of event.
 
             int playerID = partData->playerID;
             std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
@@ -482,16 +418,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_eRawChatMessageEvent: // This event is called for each chat message the server receives. It is called before any filtering is done.
         {
             bz_ChatEventData_V1* chatData  = (bz_ChatEventData_V1*)eventData;
-
-            // Data
-            // ---
-            //    (int)           from      - The player ID sending the message.
-            //    (int)           to        - The player ID that the message is to if the message is to an individual, or a
-            //                                broadcast. If the message is a broadcast the id will be BZ_ALLUSERS.
-            //    (bz_eTeamType)  team      - The team the message is for if it not for an individual or a broadcast. If it
-            //                                is not a team message the team will be eNoTeam.
-            //    (bz_ApiString)  message   - The filtered final text of the message.
-            //    (double)        eventTime - The time of the event.
 
             bz_eTeamType target    = chatData->team;
             int          playerID  = chatData->from,

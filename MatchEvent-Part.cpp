@@ -31,6 +31,8 @@ PartMatchEvent::PartMatchEvent ()
 PartMatchEvent& PartMatchEvent::setMatchTime (std::string _matchTime)
 {
     matchTime = _matchTime;
+
+    return *this;
 }
 
 PartMatchEvent& PartMatchEvent::setBZID (std::string _bzID)

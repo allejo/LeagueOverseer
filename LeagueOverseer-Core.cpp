@@ -184,14 +184,6 @@ void LeagueOverseer::Init (const char* commandLine)
     /// Check Server Configuration
     ///
 
-    // Check that the server has -autoteam enabled so we can take advantage of the bz_eGetAutoTeamEvent and swap players
-    // before they join
-    if (!bz_isAutoTeamEnabled())
-    {
-        logMessage(0, "warning", "BZFS does not have -autoteam enabled. This plug-in prefers that -autoteam is used");
-        logMessage(0, "warning", "to prevent players from accidentally joining as a player in the middle of a match.");
-    }
-
     if (!bz_isTimeManualStart())
     {
         logMessage(0, "error", "BZFS does not have -timemanual enabled. This plug-in cannot function without the server");

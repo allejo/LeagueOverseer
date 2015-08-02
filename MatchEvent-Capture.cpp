@@ -18,6 +18,7 @@ League Overseer
 
 #include <json/json.h>
 
+#include "Match.h"
 #include "MatchEvent-Capture.h"
 
 CaptureMatchEvent::CaptureMatchEvent ()
@@ -46,7 +47,7 @@ CaptureMatchEvent& CaptureMatchEvent::setBZID (std::string _bzID)
     return *this;
 }
 
-CaptureMatchEvent& CaptureMatchEvent::save (void)
+void CaptureMatchEvent::save (void)
 {
     json_object *jMatchTime = json_object_new_string(matchTime.c_str());
     json_object *jTeamID    = json_object_new_int(teamID);
@@ -57,6 +58,4 @@ CaptureMatchEvent& CaptureMatchEvent::save (void)
     json_object_object_add(jsonData, "bzid", jBZID);
 
     json_object_object_add(jsonObj, "data", jsonData);
-
-    return *this;
 }

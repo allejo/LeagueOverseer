@@ -19,6 +19,7 @@ League Overseer
 #include <json/json.h>
 
 #include "bzfsAPI.h"
+#include "MatchEvent.h"
 #include "MatchEvent-Join.h"
 
 JoinMatchEvent::JoinMatchEvent ()
@@ -56,7 +57,7 @@ JoinMatchEvent& JoinMatchEvent::setBZID (std::string _bzID)
     return *this;
 }
 
-JoinMatchEvent& JoinMatchEvent::save (void)
+void JoinMatchEvent::save (void)
 {
     json_object *jServerAddr = json_object_new_string(bz_getPublicAddr().c_str());
     json_object *jIpAddress  = json_object_new_string(ipAddress.c_str());
@@ -73,6 +74,4 @@ JoinMatchEvent& JoinMatchEvent::save (void)
     json_object_object_add(jsonData, "ip", jIpAddress);
 
     json_object_object_add(jsonObj, "data", jsonData);
-
-    return *this;
 }

@@ -18,6 +18,7 @@ League Overseer
 
 #include <json/json.h>
 
+#include "MatchEvent.h"
 #include "MatchEvent-Substitute.h"
 
 SubMatchEvent::SubMatchEvent ()
@@ -60,7 +61,7 @@ SubMatchEvent& SubMatchEvent::setBZID (std::string _bzID)
     return *this;
 }
 
-SubMatchEvent& SubMatchEvent::save (void)
+void SubMatchEvent::save (void)
 {
     json_object *jMatchTime = json_object_new_string(matchTime.c_str());
     json_object *jAction    = json_object_new_string(action.c_str());
@@ -73,6 +74,4 @@ SubMatchEvent& SubMatchEvent::save (void)
     json_object_object_add(jsonData, "bzid", jBZID);
 
     json_object_object_add(jsonObj, "data", jsonData);
-
-    return *this;
 }

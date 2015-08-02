@@ -23,21 +23,22 @@ League Overseer
 
 #include "MatchEvent.h"
 
-class CaptureMatchEvent : public MatchEvent<CaptureMatchEvent>
+class CaptureMatchEvent : public MatchEvent
 {
-    public:
-        CaptureMatchEvent ();
+public:
+    CaptureMatchEvent ();
 
-        CaptureMatchEvent& setTeamID (int _teamID);
-        CaptureMatchEvent& setTime   (std::string _time);
-        CaptureMatchEvent& setBZID   (std::string _bzID);
-        CaptureMatchEvent& save      (void);
+    CaptureMatchEvent& setTeamID (int _teamID);
+    CaptureMatchEvent& setTime   (std::string _time);
+    CaptureMatchEvent& setBZID   (std::string _bzID);
 
-    private:
-        int         teamID;
+    void               save      (void);
 
-        std::string matchTime,
-                    bzID;
+private:
+    int         teamID;
+
+    std::string matchTime,
+                bzID;
 };
 
 #endif

@@ -21,20 +21,20 @@ League Overseer
 
 #include "MatchEvent.h"
 
-class KillMatchEvent : public MatchEvent<KillMatchEvent>
+class KillMatchEvent : public MatchEvent
 {
-    public:
-        KillMatchEvent ();
+public:
+    KillMatchEvent ();
 
-        KillMatchEvent& setKiller (std::string _bzID);
-        KillMatchEvent& setVictim (std::string _bzID);
-        KillMatchEvent& setTime   (std::string _matchTime);
-        KillMatchEvent& save      (void);
+    KillMatchEvent& setKiller (std::string _bzID);
+    KillMatchEvent& setVictim (std::string _bzID);
+    KillMatchEvent& setTime   (std::string _matchTime);
+    void            save      (void);
 
-    private:
-        std::string killerBZID,
-                    victimBZID,
-                    matchTime;
+private:
+    std::string killerBZID,
+                victimBZID,
+                matchTime;
 };
 
 #endif

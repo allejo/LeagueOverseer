@@ -23,24 +23,25 @@ League Overseer
 
 #include "MatchEvent.h"
 
-class SubMatchEvent : public MatchEvent<SubMatchEvent>
+class SubMatchEvent : public MatchEvent
 {
-    public:
-        SubMatchEvent ();
+public:
+    SubMatchEvent ();
 
-        SubMatchEvent& setMatchTime (std::string _matchTime);
-        SubMatchEvent& setGoingOut  (void);
-        SubMatchEvent& setGoingIn   (void);
-        SubMatchEvent& setTeamID    (int _teamID);
-        SubMatchEvent& setBZID      (std::string _bzID);
-        SubMatchEvent& save         (void);
+    SubMatchEvent& setMatchTime (std::string _matchTime);
+    SubMatchEvent& setGoingOut  (void);
+    SubMatchEvent& setGoingIn   (void);
+    SubMatchEvent& setTeamID    (int _teamID);
+    SubMatchEvent& setBZID      (std::string _bzID);
 
-    private:
-        int         teamID;
+    void           save         (void);
 
-        std::string matchTime,
-                    action,
-                    bzID;
+private:
+    int         teamID;
+
+    std::string matchTime,
+                action,
+                bzID;
 };
 
 #endif

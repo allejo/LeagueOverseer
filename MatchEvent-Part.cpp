@@ -18,6 +18,7 @@ League Overseer
 
 #include <json/json.h>
 
+#include "MatchEvent.h"
 #include "MatchEvent-Part.h"
 
 PartMatchEvent::PartMatchEvent ()
@@ -27,6 +28,11 @@ PartMatchEvent::PartMatchEvent ()
     setEventType(PLAYER_PART);
 }
 
+PartMatchEvent& PartMatchEvent::setMatchTime (std::string _matchTime)
+{
+    matchTime = _matchTime;
+}
+
 PartMatchEvent& PartMatchEvent::setBZID (std::string _bzID)
 {
     bzID = _bzID;
@@ -34,17 +40,17 @@ PartMatchEvent& PartMatchEvent::setBZID (std::string _bzID)
     return *this;
 }
 
-PartMatchEvent& PartMatchEvent::save (void)
+void PartMatchEvent::save (void)
 {
     json_object *jServerAddr = json_object_new_string(bz_getPublicAddr().c_str());
+    json_object *jMatchTime  = json_object_new_string(matchTime.c_str());
     json_object *jTimestamp  = json_object_new_string(timestamp.c_str());
     json_object *jBZID       = json_object_new_string(bzID.c_str());
 
+    json_object_object_add(jsonData, "match-time", jMatchTime);
     json_object_object_add(jsonData, "timestamp", jTimestamp);
     json_object_object_add(jsonData, "server", jServerAddr);
     json_object_object_add(jsonData, "bzid", jBZID);
 
     json_object_object_add(jsonObj, "data", jsonData);
-
-    return *this;
 }

@@ -23,17 +23,20 @@ League Overseer
 
 #include "MatchEvent.h"
 
-class PartMatchEvent : public MatchEvent<PartMatchEvent>
+class PartMatchEvent : public MatchEvent
 {
-    public:
-        PartMatchEvent ();
+public:
+    PartMatchEvent ();
 
-        PartMatchEvent& setBZID (std::string _bzID);
-        PartMatchEvent& save    (void);
+    PartMatchEvent& setMatchTime (std::string _matchTime);
+    PartMatchEvent& setBZID (std::string _bzID);
 
-    private:
-        std::string timestamp,
-                    bzID;
+    void            save    (void);
+
+private:
+    std::string timestamp,
+                matchTime,
+                bzID;
 };
 
 #endif

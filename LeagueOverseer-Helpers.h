@@ -19,6 +19,7 @@ League Overseer
 #ifndef __PLUGIN_HELPERS_H__
 #define __PLUGIN_HELPERS_H__
 
+#include <json/json.h>
 #include <string>
 #include <vector>
 
@@ -170,6 +171,6 @@ bool toBool (std::string str);
  *
  * @return            The value of the BZDB variable
  */
-int registerCustomIntBZDB(const char* bzdbVar, int value, int perms = 0, bool persistent = false);
+int registerCustomIntBZDB (const char* bzdbVar, int value, int perms = 0, bool persistent = false);
 
 #endif

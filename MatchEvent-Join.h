@@ -23,24 +23,25 @@ League Overseer
 
 #include "MatchEvent.h"
 
-class JoinMatchEvent : public MatchEvent<JoinMatchEvent>
+class JoinMatchEvent : public MatchEvent
 {
-    public:
-        JoinMatchEvent ();
+public:
+    JoinMatchEvent ();
 
-        JoinMatchEvent& setIpAddress (std::string _ipAddress);
-        JoinMatchEvent& setCallsign  (std::string _callsign);
-        JoinMatchEvent& setVerified  (bool _verified);
-        JoinMatchEvent& setBZID      (std::string _bzID);
-        JoinMatchEvent& save         (void);
+    JoinMatchEvent& setIpAddress (std::string _ipAddress);
+    JoinMatchEvent& setCallsign  (std::string _callsign);
+    JoinMatchEvent& setVerified  (bool _verified);
+    JoinMatchEvent& setBZID      (std::string _bzID);
 
-    private:
-        bool        verified;
+    void            save         (void);
 
-        std::string ipAddress,
-                    timestamp,
-                    callsign,
-                    bzID;
+private:
+    bool        verified;
+
+    std::string ipAddress,
+                timestamp,
+                callsign,
+                bzID;
 };
 
 #endif

@@ -18,6 +18,7 @@ League Overseer
 
 #include <json/json.h>
 
+#include "MatchEvent.h"
 #include "MatchEvent-Kill.h"
 
 KillMatchEvent::KillMatchEvent ()
@@ -46,7 +47,7 @@ KillMatchEvent& KillMatchEvent::setTime (std::string _matchTime)
     return *this;
 }
 
-KillMatchEvent& KillMatchEvent::save (void)
+void KillMatchEvent::save (void)
 {
     json_object *jKillerBZID = json_object_new_string(killerBZID.c_str());
     json_object *jVictimBZID = json_object_new_string(victimBZID.c_str());
@@ -57,6 +58,4 @@ KillMatchEvent& KillMatchEvent::save (void)
     json_object_object_add(jsonData, "match-time", jMatchTime);
 
     json_object_object_add(jsonObj, "data", jsonData);
-
-    return *this;
 }

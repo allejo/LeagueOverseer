@@ -1,0 +1,3 @@
+[submodule "bz_JsonConfig"]
+	path = bz_JsonConfig
+	url = https://github.com/allejo/bz_JsonConfig.git

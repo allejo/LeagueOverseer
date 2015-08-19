@@ -27,6 +27,3 @@ Thumbs.db
 .libs
 Makefile
 Makefile.in
-
-# IDE files
-*.sublime-workspace

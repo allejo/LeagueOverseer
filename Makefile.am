@@ -1,6 +1,10 @@
 lib_LTLIBRARIES = LeagueOverseer.la
 
 LeagueOverseer_la_SOURCES = \
+	bz_JsonConfig/JsonObject/JsonObject.h \
+	bz_JsonConfig/JsonObject/JsonObject.cpp \
+	bz_JsonConfig/bz_JsonConfig.h \
+	bz_JsonConfig/bz_JsonConfig.cpp \
 	LeagueOverseer.h \
 	LeagueOverseer-Core.cpp \
 	LeagueOverseer-Events.cpp \
@@ -11,8 +15,6 @@ LeagueOverseer_la_SOURCES = \
 	LeagueOverseer-SlashCommands.cpp \
 	LeagueOverseer-Version.h \
 	LeagueOverseer-WebAPI.cpp \
-	ConfigurationOptions.h \
-	ConfigurationOptions.cpp \
 	Match.h \
 	Match.cpp \
 	MatchEvent.h \
@@ -26,6 +28,8 @@ LeagueOverseer_la_SOURCES = \
 	MatchEvent-Part.cpp \
 	MatchEvent-Substitute.h \
 	MatchEvent-Substitute.cpp \
+	PluginSettings.h \
+	PluginSettings.cpp \
 	UrlQuery.h \
 	UrlQuery.cpp
 LeagueOverseer_la_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/plugins/plugin_utils
@@ -41,6 +45,7 @@ EXTRA_DIST = \
 	LeagueOverseer.def \
 	LeagueOverseer.sln \
 	LeagueOverseer.vcxproj \
+	LeagueOverseer-Settings.json \
 	README.md \
 	ROADMAP.md
 

@@ -19,7 +19,7 @@ League Overseer
 #ifndef __PluginSettings_H_
 #define __PluginSettings_H_
 
-#include "bz_JsonConfig.h"
+#include "bz_JsonConfig/bz_JsonConfig.h"
 
 class PluginSettings : public bz_JsonConfig
 {

@@ -70,6 +70,20 @@ bz_BasePlayerRecord* LeagueOverseer::bz_getPlayerByBZID (const char* bzID)
     return bz_getPlayerByIndex(BZID_MAP[bzID]);
 }
 
+PluginSettings::GameMode LeagueOverseer::getCurrentGameMode()
+{
+    if (isOfficialMatchInProgress())
+    {
+        return PluginSettings::GameMode::OFFICIAL;
+    }
+    else if (isFunMatchInProgress())
+    {
+        return PluginSettings::GameMode::FM;
+    }
+
+    return PluginSettings::GameMode::IDLE;
+}
+
 /**
  * Get a player record of a player from either a slot ID or a callsign
  *

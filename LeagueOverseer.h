@@ -20,7 +20,7 @@ League Overseer
 
 #include "bzfsAPI.h"
 
-#include "ConfigurationOptions.h"
+#include "PluginSettings.h"
 #include "Match.h"
 #include "UrlQuery.h"
 
@@ -65,6 +65,8 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
         ///
         /// Custom functions defined
         ///
+
+        virtual PluginSettings::GameMode getCurrentGameMode();
 
         virtual bz_BasePlayerRecord  *getPlayerFromCallsignOrID (std::string callsignOrID),
                                      *bz_getPlayerByCallsign (const char* callsign),

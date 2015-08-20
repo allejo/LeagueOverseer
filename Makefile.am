@@ -1,3 +1,5 @@
+AUTOMAKE_OPTIONS = subdir-objects
+
 lib_LTLIBRARIES = LeagueOverseer.la
 
 LeagueOverseer_la_SOURCES = \

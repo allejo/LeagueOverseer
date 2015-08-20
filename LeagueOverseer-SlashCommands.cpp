@@ -188,7 +188,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
                 if (commandOption == "reload")
                 {
-                    pluginSettings.readConfigurationFile(CONFIG_PATH.c_str());
+                    pluginSettings.loadConfig(CONFIG_PATH.c_str());
                     bz_sendTextMessage(BZ_SERVER, playerID, "League Overseer plug-in configuration reloaded.");
                 }
             }

@@ -22,7 +22,6 @@ League Overseer
 #include "bz_JsonConfig/JsonObject/JsonObject.h"
 #include "LeagueOverseer.h"
 #include "LeagueOverseer-Helpers.h"
-#include "bzfs.h"
 
 // We got a response from one of our URL jobs
 void LeagueOverseer::URLDone (const char* /*URL*/, const void* data, unsigned int /*size*/, bool /*complete*/)

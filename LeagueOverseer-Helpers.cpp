@@ -250,3 +250,13 @@ int registerCustomIntBZDB(const char* bzdbVar, int value, int perms, bool persis
 
     return bz_getBZDBInt(bzdbVar);
 }
+
+bool registerCustomBoolBZDB(const char* bzdbVar, bool value, int perms, bool persistent)
+{
+    if (!bz_BZDBItemExists(bzdbVar))
+    {
+        bz_setBZDBBool(bzdbVar, value, perms, persistent);
+    }
+
+    return bz_getBZDBBool(bzdbVar);
+}

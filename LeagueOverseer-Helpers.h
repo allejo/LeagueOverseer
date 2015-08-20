@@ -173,4 +173,17 @@ bool toBool (std::string str);
  */
 int registerCustomIntBZDB (const char* bzdbVar, int value, int perms = 0, bool persistent = false);
 
+/**
+* Create a BZDB variable if it doesn't exist. This is used because if the variable already exists via -setforced in
+* the configuration file, then this value would be overloaded and we don't want that
+*
+* @param  bzdbVar    The name of the BZDB variable
+* @param  value      The value of the variable
+* @param  perms      What to set the permission value to. (Range: 1-3. Using 0 sets it to the default [2], and using a higher number sets it to 3.)
+* @param  persistent Whether or not the variable will be persistent.
+*
+* @return            The value of the BZDB variable
+*/
+bool registerCustomBoolBZDB (const char* bzdbVar, bool value, int perms = 0, bool persistent = false);
+
 #endif

@@ -21,6 +21,7 @@ League Overseer
 
 #include "LeagueOverseer.h"
 #include "LeagueOverseer-Helpers.h"
+#include "PluginSettings.h"
 
 // @TODO Figure out what to do with this function...
 // We are building a string of BZIDs from the people who matched in the match that just occurred
@@ -275,7 +276,7 @@ void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 // Reset the time limit to what is in the plug-in configuration
 void LeagueOverseer::resetTimeLimit()
 {
-    bz_setTimeLimit(pluginSettings.getDefaultTimeLimit() * 60);
+    bz_setTimeLimit(bz_getBZDBInt("_defaultTimeLimit") * 60);
 }
 
 // Check the player's user groups to see if they belong to the league and save that value

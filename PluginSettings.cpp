@@ -25,95 +25,214 @@ void PluginSettings::loadConfig (char const *filePath)
 
 std::string PluginSettings::getSpawnCommandPerm (void)
 {
-    return root.getChild("spawn_command_perm").getString();
+    if (root.hasChild("spawn_command_perm"))
+    {
+        return root.getChild("spawn_command_perm").getString();
+    }
+
+    return "ban";
 }
 
 std::string PluginSettings::getMatchReportURL (void)
 {
-    return root.getChild("match_report_url").getString();
+    if (root.hasChild("match_report_url"))
+    {
+        return root.getChild("match_report_url").getString();
+    }
+
+    return "";
 }
 
 std::string PluginSettings::getShowHiddenPerm (void)
 {
-    return root.getChild("show_hidden_perm").getString();
+    if (root.hasChild("show_hidden_perm"))
+    {
+        return root.getChild("show_hidden_perm").getString();
+    }
+
+    return "ban";
 }
 
 std::string PluginSettings::getMapChangePath (void)
 {
-    return root.getChild("mapchange_path").getString();
+    if (root.hasChild("mapchange_path"))
+    {
+        return root.getChild("mapchange_path").getString();
+    }
+
+    return "";
 }
 
 std::string PluginSettings::getTeamNameURL (void)
 {
-    return root.getChild("team_name_url").getString();
+    if (root.hasChild("team_name_url"))
+    {
+        return root.getChild("team_name_url").getString();
+    }
+
+    return "";
 }
 
 std::string PluginSettings::getLeagueGroup (void)
 {
-    return root.getChild("league_group").getString();
+    if (root.hasChild("league_group"))
+    {
+        return root.getChild("league_group").getString();
+    }
+
+    return "VERIFIED";
 }
 
 std::string PluginSettings::getMottoFormat (void)
 {
-    return root.getChild("motto_format").getString();
+    if (root.hasChild("motto_format"))
+    {
+        return root.getChild("motto_format").getString();
+    }
+
+    return "{team}";
 }
 
 bool PluginSettings::areOfficialMatchesDisabled (void)
 {
-    return root.getChild("disable_official_matches").getBool();
+    if (root.hasChild("disable_official_matches"))
+    {
+        return root.getChild("disable_official_matches").getBool();
+    }
+
+    return false;
 }
 
 bool PluginSettings::isInterPluginCheckEnabled (void)
 {
-    return root.getChild("interplugin_api_check").getBool();
+    if (root.hasChild("interplugin_api_check"))
+    {
+        return root.getChild("interplugin_api_check").getBool();
+    }
+
+    return false;
 }
 
 bool PluginSettings::areFunMatchesDisabled (void)
 {
-    return root.getChild("disable_fun_matches").getBool();
-}
+    if (root.hasChild("disable_fun_matches"))
+    {
+        return root.getChild("disable_fun_matches").getBool();
+    }
 
-bool PluginSettings::isPcProtectionEnabled (void)
-{
-    return root.getChild("pc_protection_enabled").getBool();
+    return false;
 }
 
 bool PluginSettings::ignoreTimeSanityCheck (void)
 {
-    return root.getChild("ignore_time_checks").getBool();
+    if (root.hasChild("ignore_time_checks"))
+    {
+        return root.getChild("ignore_time_checks").getBool();
+    }
+
+    return false;
+}
+
+bool PluginSettings::isGuestSpawningEnable(PluginSettings::GameMode mode)
+{
+    if (!root.hasChild("guest_spawning"))
+    {
+        return false;
+    }
+
+    JsonObject guest_spawning = root.getChild("guest_spawning");
+    std::string gamemode = gameModeAsString(mode);
+
+    if (!guest_spawning.hasChild(gamemode) || !guest_spawning.getChild(gamemode).hasChild("allowed"))
+    {
+        return false;
+    }
+
+    return guest_spawning.getChild(gamemode).getChild("allowed").getBool();
 }
 
 bool PluginSettings::isInGameDebugEnabled (void)
 {
-    return root.getChild("in_game_debug_enabled").getBool();
+    if (root.hasChild("in_game_debug_enabled"))
+    {
+        return root.getChild("in_game_debug_enabled").getBool();
+    }
+
+    return false;
 }
 
 bool PluginSettings::isMatchReportEnabled (void)
 {
-    return root.getChild("match_report_enabled").getBool();
+    if (root.hasChild("match_report_enabled"))
+    {
+        return root.getChild("match_report_enabled").getBool();
+    }
+
+    return true;
 }
 
 bool PluginSettings::isMottoFetchEnabled (void)
 {
-    return root.getChild("motto_fetch_enabled").getBool();
+    if (root.hasChild("motto_fetch_enabled"))
+    {
+        return root.getChild("motto_fetch_enabled").getBool();
+    }
+
+    return true;
 }
 
 bool PluginSettings::isRotationalLeague (void)
 {
-    return root.getChild("rotational_league").getBool();
-}
+    if (root.hasChild("rotational_league"))
+    {
+        return root.getChild("rotational_league").getBool();
+    }
 
-int PluginSettings::getDefaultTimeLimit (void)
-{
-    return root.getChild("default_time_limit").getInt();
+    return false;
 }
 
 int PluginSettings::getVerboseLevel (void)
 {
-    return root.getChild("verbose_level").getInt();
+    if (root.hasChild("verbose_level"))
+    {
+        return root.getChild("verbose_level").getInt();
+    }
+
+    return 4;
 }
 
 int PluginSettings::getDebugLevel (void)
 {
-    return root.getChild("debug_level").getInt();
+    if (root.hasChild("debug_level"))
+    {
+        return root.getChild("debug_level").getInt();
+    }
+
+    return 1;
+}
+
+std::string PluginSettings::gameModeAsString(PluginSettings::GameMode mode)
+{
+    switch (mode)
+    {
+        case OFFICIAL:
+        {
+            return "during_official";
+        }
+
+        case FM:
+        {
+            return "during_fm";
+        }
+
+        case IDLE:
+        {
+            return "idle";
+        }
+
+        default:
+        {
+            return "Unknown";
+        }
+    }
 }

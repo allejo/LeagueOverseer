@@ -35,10 +35,10 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             std::string              flagAbbr          = allowFlagGrabData->flagType;
             int                      playerID          = allowFlagGrabData->playerID;
 
-            if (pluginSettings.isPcProtectionEnabled()) // Is the server configured to protect against Pass Camping
+            if (bz_getBZDBBool("_pcProtectionEnabled")) // Is the server configured to protect against Pass Camping
             {
                 // Check if the last capture was within the 'PC_PROTECTION_DELAY' amount of seconds
-                if (LAST_CAP + PC_PROTECTION_DELAY > bz_getCurrentTime())
+                if (LAST_CAP + bz_getBZDBInt("_pcProtectionDelay") > bz_getCurrentTime())
                 {
                     // Check to see if the flag being grabbed belongs to the team that just had their flag captured AND check
                     // to see if someone not from the victim team grabbed it
@@ -54,19 +54,21 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
         case bz_eAllowSpawn: // This event is called before a player respawns
         {
-            bz_AllowSpawnData_V1* allowSpawnData = (bz_AllowSpawnData_V1*)eventData;
+            bz_AllowSpawnData_V2* allowSpawnData = (bz_AllowSpawnData_V2*)eventData;
             int                   playerID       = allowSpawnData->playerID;
 
-            // @TODO Add support for guest spawning
-            if (!isLeagueMember(playerID)) // Is the player not part of the league?
+            if (!pluginSettings.isGuestSpawningEnable(getCurrentGameMode()) && !isLeagueMember(playerID))
             {
                 // Disable their spawning privileges
-                allowSpawnData->handled = true;
-                allowSpawnData->allow   = false;
+                allowSpawnData->handled    = true;
+                allowSpawnData->allow      = false;
+                allowSpawnData->kickPlayer = false;
 
                 // Send the player a message, either default or custom based on 'SPAWN_MSG_ENABLED'
-                sendPluginMessage(playerID, pluginSettings.isSpawnMessageEnabled(), pluginSettings.getNoSpawnMessage(), SPAWN);
+//                sendPluginMessage(playerID, pluginSettings.isSpawnMessageEnabled(), pluginSettings.getNoSpawnMessage(), SPAWN);
             }
+
+
         }
         break;
 
@@ -80,14 +82,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 int proposedValue = atoi(bzdbData->value.c_str());
 
                 // Our PC protection delay should be between 3 and 15 seconds only, otherwise set it to the default 5 seconds
-                if (proposedValue >= 3 && proposedValue <= 15)
+                if (proposedValue < 3 && proposedValue > 15)
                 {
-                    PC_PROTECTION_DELAY = proposedValue;
-                }
-                else
-                {
-                    PC_PROTECTION_DELAY = 5;
-                    bz_setBZDBInt("_pcProtectionDelay", PC_PROTECTION_DELAY);
+                    bz_setBZDBInt("_pcProtectionDelay", 5);
                 }
             }
         }
@@ -444,13 +441,13 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                             if (target != eObservers || bz_getPlayerTeam(recipient) != eObservers)
                             {
                                 chatData->message = ""; // We set the message to nothing so they won't send thing anything
-                                sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT);
+//                                sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT);
                             }
                         }
                         else // If they aren't in the observer team during a match, don't let them talk
                         {
                             chatData->message = "";
-                            sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT);
+//                            sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT);
                         }
                     }
                     else // A match is not in progress
@@ -458,14 +455,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                         if (target != eAdministrators)
                         {
                             chatData->message = "";
-                            sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT);
+//                            sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT);
                         }
                     }
                 }
                 else // Non-league members are not allowed limited talk functionality
                 {
                     chatData->message = "";
-                    sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT); // Send them a message
+//                    sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT); // Send them a message
                 }
             }
         }

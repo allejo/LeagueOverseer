@@ -60,7 +60,6 @@
         "motto_format": "{team} | {motto}",
         "inter_plugin_com_api_check": false,
         "disable_official_matches": false,
-        "pc_protection_enabled": false,
         "in_game_debug_enabled": false,
         "spawn_message_enabled": true,
         "match_report_enabled": true,
@@ -69,7 +68,6 @@
         "disable_fun_matches": false,
         "allow_limited_chat": true,
         "rotational_league": true,
-        "default_time_limit": 1800,
         "verbose_level": 4,
         "debug_level": 1
     }

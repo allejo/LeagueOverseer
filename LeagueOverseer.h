@@ -117,17 +117,18 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
                      TEAM_ONE,               // Because we're serving more than just GU league, we need to support different colors therefore, call the teams
                      TEAM_TWO;               //     ONE and TWO
 
-        int          PC_PROTECTION_DELAY;    // The delay (in seconds) of how long the PC protection will be in effect
-
         UrlQuery     TeamUrlRepo,
                      MatchUrlRepo;
 
-        ConfigurationOptions pluginSettings;
+        PluginSettings pluginSettings;
         Match currentMatch;
 
         // Player database storing BZIDs and callsigns without having to loop through the entire playerlist each time
         std::map<std::string, int> BZID_MAP;
         std::map<std::string, int> CALLSIGN_MAP;
+
+        // Custom BZDB variables that this plug-in registers and watches
+        std::vector<std::string> BZDB_VARS;
 
         // The slash commands that are supported and used by this plug-in
         std::vector<std::string> SLASH_COMMANDS;

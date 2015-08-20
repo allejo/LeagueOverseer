@@ -62,6 +62,7 @@ void LeagueOverseer::Init (const char* commandLine)
 
     // Add all of the support slash commands so we can easily remove them in the Cleanup() function
     SLASH_COMMANDS = {"ban", "cancel", "countdown", "f", "finish", "fm", "gameover", "kick", "leagueoverseer", "los", "mute", "o", "offi", "official", "p", "pause", "poll", "r", "resume", "showhidden", "spawn", "s", "stats", "timelimit", "unmute"};
+    BZDB_VARS = {"_pcProtectionEnabled", "_pcProtectionDelay", "_defaultTimeLimit"};
 
     // Register our custom slash commands
     for (auto command : SLASH_COMMANDS)
@@ -74,21 +75,28 @@ void LeagueOverseer::Init (const char* commandLine)
 
     // Load the configuration data when the plugin is loaded
     CONFIG_PATH = commandLine;
-    pluginSettings.readConfigurationFile(commandLine);
+    pluginSettings.loadConfig(CONFIG_PATH.c_str());
 
     // Check to see if the plugin is for a rotational league
-    if (pluginSettings.getMapChangePath() != "" && pluginSettings.isRotationalLeague())
+    if (pluginSettings.isRotationalLeague())
     {
-        // Open the mapchange.out file to see what map is being used
-        std::ifstream infile;
-        infile.open(pluginSettings.getMapChangePath().c_str());
-        getline(infile, MAP_NAME);
-        infile.close();
+        if (pluginSettings.getMapChangePath() != "")
+        {
+            // Open the mapchange.out file to see what map is being used
+            std::ifstream infile;
+            infile.open(pluginSettings.getMapChangePath().c_str());
+            getline(infile, MAP_NAME);
+            infile.close();
 
-        // Remove the '.conf' from the mapchange.out file
-        MAP_NAME = MAP_NAME.substr(0, MAP_NAME.length() - 5);
+            // Remove the '.conf' from the mapchange.out file
+            MAP_NAME = MAP_NAME.substr(0, MAP_NAME.length() - 5);
 
-        logMessage(pluginSettings.getDebugLevel(), "debug", "Current map being played: %s", MAP_NAME.c_str());
+            logMessage(pluginSettings.getDebugLevel(), "debug", "Current map being played: %s", MAP_NAME.c_str());
+        }
+        else
+        {
+            logMessage(0, "error", "Server marked as a rotational league but the location to the mapchange.out file was not specified.");
+        }
     }
 
     // Assign our two team colors to eNoTeam simply so we have something to check for
@@ -130,32 +138,33 @@ void LeagueOverseer::Init (const char* commandLine)
     // Request the team name database
     if (pluginSettings.isMottoFetchEnabled())
     {
-        logMessage(pluginSettings.getVerboseLevel(), "debug", "Requesting team name database...");
+        logMessage(pluginSettings.getVerboseLevel(), "debug", "Requesting league roster...");
         TeamUrlRepo.set("query", "teamNameDump").submit();
     }
 
     // Create a new BZDB variable to easily set the amount of seconds team flags are protected after captures
-    PC_PROTECTION_DELAY = registerCustomIntBZDB("_pcProtectionDelay", 5);
+    registerCustomBoolBZDB("_pcProtectionEnabled", false);
+    registerCustomIntBZDB("_pcProtectionDelay", 5);
+    registerCustomIntBZDB("_defaultTimeLimit", 1800);
 
-    if (pluginSettings.isPcProtectionEnabled() && (PC_PROTECTION_DELAY < 3 && PC_PROTECTION_DELAY > 15))
+    if (bz_getBZDBBool("_pcProtectionEnabled") && bz_getBZDBInt("_pcProtectionDelay") < 3 && bz_getBZDBInt("_pcProtectionDelay") > 15)
     {
-        PC_PROTECTION_DELAY = 5;
-        logMessage(0, "warning", "Invalid value for the PC protection delay. Default value used: %d", PC_PROTECTION_DELAY);
+        logMessage(0, "warning", "Invalid value for the PC protection delay. Default value used: %d", 5);
     }
 
     // Set a clip field with the full name of the plug-in for other plug-ins to know the exact name of the plug-in
     // since this plug-in has a versioning system; i.e. League Overseer X.Y.Z (r)
     bz_setclipFieldString("LeagueOverseer", Name());
 
-    // We'll be ignoring the '-time' option as of 1.2.0 so we'll be relying entirely on DEFAULT_TIME_LIMIT from the configuration file
+    // We'll be ignoring the '-time' option as of 1.2.0 so we'll be relying entirely on the _defaultTimeLimit BZDB variable
 
     if (bz_getTimeLimit() > 0.0)
     {
         logMessage(0, "warning", "As of League Overseer 1.2.0, the '-time' option is no longer used and is ignored in favor of using");
-        logMessage(0, "warning", "the DEFAULT_TIME_LIMIT option in the configuration file. Default value used: %d minutes", (pluginSettings.getDefaultTimeLimit() / 60));
+        logMessage(0, "warning", "the _defaultTimeLimit BZDB variable. Default value used: %d minutes", (bz_getBZDBInt("_defaultTimeLimit") / 60));
     }
 
-    bz_setTimeLimit(pluginSettings.getDefaultTimeLimit());
+    bz_setTimeLimit(bz_getBZDBInt("_defaultTimeLimit"));
 
 
     ///

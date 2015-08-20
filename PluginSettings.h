@@ -49,7 +49,6 @@ public:
     bool isGuestMessagingEnable     (GameMode mode);
     bool areFunMatchesDisabled      (void);
     bool isGuestSpawningEnable      (GameMode mode);
-    bool isPcProtectionEnabled      (void);
     bool isSpawnMessageEnabled      (void);
     bool ignoreTimeSanityCheck      (void);
     bool isInGameDebugEnabled       (void);
@@ -59,9 +58,11 @@ public:
     bool isAllowLimitedChat         (void);
     bool isRotationalLeague         (void);
 
-    int  getDefaultTimeLimit        (void);
     int  getVerboseLevel            (void);
     int  getDebugLevel              (void);
+
+private:
+    std::string gameModeAsString (GameMode mode);
 };
 
 #endif

@@ -161,10 +161,10 @@ void LeagueOverseer::Init (const char* commandLine)
     if (bz_getTimeLimit() > 0.0)
     {
         logMessage(0, "warning", "As of League Overseer 1.2.0, the '-time' option is no longer used and is ignored in favor of using");
-        logMessage(0, "warning", "the _defaultTimeLimit BZDB variable. Default value used: %d minutes", (bz_getBZDBInt("_defaultTimeLimit") / 60));
+        logMessage(0, "warning", "the _defaultTimeLimit BZDB variable. Default value used: %d minutes", (getDefaultTimeLimit() / 60));
     }
 
-    bz_setTimeLimit(bz_getBZDBInt("_defaultTimeLimit"));
+    bz_setTimeLimit(getDefaultTimeLimit());
 
 
     ///

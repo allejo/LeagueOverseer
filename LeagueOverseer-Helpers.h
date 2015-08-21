@@ -174,16 +174,37 @@ bool toBool (std::string str);
 int registerCustomIntBZDB (const char* bzdbVar, int value, int perms = 0, bool persistent = false);
 
 /**
-* Create a BZDB variable if it doesn't exist. This is used because if the variable already exists via -setforced in
-* the configuration file, then this value would be overloaded and we don't want that
-*
-* @param  bzdbVar    The name of the BZDB variable
-* @param  value      The value of the variable
-* @param  perms      What to set the permission value to. (Range: 1-3. Using 0 sets it to the default [2], and using a higher number sets it to 3.)
-* @param  persistent Whether or not the variable will be persistent.
-*
-* @return            The value of the BZDB variable
-*/
+ * Create a BZDB variable if it doesn't exist. This is used because if the variable already exists via -setforced in
+ * the configuration file, then this value would be overloaded and we don't want that
+ *
+ * @param  bzdbVar    The name of the BZDB variable
+ * @param  value      The value of the variable
+ * @param  perms      What to set the permission value to. (Range: 1-3. Using 0 sets it to the default [2], and using a higher number sets it to 3.)
+ * @param  persistent Whether or not the variable will be persistent.
+ *
+ * @return            The value of the BZDB variable
+ */
 bool registerCustomBoolBZDB (const char* bzdbVar, bool value, int perms = 0, bool persistent = false);
+
+/**
+ * A convenience method for retrieving the _pcProtectionEnabled BZDB variable
+ *
+ * @return True if Pass Camping Protection is enabled on the server
+ */
+bool isPcProtectionEnabled (void);
+
+/**
+ * A convenience method for retrieving the _pcProtectionDelay BZDB variable
+ *
+ * @return The number of seconds a team flag is protected after a flag capture
+ */
+int getPcProtectionDelay (void);
+
+/**
+ * A convenience method for retrieving the _defaultTimeLimit BZDB variable
+ *
+ * @return The time (in seconds) the default match length is set to
+ */
+int getDefaultTimeLimit (void);
 
 #endif

@@ -35,10 +35,10 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             std::string              flagAbbr          = allowFlagGrabData->flagType;
             int                      playerID          = allowFlagGrabData->playerID;
 
-            if (bz_getBZDBBool("_pcProtectionEnabled")) // Is the server configured to protect against Pass Camping
+            if (isPcProtectionEnabled()) // Is the server configured to protect against Pass Camping
             {
                 // Check if the last capture was within the 'PC_PROTECTION_DELAY' amount of seconds
-                if (LAST_CAP + bz_getBZDBInt("_pcProtectionDelay") > bz_getCurrentTime())
+                if (LAST_CAP + getPcProtectionDelay() > bz_getCurrentTime())
                 {
                     // Check to see if the flag being grabbed belongs to the team that just had their flag captured AND check
                     // to see if someone not from the victim team grabbed it
@@ -81,8 +81,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 // Save the proposed value in a variable for easy access
                 int proposedValue = atoi(bzdbData->value.c_str());
 
-                // Our PC protection delay should be between 3 and 15 seconds only, otherwise set it to the default 5 seconds
-                if (proposedValue < 3 && proposedValue > 15)
+                // Our PC protection delay should be between 3 and 30 seconds only, otherwise set it to the default 5 seconds
+                if (proposedValue < 3 && proposedValue > 30)
                 {
                     bz_setBZDBInt("_pcProtectionDelay", 5);
                 }

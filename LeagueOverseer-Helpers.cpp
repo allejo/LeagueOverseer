@@ -260,3 +260,18 @@ bool registerCustomBoolBZDB(const char* bzdbVar, bool value, int perms, bool per
 
     return bz_getBZDBBool(bzdbVar);
 }
+
+bool isPcProtectionEnabled (void)
+{
+    return bz_getBZDBBool("_pcProtectionEnabled");
+}
+
+int getPcProtectionDelay (void)
+{
+    return bz_getBZDBInt("_pcProtectionDelay");
+}
+
+int getDefaultTimeLimit (void)
+{
+    return bz_getBZDBInt("_defaultTimeLimit");
+}

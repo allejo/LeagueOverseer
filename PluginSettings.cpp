@@ -133,7 +133,28 @@ bool PluginSettings::ignoreTimeSanityCheck (void)
     return false;
 }
 
-bool PluginSettings::isGuestSpawningEnable(PluginSettings::GameMode mode)
+std::vector<std::string> PluginSettings::getGuestSpawningMessage (PluginSettings::GameMode mode)
+{
+    if (root.hasChild("guest_spawning"))
+    {
+        JsonObject guest_spawning = root.getChild("guest_spawning");
+        std::string gamemode = gameModeAsString(mode);
+
+        if (guest_spawning.hasChild(gamemode) && guest_spawning.getChild(gamemode).hasChild("message"))
+        {
+            JsonObject message = guest_spawning.getChild(gamemode).getChild("message");
+
+            if (!message.getStringArray().empty())
+            {
+                return message.getStringArray();
+            }
+        }
+    }
+
+    return { "We're sorry, you are not allowed to talk!" };
+}
+
+bool PluginSettings::isGuestSpawningEnabled (PluginSettings::GameMode mode)
 {
     if (!root.hasChild("guest_spawning"))
     {

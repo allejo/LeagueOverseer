@@ -46,9 +46,10 @@ public:
 
     bool areOfficialMatchesDisabled (void);
     bool isInterPluginCheckEnabled  (void);
-    bool isGuestMessagingEnable     (GameMode mode);
+    bool isGuestMessagingEnabled    (GameMode mode);
+    bool hasGuestSpawningMessage    (GameMode mode);
+    bool isGuestSpawningEnabled     (GameMode mode);
     bool areFunMatchesDisabled      (void);
-    bool isGuestSpawningEnable      (GameMode mode);
     bool isSpawnMessageEnabled      (void);
     bool ignoreTimeSanityCheck      (void);
     bool isInGameDebugEnabled       (void);

@@ -57,18 +57,15 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             bz_AllowSpawnData_V2* allowSpawnData = (bz_AllowSpawnData_V2*)eventData;
             int                   playerID       = allowSpawnData->playerID;
 
-            if (!pluginSettings.isGuestSpawningEnable(getCurrentGameMode()) && !isLeagueMember(playerID))
+            if (!pluginSettings.isGuestSpawningEnabled(getCurrentGameMode()) && !isLeagueMember(playerID))
             {
                 // Disable their spawning privileges
                 allowSpawnData->handled    = true;
                 allowSpawnData->allow      = false;
                 allowSpawnData->kickPlayer = false;
 
-                // Send the player a message, either default or custom based on 'SPAWN_MSG_ENABLED'
-//                sendPluginMessage(playerID, pluginSettings.isSpawnMessageEnabled(), pluginSettings.getNoSpawnMessage(), SPAWN);
+                sendPluginMessage(playerID, pluginSettings.getGuestSpawningMessage(getCurrentGameMode()));
             }
-
-
         }
         break;
 
@@ -79,7 +76,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (bzdbData->key == "_pcProtectionDelay")
             {
                 // Save the proposed value in a variable for easy access
-                int proposedValue = atoi(bzdbData->value.c_str());
+                int proposedValue = std::stoi(bzdbData->value.c_str());
 
                 // Our PC protection delay should be between 3 and 30 seconds only, otherwise set it to the default 5 seconds
                 if (proposedValue < 3 && proposedValue > 30)

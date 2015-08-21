@@ -185,31 +185,12 @@ void revokePermFromAll(std::string perm)
     modifyPerms(false, perm);
 }
 
-void sendPluginMessage (int playerID, bool sendCustomMessage, std::vector<std::string> message, DefaultMsgType msgToSend)
+void sendPluginMessage (int playerID, std::vector<std::string> message)
 {
-    if (sendCustomMessage) // We want to send the players a custom message
+    for (std::vector<std::string>::const_iterator it = message.begin(); it != message.end(); ++it)
     {
-        for (std::vector<std::string>::const_iterator it = message.begin(); it != message.end(); ++it)
-        {
-            std::string currentLine = std::string(*it);
-            bz_sendTextMessagef(BZ_SERVER, playerID, "%s", currentLine.c_str());
-        }
-    }
-    else // Send them the default BZFS message
-    {
-        switch (msgToSend)
-        {
-            case CHAT:
-                bz_sendTextMessage(BZ_SERVER, playerID, "We're sorry, you are not allowed to talk!");
-                break;
-
-            case SPAWN:
-                bz_sendTextMessage(BZ_SERVER, playerID, "We're sorry, you are not allowed to spawn!");
-                break;
-
-            default:
-                break;
-        }
+        std::string currentLine = std::string(*it);
+        bz_sendTextMessagef(BZ_SERVER, playerID, "%s", currentLine.c_str());
     }
 }
 

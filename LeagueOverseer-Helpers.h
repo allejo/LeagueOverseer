@@ -126,12 +126,10 @@ void revokePermFromAll(std::string perm);
 /**
  * Send a player a message that is stored in a vector
  *
- * @param playerID          The ID of the player who the message is being sent to
- * @param sendCustomMessage Whether or not to send a custom message. When set to false, the default hard coded message will be sent.
- * @param message           A vector containing the message sent to player
- * @param msgToSend         The type of message sent
+ * @param playerID The ID of the player who the message is being sent to
+ * @param message  A vector containing the message sent to player
  */
-void sendPluginMessage (int playerID, bool sendCustomMessage, std::vector<std::string> message, DefaultMsgType msgToSend);
+void sendPluginMessage (int playerID, std::vector<std::string> message);
 
 /**
  * Check if a string is an integer

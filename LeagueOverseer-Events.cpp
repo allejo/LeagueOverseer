@@ -17,6 +17,9 @@ League Overseer
 */
 
 #include <algorithm>
+#include <sstream>
+
+#include "bzfsAPI.h"
 
 #include "LeagueOverseer.h"
 #include "LeagueOverseer-Helpers.h"
@@ -134,8 +137,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             logMessage(pluginSettings.getVerboseLevel(), "debug", "A match has ended.");
 
             // Get the current standard UTC time
-            bz_Time standardTime;
-            bz_getUTCtime(&standardTime);
+            bz_Time stdTime;
+            bz_getUTCtime(&stdTime);
             std::string recordingFileName;
 
             // Only save the recording buffer if we actually started recording when the match started
@@ -143,41 +146,42 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             {
                 logMessage(pluginSettings.getVerboseLevel(), "debug", "Recording was in progress during the match.");
 
-                // We'll be formatting the file name, so create a variable to store it
-                char tempRecordingFileName[512];
+                std::stringstream recordingName;
 
-                // Let's get started with formatting
-                if (isOfficialMatch())
+                std::string _matchType = (isOfficialMatch()) ? "offi" : "fm",
+                            _teamOneName = currentMatch.getTeamOneName(),
+                            _teamTwoName = currentMatch.getTeamTwoName();
+
+                // (offi|fm)-YYYYMMDD
+                recordingName << _matchType << "-" << stdTime.year << formatInt("%02d", stdTime.month) << formatInt("%02d", stdTime.day);
+
+                if (!currentMatch.isRosterEmpty())
                 {
-                    // If the official match was finished, then mark it as canceled
-                    std::string matchCanceled = (currentMatch.matchCanceled()) ? "-Canceled" : "",
-                                _teamOneName  = currentMatch.getTeamOneName().c_str(),
-                                _teamTwoName  = currentMatch.getTeamTwoName().c_str(),
-                                _matchTeams   = "";
-
-                    // We want to standardize the names, so replace all spaces with underscores and
-                    // any weird HTML symbols should have been stripped already by the PHP script
                     std::replace(_teamOneName.begin(), _teamOneName.end(), ' ', '_');
                     std::replace(_teamTwoName.begin(), _teamTwoName.end(), ' ', '_');
 
-                    if (!currentMatch.isRosterEmpty())
-                    {
-                        _matchTeams = _teamOneName + "-vs-" + _teamTwoName + "-";
-                    }
-
-                    sprintf(tempRecordingFileName, "offi-%d%02d%02d-%s%02d%02d%s.rec",
-                        standardTime.year, standardTime.month, standardTime.day, _matchTeams.c_str(),
-                        standardTime.hour, standardTime.minute, matchCanceled.c_str());
+                    // Team_A-vs-Team_B
+                    recordingName << "-" << _teamOneName << "-vs-" << _teamTwoName;
                 }
-                else
+
+                // -HHMM
+                recordingName << "-" << formatInt("%02d", stdTime.hour) << formatInt("%02d", stdTime.minute);
+
+                const std::string nameForHash = recordingName.str();
+                std::string hash = bz_MD5(nameForHash.c_str());
+
+                // -ACBD123
+                recordingName << "-" << hash.substr(0, 7);
+
+                if (currentMatch.matchCanceled())
                 {
-                    sprintf(tempRecordingFileName, "fun-%d%02d%02d-%02d%02d.rec",
-                        standardTime.year, standardTime.month, standardTime.day,
-                        standardTime.hour, standardTime.minute);
+                    // -Canceled
+                    recordingName << "-Canceled";
                 }
 
-                // Move the char[] into a string to handle it better
-                recordingFileName = tempRecordingFileName;
+                recordingName << ".rec";
+
+                recordingFileName = recordingName.str();
                 logMessage(pluginSettings.getVerboseLevel(), "debug", "Replay file will be named: %s", recordingFileName.c_str());
 
                 // Save the recording buffer and stop recording
@@ -192,7 +196,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             // Format the date to -> year-month-day hour:minute:second
             char matchDate[20];
-            sprintf(matchDate, "%02d-%02d-%02d %02d:%02d:%02d", standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute, standardTime.second);
+            sprintf(matchDate, "%02d-%02d-%02d %02d:%02d:%02d", stdTime.year, stdTime.month, stdTime.day, stdTime.hour, stdTime.minute, stdTime.second);
 
             currentMatch.save(matchDate, recordingFileName);
 

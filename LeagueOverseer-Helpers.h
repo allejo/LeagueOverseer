@@ -205,4 +205,11 @@ int getPcProtectionDelay (void);
  */
 int getDefaultTimeLimit (void);
 
+/**
+ * Format an integer with snprintf and return it as a string
+ *
+ * @return A formatted representation of the int as a string
+ */
+const char* formatInt(const char* fmt, int number);
+
 #endif

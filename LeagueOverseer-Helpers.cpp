@@ -256,3 +256,15 @@ int getDefaultTimeLimit (void)
 {
     return bz_getBZDBInt("_defaultTimeLimit");
 }
+
+const char* formatInt(const char* fmt, int number)
+{
+    size_t bufSize = sizeof(fmt);
+    char content[bufSize];
+
+    snprintf(content, bufSize, fmt, number);
+
+    std::string c = content;
+
+    return c.c_str();
+}

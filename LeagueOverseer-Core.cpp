@@ -75,7 +75,16 @@ void LeagueOverseer::Init (const char* commandLine)
 
     // Load the configuration data when the plugin is loaded
     CONFIG_PATH = commandLine;
-    pluginSettings.loadConfig(CONFIG_PATH.c_str());
+
+    // Check to make sure a configuration file is provided
+    if (!CONFIG_PATH.empty())
+    {
+        pluginSettings.loadConfig(CONFIG_PATH.c_str());
+    }
+    else
+    {
+        logMessage(0, "fatal", "This plug-in requires a configuration file. Using the default settings is NOT recommended.");
+    }
 
     // Check to see if the plugin is for a rotational league
     if (pluginSettings.isRotationalLeague())

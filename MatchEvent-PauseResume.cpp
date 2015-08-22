@@ -16,6 +16,9 @@ League Overseer
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <json/json.h>
+
+#include "MatchEvent.h"
 #include "MatchEvent-PauseResume.h"
 
 PauseResumeMatchEvent::PauseResumeMatchEvent ()

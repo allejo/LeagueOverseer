@@ -16,8 +16,8 @@ League Overseer
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __MATCH_CAP_EVENT_H__
-#define __MATCH_CAP_EVENT_H__
+#ifndef __MATCH_PAUSERESUME_EVENT_H__
+#define __MATCH_PAUSERESUME_EVENT_H__
 
 #include <string>
 

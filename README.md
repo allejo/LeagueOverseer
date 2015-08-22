@@ -57,13 +57,9 @@ Regardless of the size, complexity, and size of this plugin, the plug-in can sti
 
         git clone -b release https://github.com/allejo/LeagueOverseer.git
 
-4. The latest BZFlag trunk will contain a script called 'addToBuild.sh' and it will allow you to add the plugin to the build system.
+4. Instruct the build system to generate a Makefile and then compile and install the plugin.
 
-        sh addToBuild.sh LeagueOverseer
-
-5. Instruct the build system to generate a Makefile and then compile and install the plugin.
-
-        cd ..; ./autogen.sh; ./configure; make; make install;
+        cd ..; ./autogen.sh; ./configure --enable-custom-plugins=LeagueOverseer; make; make install;
 
 Documentation
 -------------

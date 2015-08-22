@@ -210,6 +210,13 @@ int getDefaultTimeLimit (void);
  *
  * @return A formatted representation of the int as a string
  */
-const char* formatInt(const char* fmt, int number);
+const char* formatInt (const char* fmt, int number);
+
+/**
+ * Convenience method to retrieve the BZID of a player by ID
+ *
+ * @return The BZID of the target player
+ */
+const char* getPlayerBZID (int playerID);
 
 #endif

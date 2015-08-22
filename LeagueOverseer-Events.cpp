@@ -245,30 +245,31 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
         case bz_eGamePauseEvent:
         {
-            bz_GamePauseResumeEventData_V1* gamePauseData = (bz_GamePauseResumeEventData_V1*)eventData;
+            bz_GamePauseResumeEventData_V2* gamePauseData = (bz_GamePauseResumeEventData_V2*)eventData;
 
             // Get the current UTC time
             MATCH_PAUSED = time(NULL);
 
-            // We've paused an official match, so we need to delay the approxTimeProgress in order to calculate the roll call time properly
-            if (isOfficialMatch())
-            {
-                // Send the messages
-                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "    with %s remaining.", getMatchTime().c_str());
-                logMessage(pluginSettings.getVerboseLevel(), "debug", "Match paused at %s by %s.", getMatchTime().c_str(), gamePauseData->actionBy.c_str());
+            // Send the messages
+            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "    with %s remaining.", getMatchTime().c_str());
+            logMessage(pluginSettings.getVerboseLevel(), "debug", "Match paused at %s by %s.", getMatchTime().c_str(), bz_getPlayerCallsign(gamePauseData->playerID));
 
-                PauseResumeMatchEvent pauseEvent = PauseResumeMatchEvent();
+            PauseResumeMatchEvent pauseEvent = PauseResumeMatchEvent();
 
-                pauseEvent.setState(true)
-                          .setTime(getMatchTime());
-                // @TODO Add a MatchPauseEvent
-            }
+            pauseEvent.setState(true)
+                      .setTime(getMatchTime())
+                      .setBZID(getPlayerBZID(gamePauseData->playerID))
+                      .save();
+
+            currentMatch.saveEvent(pauseEvent.getJsonObject());
+
+            logMessage(pluginSettings.getVerboseLevel(), "debug", "PauseResumeMatchEvent JSON -> %s", pauseEvent.toString());
         }
         break;
 
         case bz_eGameResumeEvent:
         {
-            bz_GamePauseResumeEventData_V1* gameResumeData = (bz_GamePauseResumeEventData_V1*)eventData;
+            bz_GamePauseResumeEventData_V2* gameResumeData = (bz_GamePauseResumeEventData_V2*)eventData;
 
             // Get the current UTC time
             time_t now = time(NULL);
@@ -287,8 +288,16 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             MATCH_START = mktime(&modMatchStart);
             logMessage(pluginSettings.getVerboseLevel(), "debug", "Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
 
+            PauseResumeMatchEvent resumeEvent = PauseResumeMatchEvent();
 
-            // @TODO Add MatchResumeEvent
+            resumeEvent.setState(false)
+                       .setTime(getMatchTime())
+                       .setBZID(getPlayerBZID(gameResumeData->playerID))
+                       .save();
+
+            currentMatch.saveEvent(resumeEvent.getJsonObject());
+
+            logMessage(pluginSettings.getVerboseLevel(), "debug", "PauseResumeMatchEvent JSON -> %s", resumeEvent.toString());
         }
         break;
 
@@ -356,9 +365,19 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             std::shared_ptr<bz_BasePlayerRecord> victimData(bz_getPlayerByIndex(dieData->playerID));
             std::shared_ptr<bz_BasePlayerRecord> killerData(bz_getPlayerByIndex(dieData->killerID));
 
-            // @TODO Complete this event
-            KillMatchEvent killEvent = KillMatchEvent().setKiller(killerData->bzID.c_str())
-                                                       .setVictim(victimData->bzID.c_str());
+            if (isMatchInProgress())
+            {
+                KillMatchEvent killEvent = KillMatchEvent();
+
+                killEvent.setKiller(killerData->bzID.c_str())
+                         .setVictim(victimData->bzID.c_str())
+                         .setTime(getMatchTime())
+                         .save();
+
+                currentMatch.saveEvent(killEvent.getJsonObject());
+
+                logMessage(pluginSettings.getVerboseLevel(), "debug", "KillMatchEvent JSON -> %s", killEvent.toString());
+            }
         }
         break;
 

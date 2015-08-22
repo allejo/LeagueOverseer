@@ -257,7 +257,7 @@ int getDefaultTimeLimit (void)
     return bz_getBZDBInt("_defaultTimeLimit");
 }
 
-const char* formatInt(const char* fmt, int number)
+const char* formatInt (const char* fmt, int number)
 {
     size_t bufSize = sizeof(fmt);
     char content[bufSize];
@@ -267,4 +267,9 @@ const char* formatInt(const char* fmt, int number)
     std::string c = content;
 
     return c.c_str();
+}
+
+const char* getPlayerBZID (int playerID)
+{
+    return bz_getPlayerByIndex(playerID)->bzID;
 }

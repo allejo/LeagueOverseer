@@ -27,6 +27,9 @@ League Overseer
 #include "MatchEvent-Capture.h"
 #include "MatchEvent-Join.h"
 #include "MatchEvent-Kill.h"
+#include "MatchEvent-Part.h"
+#include "MatchEvent-PauseResume.h"
+#include "MatchEvent-Substitute.h"
 
 void LeagueOverseer::Event (bz_EventData *eventData)
 {
@@ -254,6 +257,10 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "    with %s remaining.", getMatchTime().c_str());
                 logMessage(pluginSettings.getVerboseLevel(), "debug", "Match paused at %s by %s.", getMatchTime().c_str(), gamePauseData->actionBy.c_str());
 
+                PauseResumeMatchEvent pauseEvent = PauseResumeMatchEvent();
+
+                pauseEvent.setState(true)
+                          .setTime(getMatchTime());
                 // @TODO Add a MatchPauseEvent
             }
         }

@@ -28,6 +28,8 @@ LeagueOverseer_la_SOURCES = \
 	MatchEvent-Kill.cpp \
 	MatchEvent-Part.h \
 	MatchEvent-Part.cpp \
+	MatchEvent-PauseResume.h \
+	MatchEvent-PauseResume.cpp \
 	MatchEvent-Substitute.h \
 	MatchEvent-Substitute.cpp \
 	PluginSettings.h \

@@ -42,6 +42,7 @@ public:
         PLAYER_KILL,
         PLAYER_JOIN,
         PLAYER_PART,
+        PAUSE_RESUME,
         LAST_LOS_EVENT_TYPE
     };
 
@@ -116,6 +117,9 @@ private:
 
             case PLAYER_PART:
                 return "part";
+
+            case PAUSE_RESUME:
+                return "pause_resume";
 
             default:
                 return "noEvent";

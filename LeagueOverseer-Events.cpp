@@ -85,7 +85,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 int proposedValue = std::stoi(bzdbData->value.c_str());
 
                 // Our PC protection delay should be between 3 and 30 seconds only, otherwise set it to the default 5 seconds
-                if (proposedValue < 3 && proposedValue > 30)
+                if (proposedValue < 3 || proposedValue > 30)
                 {
                     bz_setBZDBInt("_pcProtectionDelay", 5);
                 }

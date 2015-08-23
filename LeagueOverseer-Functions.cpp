@@ -60,11 +60,6 @@ std::string LeagueOverseer::buildBZIDString (bz_eTeamType team)
     */
 }
 
-bz_BasePlayerRecord* LeagueOverseer::bz_getPlayerByCallsign (const char* callsign)
-{
-    return bz_getPlayerByIndex(CALLSIGN_MAP[callsign]);
-}
-
 bz_BasePlayerRecord* LeagueOverseer::bz_getPlayerByBZID (const char* bzID)
 {
     return bz_getPlayerByIndex(BZID_MAP[bzID]);
@@ -94,29 +89,6 @@ PluginSettings::GameMode LeagueOverseer::getCurrentGameMode()
     }
 
     return PluginSettings::GameMode::IDLE;
-}
-
-/**
- * Get a player record of a player from either a slot ID or a callsign
- *
- * @param  callsignOrID The callsign of the player or the player slot of the player
- *
- * @return              A player record gotten from the specified information
- */
-bz_BasePlayerRecord* LeagueOverseer::getPlayerFromCallsignOrID(std::string callsignOrID)
-{
-    // We have a pound sign followed by a valid player index
-    if (std::string::npos != callsignOrID.find("#") && isValidPlayerID(atoi(callsignOrID.erase(0, 1).c_str())))
-    {
-        // Let's make some easy reference variables
-        int victimPlayerID = atoi(callsignOrID.erase(0, 1).c_str());
-
-        return bz_getPlayerByIndex(victimPlayerID);
-    }
-
-    // Attempt to return a player record from a callsign if it isn't a player slot, this will return NULL
-    // if no player is found with the respective callsign
-    return bz_getPlayerByCallsign(callsignOrID.c_str());
 }
 
 // Return the progress of a match in seconds. For example, 20:00 minutes remaining would return 600

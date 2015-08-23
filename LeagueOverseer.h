@@ -68,9 +68,7 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 
         virtual PluginSettings::GameMode getCurrentGameMode();
 
-        virtual bz_BasePlayerRecord  *getPlayerFromCallsignOrID (std::string callsignOrID),
-                                     *bz_getPlayerByCallsign (const char* callsign),
-                                     *bz_getPlayerByBZID (const char* bzID);
+        virtual bz_BasePlayerRecord  *bz_getPlayerByBZID (const char* bzID);
 
         virtual std::string          getPlayerTeamNameByBZID (std::string bzID),
                                      getPlayerTeamNameByID (int playerID),
@@ -128,7 +126,6 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 
         // Player database storing BZIDs and callsigns without having to loop through the entire playerlist each time
         std::map<std::string, int> BZID_MAP;
-        std::map<std::string, int> CALLSIGN_MAP;
 
         // Custom BZDB variables that this plug-in registers and watches
         std::vector<std::string> BZDB_VARS;

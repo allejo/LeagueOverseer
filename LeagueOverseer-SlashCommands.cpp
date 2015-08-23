@@ -291,8 +291,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     {
         if (bz_hasPerm(playerID, "mute") && bz_hasPerm(playerID, "hideAdmin"))
         {
-            std::string callsignOrID = params->get(0).c_str();
-            std::shared_ptr<bz_BasePlayerRecord> victim(getPlayerFromCallsignOrID(callsignOrID.c_str()));
+            const char* callsignOrID = params->get(0).c_str();
+            std::shared_ptr<bz_BasePlayerRecord> victim(bz_getPlayerBySlotOrCallsign(callsignOrID));
 
             if (victim)
             {
@@ -300,11 +300,11 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                 bz_revokePerm(victim->playerID, "talk");
 
                 bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s has muted %s.", playerData->callsign.c_str(), victim->callsign.c_str());
-                bz_sendTextMessage(BZ_SERVER, victim->playerID, "You have been muted for abuse.");
+                bz_sendTextMessage(BZ_SERVER, victim->playerID, "You have been muted.");
             }
             else
             {
-                bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", callsignOrID.c_str());
+                bz_sendTextMessagef(BZ_SERVER, playerID, "player \"%s\" not found", callsignOrID);
             }
 
             return true;
@@ -384,17 +384,12 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "spawn")
     {
-        if (bz_hasPerm(playerID, "ban"))
+        if (bz_hasPerm(playerID, pluginSettings.getSpawnCommandPerm().c_str()))
         {
             if (params->size() > 0)
             {
-                logMessage(pluginSettings.getVerboseLevel(), "debug", "%s has executed the /spawn command.", playerData->callsign.c_str());
-
-                std::string callsignOrID = params->get(0).c_str(); // Store the callsign we're going to search for
-
-                logMessage(pluginSettings.getVerboseLevel(), "debug", "Callsign or Player slot to look for: %s", callsignOrID.c_str());
-
-                std::shared_ptr<bz_BasePlayerRecord> victim(getPlayerFromCallsignOrID(callsignOrID.c_str()));
+                const char* callsignOrID = params->get(0).c_str();
+                std::shared_ptr<bz_BasePlayerRecord> victim(bz_getPlayerBySlotOrCallsign(callsignOrID));
 
                 if (victim)
                 {
@@ -403,8 +398,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                 }
                 else
                 {
-                    bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", callsignOrID.c_str());
-                    logMessage(pluginSettings.getVerboseLevel(), "debug", "Player %s was not found.", callsignOrID.c_str());
+                    bz_sendTextMessagef(BZ_SERVER, playerID, "player \"%s\" not found", callsignOrID);
                 }
             }
             else

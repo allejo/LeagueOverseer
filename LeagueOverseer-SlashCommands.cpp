@@ -61,9 +61,9 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
     }
     else if (command == "poll")
     {
-        if (isOfficialMatchInProgress())
+        if (isMatchInProgress())
         {
-            bz_sendTextMessage(BZ_SERVER, playerID, "To prevent distractions, you may not initiate polls while an official match is progress.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "To prevent distractions, you may not initiate polls while a match is progress.");
             bz_sendTextMessage(BZ_SERVER, playerID, "Please contact an administrator or '/pause' the match and start the poll while the match is paused.");
 
             return true;
@@ -126,6 +126,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to cancel.");
         }
+
+        return true;
     }
     else if (command == "finish")
     {
@@ -133,9 +135,9 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to cancel matches.");
         }
-        else if (bz_isCountDownInProgress()) // There's no way to stop a countdown so let's not finish during a countdown
+        else if (bz_isCountDownInProgress())
         {
-            bz_sendTextMessage(BZ_SERVER, playerID, "You may only finish a match after it has started.");
+            bz_sendTextMessage(BZ_SERVER, playerID, "You may only finish a match after it's half way through. Use '/cancel' instead.");
         }
         else if (bz_isCountDownActive()) // Only finish if the countdown is active
         {
@@ -153,25 +155,50 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                 }
                 else
                 {
-                    bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, I cannot automatically report a match less than half way through.");
+                    bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, you cannot automatically report a match less than half way through.");
                     bz_sendTextMessage(BZ_SERVER, playerID, "Please use the /cancel command and message a referee for review of this match.");
                 }
             }
             else
             {
-                bz_sendTextMessage(BZ_SERVER, playerID, "You cannot /finish a fun match. Use /cancel instead.");
+                bz_sendTextMessage(BZ_SERVER, playerID, "You cannot /finish a fun match. Use '/cancel' instead.");
             }
         }
         else
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress to end.");
         }
+
+        return true;
     }
     else if (command == "kick")
     {
         if (bz_hasPerm(playerID, "kick") && bz_hasPerm(playerID, "hideAdmin"))
         {
-            // @TODO Implement this functionality
+            std::shared_ptr<bz_BasePlayerRecord> victim(bz_getPlayerBySlotOrCallsign(params->get(0).c_str()));
+            std::string reason = "";
+
+            if (params->size() > 1)
+            {
+                for (unsigned int i = 1; i < params->size(); i++)
+                {
+                    reason += params->get(i);
+
+                    if (i + 1 < params->size())
+                    {
+                        reason += " ";
+                    }
+                }
+            }
+            else
+            {
+                reason += params->get(1);
+            }
+
+            bz_sendTextMessagef(BZ_SERVER, victim->playerID, "You were kicked for: %s", reason.c_str());
+            bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s kicked %s for: %s", playerData->callsign.c_str(), victim->callsign.c_str(), reason.c_str());
+
+            bz_kickUser(victim->playerID, reason.c_str(), false);
 
             return true;
         }
@@ -197,6 +224,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to modify the League Overseer configuration.");
         }
+
+        return true;
     }
     else if (command == "f" || command == "fm" || command == "o" || command == "offi" || command == "official")
     {
@@ -206,7 +235,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             if (pluginSettings.areOfficialMatchesDisabled())
             {
-                bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, this server has not be configured for official matches.");
+                bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, this server has not been configured for official matches.");
 
                 return true;
             }
@@ -286,21 +315,33 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
             bz_startCountdown(timeToStart, bz_getTimeLimit(), "Server");
         }
+
+        return true;
     }
-    else if (command == "mute")
+    else if (command == "mute" || command == "unmute")
     {
-        if (bz_hasPerm(playerID, "mute") && bz_hasPerm(playerID, "hideAdmin"))
+        bool mute = (command == "mute");
+
+        if (((bz_hasPerm(playerID, "mute") && mute) || (bz_hasPerm(playerID, "unmute") && !mute)) && bz_hasPerm(playerID, "hideAdmin"))
         {
             const char* callsignOrID = params->get(0).c_str();
             std::shared_ptr<bz_BasePlayerRecord> victim(bz_getPlayerBySlotOrCallsign(callsignOrID));
 
             if (victim)
             {
-                bz_revokePerm(victim->playerID, "privateMessage");
-                bz_revokePerm(victim->playerID, "talk");
+                if (mute)
+                {
+                    bz_revokePerm(victim->playerID, "privateMessage");
+                    bz_revokePerm(victim->playerID, "talk");
+                }
+                else
+                {
+                    bz_grantPerm(victim->playerID, "privateMessage");
+                    bz_grantPerm(victim->playerID, "talk");
+                }
 
-                bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s has muted %s.", playerData->callsign.c_str(), victim->callsign.c_str());
-                bz_sendTextMessage(BZ_SERVER, victim->playerID, "You have been muted.");
+                bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s has %sd %s.", playerData->callsign.c_str(), command.c_str(), victim->callsign.c_str());
+                bz_sendTextMessagef(BZ_SERVER, victim->playerID, "You have been %sd.", command.c_str());
             }
             else
             {
@@ -320,12 +361,14 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         }
         else if (bz_isCountDownActive())
         {
-            bz_pauseCountdown(playerData->callsign.c_str());
+            bz_pauseCountdown(playerID);
         }
         else
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to pause right now.");
         }
+
+        return true;
     }
     else if (command == "r" || command == "resume")
     {
@@ -339,29 +382,24 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         }
         else if (bz_isCountDownActive())
         {
-            bz_resumeCountdown(playerData->callsign.c_str());
-
-            if (isOfficialMatch())
-            {
-                logMessage(pluginSettings.getVerboseLevel(), "debug", "Match resumed by %s.", playerData->callsign.c_str());
-            }
+            bz_resumeCountdown(playerID);
         }
         else
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is no active match to resume right now.");
         }
+
+        return true;
     }
     else if (command == "showhidden")
     {
-        if (bz_hasPerm(playerID, "ban"))
+        if (bz_hasPerm(playerID, pluginSettings.getShowHiddenPerm().c_str()))
         {
             std::shared_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
-            // Our player list couldn't be created so exit out of here
             if (!playerList)
             {
-                logMessage(pluginSettings.getVerboseLevel(), "debug", "Oops. I couldn't create a playerlist for some odd reason.");
-                bz_sendTextMessage(BZ_SERVER, playerID, "Seems like I darn goofed, please execute your command again.");
+                bz_sendTextMessage(BZ_SERVER, playerID, "An internal error occurred. Try again.");
                 return true;
             }
 
@@ -373,7 +411,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                 // If the player is hidden, then show them in the list
                 if (bz_hasPerm(playerList->get(i), "hideadmin"))
                 {
-                    bz_sendTextMessagef(BZ_SERVER, playerID, " - %s", bz_getPlayerByIndex(playerList->get(i))->callsign.c_str());
+                    bz_sendTextMessagef(BZ_SERVER, playerID, " - %s", bz_getPlayerCallsign(playerList->get(i)));
                 }
             }
         }
@@ -381,6 +419,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /showhidden command.");
         }
+
+        return true;
     }
     else if (command == "spawn")
     {
@@ -410,12 +450,14 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /spawn command.");
         }
+
+        return true;
     }
     else if (command == "s" || command == "stats")
     {
         if (isLeagueMember(playerID))
         {
-            if (isOfficialMatch())
+            if (isMatchInProgress())
             {
                 bz_sendTextMessage(BZ_SERVER, playerID, "Match Data");
                 bz_sendTextMessage(BZ_SERVER, playerID, "----------");
@@ -424,13 +466,15 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             }
             else
             {
-                bz_sendTextMessage(BZ_SERVER, playerID, "Match data is not recorded for fun matches.");
+                bz_sendTextMessage(BZ_SERVER, playerID, "There is no match in progress.");
             }
         }
         else
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You do not have permission to use the /stats command.");
         }
+
+        return true;
     }
     else if (command == "timelimit")
     {
@@ -468,17 +512,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Match duration set to %.0f minute(s) by %s", (bz_getTimeLimit() / 60), bz_getPlayerCallsign(playerID));
         }
-    }
-    else if (command == "unmute")
-    {
-        if (bz_hasPerm(playerID, "unmute") && bz_hasPerm(playerID, "hideAdmin"))
-        {
-            // @TODO Implement this functionality
 
-            return true;
-        }
-
-        return false;
+        return true;
     }
 
     return false;

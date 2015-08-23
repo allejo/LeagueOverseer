@@ -394,7 +394,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
             setLeagueMember(playerID);
-            storePlayerInfo(playerID, playerData->bzID.c_str(), playerData->callsign.c_str());
+            storePlayerInfo(playerID, playerData->bzID.c_str());
 
             JoinMatchEvent joinEvent = JoinMatchEvent().setCallsign(playerData->callsign.c_str())
                                                        .setVerified(playerData->verified)
@@ -427,7 +427,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             int playerID = partData->playerID;
             std::shared_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
 
-            removePlayerInfo(partData->record->bzID.c_str(), partData->record->callsign.c_str());
+            removePlayerInfo(partData->record->bzID.c_str());
 
             // Only keep track of the parting player if they are a league member and there is a match in progress
             if (isLeagueMember(playerID) && isMatchInProgress())

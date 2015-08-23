@@ -222,16 +222,11 @@ bool LeagueOverseer::playerAlreadyJoined (std::string bzID)
 }
 
 // Forget a player from the local database of player information
-void LeagueOverseer::removePlayerInfo(std::string bzID, std::string callsign)
+void LeagueOverseer::removePlayerInfo (std::string bzID)
 {
     if (BZID_MAP.find(bzID) != BZID_MAP.end())
     {
         BZID_MAP.erase(bzID);
-    }
-
-    if (CALLSIGN_MAP.find(callsign) != CALLSIGN_MAP.end())
-    {
-        CALLSIGN_MAP.erase(callsign);
     }
 }
 
@@ -301,12 +296,11 @@ void LeagueOverseer::setLeagueMember (int playerID)
 }
 
 // Store player information in a local database to avoid looping through a playerlist
-void LeagueOverseer::storePlayerInfo(int playerID, std::string bzID, std::string callsign)
+void LeagueOverseer::storePlayerInfo(int playerID, std::string bzID)
 {
     if (isLeagueMember(playerID))
     {
         BZID_MAP[bzID] = playerID;
-        CALLSIGN_MAP[callsign] = playerID;
     }
 }
 

@@ -86,8 +86,8 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
 
         // @TODO Rewrite this function...
         virtual void                 /*validateTeamName (bool &invalidate, bool &teamError, MatchParticipant currentPlayer, std::string &teamName, bz_eTeamType team),*/
-                                     removePlayerInfo (std::string bzID, std::string callsign),
-                                     storePlayerInfo (int playerID, std::string bzID, std::string callsign),
+                                     removePlayerInfo (std::string bzID),
+                                     storePlayerInfo (int playerID, std::string bzID),
                                      requestTeamName (std::string callsign, std::string bzID),
                                      requestTeamName (bz_eTeamType team),
                                      setLeagueMember (int playerID),

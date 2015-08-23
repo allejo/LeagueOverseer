@@ -286,3 +286,8 @@ const char* replaceString (std::string target, const std::string& search, const 
 
     return target.c_str();
 }
+
+bool isVisibleAdmin (int playerID)
+{
+    return bz_hasPerm(playerID, "adminMessageReceive") && (!bz_hasPerm(playerID, "hideAdmin") || bz_hasPerm(playerID, "showAdmin"));
+}

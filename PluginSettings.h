@@ -36,13 +36,14 @@ public:
     std::vector<std::string> getGuestMessagingMessage (GameMode mode);
     std::vector<std::string> getGuestSpawningMessage  (GameMode mode);
 
-    std::string getSpawnCommandPerm (void);
-    std::string getMatchReportURL   (void);
-    std::string getShowHiddenPerm   (void);
-    std::string getMapChangePath    (void);
-    std::string getTeamNameURL      (void);
-    std::string getLeagueGroup      (void);
-    std::string getMottoFormat      (void);
+    std::string getAllowedTargetChat (GameMode mode);
+    std::string getSpawnCommandPerm  (void);
+    std::string getMatchReportURL    (void);
+    std::string getShowHiddenPerm    (void);
+    std::string getMapChangePath     (void);
+    std::string getTeamNameURL       (void);
+    std::string getLeagueGroup       (void);
+    std::string getMottoFormat       (void);
 
     bool areOfficialMatchesDisabled (void);
     bool isInterPluginCheckEnabled  (void);
@@ -63,6 +64,7 @@ public:
     int  getDebugLevel              (void);
 
 private:
+    std::vector<std::string> getGuestMessage (std::string setting, std::string defaultMsg, GameMode mode);
     std::string gameModeAsString (GameMode mode);
 };
 

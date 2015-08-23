@@ -23,6 +23,22 @@ void PluginSettings::loadConfig (char const *filePath)
     loadConfigurationFile(filePath);
 }
 
+std::string PluginSettings::getAllowedTargetChat (GameMode mode)
+{
+    if (root.hasChild("guest_messaging"))
+    {
+        JsonObject guest_messaging = root.getChild("guest_messaging");
+        std::string gameMode = gameModeAsString(mode);
+
+        if (guest_messaging.hasChild(gameMode))
+        {
+            return guest_messaging.getChild(gameMode).getChild("limit_to").getString();
+        }
+    }
+
+    return "None";
+}
+
 std::string PluginSettings::getSpawnCommandPerm (void)
 {
     if (root.hasChild("spawn_command_perm"))
@@ -133,25 +149,14 @@ bool PluginSettings::ignoreTimeSanityCheck (void)
     return false;
 }
 
-std::vector<std::string> PluginSettings::getGuestSpawningMessage (PluginSettings::GameMode mode)
+std::vector<std::string> PluginSettings::getGuestMessagingMessage (GameMode mode)
 {
-    if (root.hasChild("guest_spawning"))
-    {
-        JsonObject guest_spawning = root.getChild("guest_spawning");
-        std::string gamemode = gameModeAsString(mode);
+    return getGuestMessage("guest_messaging", "Sorry, you're not allowed to talk on this server.", mode);
+}
 
-        if (guest_spawning.hasChild(gamemode) && guest_spawning.getChild(gamemode).hasChild("message"))
-        {
-            JsonObject message = guest_spawning.getChild(gamemode).getChild("message");
-
-            if (!message.getStringArray().empty())
-            {
-                return message.getStringArray();
-            }
-        }
-    }
-
-    return { "We're sorry, you are not allowed to talk!" };
+std::vector<std::string> PluginSettings::getGuestSpawningMessage (GameMode mode)
+{
+    return getGuestMessage("guest_spawning", "We're sorry, you are not allowed to spawn!", mode);
 }
 
 bool PluginSettings::isGuestSpawningEnabled (PluginSettings::GameMode mode)
@@ -230,6 +235,27 @@ int PluginSettings::getDebugLevel (void)
     }
 
     return 1;
+}
+
+std::vector<std::string> PluginSettings::getGuestMessage (std::string setting, std::string defaultMsg, GameMode mode)
+{
+    if (root.hasChild(setting))
+    {
+        JsonObject guest_setting = root.getChild(setting);
+        std::string gamemode = gameModeAsString(mode);
+
+        if (guest_setting.hasChild(gamemode) && guest_setting.getChild(gamemode).hasChild("message"))
+        {
+            JsonObject message = guest_setting.getChild(gamemode).getChild("message");
+
+            if (!message.getStringArray().empty())
+            {
+                return message.getStringArray();
+            }
+        }
+    }
+
+    return { defaultMsg };
 }
 
 std::string PluginSettings::gameModeAsString(PluginSettings::GameMode mode)

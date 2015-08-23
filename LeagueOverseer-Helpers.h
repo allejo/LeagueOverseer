@@ -226,4 +226,11 @@ const char* getPlayerBZID (int playerID);
  */
 const char* replaceString (std::string target, const std::string& search, const std::string& replace);
 
+/**
+ * Convenience function to see if a player is a visible admin; i.e. has an @ symbol
+ *
+ * @return True if a player has adminMessageReceive and does NOT have hideAdmin
+ */
+bool isVisibleAdmin (int playerID);
+
 #endif

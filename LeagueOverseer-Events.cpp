@@ -461,40 +461,35 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // A non-league player is attempting to talk
             if (!isLeagueMember(playerID))
             {
-                if (pluginSettings.isAllowLimitedChat()) // Are non-league members allowed limited talking functionality
+                std::string allowedChatTarget = pluginSettings.getAllowedTargetChat(getCurrentGameMode());
+                bool ignoreMessage = true;
+
+                if (allowedChatTarget == "Observers")
                 {
-                    if (isMatchInProgress()) // A match is progress
+                    if (recipient == eObservers || bz_getPlayerTeam(recipient) == eObservers)
                     {
-                        if (bz_getPlayerTeam(playerID) == eObservers) // Only consider allowing non-league members to talk if they are in the observer team
-                        {
-                            // Only allow non-league members to talk if they're talking to the observer team chat or private messaging a player in the observer team
-                            // this precaution is so non-league players do not private message players participating in a match, do not message an admin who may
-                            // playing a match, and do not send messages to public chat to avoid match disturbances
-                            if (target != eObservers || bz_getPlayerTeam(recipient) != eObservers)
-                            {
-                                chatData->message = ""; // We set the message to nothing so they won't send thing anything
-//                                sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT);
-                            }
-                        }
-                        else // If they aren't in the observer team during a match, don't let them talk
-                        {
-                            chatData->message = "";
-//                            sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT);
-                        }
-                    }
-                    else // A match is not in progress
-                    {
-                        if (target != eAdministrators)
-                        {
-                            chatData->message = "";
-//                            sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT);
-                        }
+                        ignoreMessage = false;
                     }
                 }
-                else // Non-league members are not allowed limited talk functionality
+                else if (allowedChatTarget == "ObvserverAdmins")
+                {
+                    if (bz_getPlayerTeam(recipient) == eObservers && isVisibleAdmin(recipient))
+                    {
+                        ignoreMessage = false;
+                    }
+                }
+                else if (allowedChatTarget == "Admins")
+                {
+                    if (target == eAdministrators || isVisibleAdmin(recipient))
+                    {
+                        ignoreMessage = false;
+                    }
+                }
+
+                if (ignoreMessage)
                 {
                     chatData->message = "";
-//                    sendPluginMessage(playerID, pluginSettings.isTalkMessageEnabled(), pluginSettings.getNoTalkMessage(), CHAT); // Send them a message
+                    sendPluginMessage(playerID, pluginSettings.getGuestMessagingMessage(getCurrentGameMode()));
                 }
             }
         }

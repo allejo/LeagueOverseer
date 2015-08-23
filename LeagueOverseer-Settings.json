@@ -12,7 +12,9 @@
             "during_fm": {
                 "allowed": false,
                 "message": [
-                    "<%= LeagueOverseer.guest_spawning.during_official.message %>"
+                    "Sorry, you're not allowed to spawn during a match.",
+                    "This is an official match server for a BZFlag League and only",
+                    "league members may spawn while a match is in progress."
                 ]
             },
             "idle": {
@@ -26,24 +28,28 @@
         },
         "guest_messaging": {
             "during_official": {
-                "limit_to": "Observer",
+                "limit_to": "Observers",
                 "message": [
-                    "You are not allowed to talk publicly during a match. Your message has",
-                    "been sent to the observers only."
+                    "You are not allowed to talk during a match. You may only private message",
+                    "observer admins (players with @ symbols) using the /msg command or talk",
+                    "with the observer team."
                 ]
             },
             "during_fm": {
-                "limit_to": "ObserverOnly",
+                "limit_to": "Observers",
                 "message": [
-                    "<%= LeagueOverseer.guest_messaging.during_official.message %>"
+                    "You are not allowed to talk during a match. You may only private message",
+                    "observer admins (players with @ symbols) using the /msg command or talk",
+                    "with the observer team."
                 ]
             },
             "idle": {
-                "limit_to": "All",
+                "limit_to": "Admins",
                 "message": [
                     "Sorry, you're not allowed to talk on this server.",
-                    "This is an official match server for a BZFlag League and only",
-                    "league members may speak on this server."
+                    "This is an official match server for a BZFlag League and only league",
+                    "members may speak on this server. You may private message any admins",
+                    "(players with @ symbols) with the /msg command."
                 ]
             }
         },

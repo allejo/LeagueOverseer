@@ -259,10 +259,9 @@ int getDefaultTimeLimit (void)
 
 const char* formatInt (const char* fmt, int number)
 {
-    size_t bufSize = sizeof(fmt);
-    char content[bufSize];
+    char content[256];
 
-    snprintf(content, bufSize, fmt, number);
+    snprintf(content, 256, fmt, number);
 
     std::string c = content;
 

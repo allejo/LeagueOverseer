@@ -75,7 +75,8 @@ class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, pu
         virtual std::string          getPlayerTeamNameByBZID (std::string bzID),
                                      getPlayerTeamNameByID (int playerID),
                                      buildBZIDString (bz_eTeamType team),
-                                     getMatchTime (void);
+                                     getMatchTime (void),
+                                     formatMotto (std::map<std::string, std::string> arguments);
 
         virtual bool                 isOfficialMatchInProgress (void),
                                      isFunMatchInProgress (void),

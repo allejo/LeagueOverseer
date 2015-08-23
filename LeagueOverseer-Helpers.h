@@ -219,4 +219,11 @@ const char* formatInt (const char* fmt, int number);
  */
 const char* getPlayerBZID (int playerID);
 
+/**
+ * Replace substrings in a string with the given replacement
+ *
+ * @return A string with the appropriate substrings replaced
+ */
+const char* replaceString (std::string target, const std::string& search, const std::string& replace);
+
 #endif

@@ -271,5 +271,18 @@ const char* formatInt (const char* fmt, int number)
 
 const char* getPlayerBZID (int playerID)
 {
-    return bz_getPlayerByIndex(playerID)->bzID;
+    return bz_getPlayerByIndex(playerID)->bzID.c_str();
+}
+
+const char* replaceString (std::string target, const std::string& search, const std::string& replace)
+{
+    size_t pos = 0;
+
+    while ((pos = target.find(search, pos)) != std::string::npos)
+    {
+        target.replace(pos, search.length(), replace);
+        pos += replace.length();
+    }
+
+    return target.c_str();
 }

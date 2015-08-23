@@ -354,7 +354,12 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             if (pluginSettings.isMottoFetchEnabled())
             {
-                mottoData->motto = getPlayerTeamNameByBZID(mottoData->record->bzID.c_str());
+                std::map<std::string, std::string> parameters;
+
+                parameters["{motto}"] = mottoData->motto;
+                parameters["{team}"]  = getPlayerTeamNameByBZID(mottoData->record->bzID.c_str());
+
+                mottoData->motto = formatMotto(parameters);
             }
         }
         break;

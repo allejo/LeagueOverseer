@@ -70,6 +70,18 @@ bz_BasePlayerRecord* LeagueOverseer::bz_getPlayerByBZID (const char* bzID)
     return bz_getPlayerByIndex(BZID_MAP[bzID]);
 }
 
+std::string LeagueOverseer::formatMotto (std::map<std::string, std::string> arguments)
+{
+    std::string motto = pluginSettings.getMottoFormat();
+
+    for (auto &kv : arguments)
+    {
+        motto = replaceString(motto, kv.first, kv.second);
+    }
+
+    return motto;
+}
+
 PluginSettings::GameMode LeagueOverseer::getCurrentGameMode()
 {
     if (isOfficialMatchInProgress())

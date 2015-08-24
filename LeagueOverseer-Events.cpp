@@ -485,6 +485,10 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                         ignoreMessage = false;
                     }
                 }
+                else if (allowedChatTarget == "All")
+                {
+                    ignoreMessage = false;
+                }
 
                 if (ignoreMessage)
                 {

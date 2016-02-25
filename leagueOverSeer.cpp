@@ -37,8 +37,8 @@ League Overseer
 // Define plugin version numbering
 const int MAJOR = 1;
 const int MINOR = 1;
-const int REV = 1;
-const int BUILD = 279;
+const int REV = 2;
+const int BUILD = 280;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;

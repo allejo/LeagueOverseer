@@ -326,9 +326,6 @@ void LeagueOverseer::Init (const char* commandLine)
         getline(infile, MAP_NAME);
         infile.close();
 
-        // Remove the '.conf' from the mapchange.out file
-        MAP_NAME = MAP_NAME.substr(0, MAP_NAME.length() - 5);
-
         bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Current map being played: %s", MAP_NAME.c_str());
     }
 

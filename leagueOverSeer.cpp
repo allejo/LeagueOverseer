@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 3;
-const int BUILD = 281;
+const int BUILD = 282;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -292,12 +292,12 @@ BZ_PLUGIN(LeagueOverseer)
 void LeagueOverseer::Init (const char* commandLine)
 {
     // Register our events with Register()
-    Register(bz_eCaptureEvent);
     Register(bz_eGameEndEvent);
     Register(bz_eGameResumeEvent);
     Register(bz_eGameStartEvent);
     Register(bz_eGetPlayerMotto);
     Register(bz_ePlayerJoinEvent);
+    Register(bz_eTeamScoreChanged);
     Register(bz_eTickEvent);
 
     // Register our custom slash commands
@@ -388,22 +388,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 {
     switch (eventData->eventType)
     {
-        case bz_eCaptureEvent: // This event is called each time a team's flag has been captured
-        {
-            // We only need to keep track of the store if it's an official match
-            if (officialMatch != NULL)
-            {
-                bz_CTFCaptureEventData_V1* captureData = (bz_CTFCaptureEventData_V1*)eventData;
-                (captureData->teamCapping == TEAM_ONE) ? officialMatch->teamOnePoints++ : officialMatch->teamTwoPoints++;
-
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s team scored.", formatTeam(captureData->teamCapping).c_str());
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: Leauve Overseer :: Official Match Score %s [%i] vs %s [%i]",
-                    formatTeam(TEAM_ONE).c_str(), officialMatch->teamOnePoints,
-                    formatTeam(TEAM_TWO).c_str(), officialMatch->teamTwoPoints);
-            }
-        }
-        break;
-
         case bz_eGameEndEvent: // This event is called each time a game ends
         {
             bz_debugMessage(VERBOSE_LEVEL, "DEBUG :: League Overseer :: A match has ended.");
@@ -625,9 +609,19 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         }
         break;
 
+        case bz_eTeamScoreChanged:
         {
+            bz_TeamScoreChangeEventData_V1* teamScoreChange = (bz_TeamScoreChangeEventData_V1*)eventData;
 
+            // We only need to keep track of the store if it's an official match
+            if (officialMatch != NULL && teamScoreChange->element == bz_eWins)
             {
+                (teamScoreChange->team == TEAM_ONE) ? officialMatch->teamOnePoints++ : officialMatch->teamTwoPoints++;
+                
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s team scored.", formatTeam(teamScoreChange->team).c_str());
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: Leauve Overseer :: Official Match Score %s [%i] vs %s [%i]",
+                                 formatTeam(TEAM_ONE).c_str(), officialMatch->teamOnePoints,
+                                 formatTeam(TEAM_TWO).c_str(), officialMatch->teamTwoPoints);
             }
         }
         break;

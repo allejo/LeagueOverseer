@@ -1,6 +1,6 @@
 /*
 League Overseer
-    Copyright (C) 2013-2014 Vladimir Jimenez & Ned Anderson
+    Copyright (C) 2013-2016 Vladimir Jimenez & Ned Anderson
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,8 +37,8 @@ League Overseer
 // Define plugin version numbering
 const int MAJOR = 1;
 const int MINOR = 1;
-const int REV = 2;
-const int BUILD = 280;
+const int REV = 3;
+const int BUILD = 281;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -298,7 +298,6 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_eGameStartEvent);
     Register(bz_eGetPlayerMotto);
     Register(bz_ePlayerJoinEvent);
-    Register(bz_eSlashCommandEvent);
     Register(bz_eTickEvent);
 
     // Register our custom slash commands
@@ -310,6 +309,9 @@ void LeagueOverseer::Init (const char* commandLine)
     bz_registerCustomSlashCommand("spawn", this);
     bz_registerCustomSlashCommand("pause", this);
     bz_registerCustomSlashCommand("resume", this);
+    
+    bz_registerCustomSlashCommand("gameover", this);
+    bz_registerCustomSlashCommand("countdown", this);
 
     // Set some default values
     officialMatch = NULL;
@@ -623,31 +625,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         }
         break;
 
-        case bz_eSlashCommandEvent: // This event is called each time a player sends a slash command
         {
-            bz_SlashCommandEventData_V1* slashCommandData = (bz_SlashCommandEventData_V1*)eventData;
 
-            // Store the information in variables for quick reference
-            int         playerID = slashCommandData->from;
-            std::string command  = slashCommandData->message.c_str();
-
-            // Because players have quick keys and players of habit, send them a notification in the case they
-            // use a deprecated slash command
-            if (strncmp("/gameover", command.c_str(), 9) == 0)
             {
-                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/gameover' is disabled, please use /finish or /cancel instead **");
-            }
-            else if (strncmp("/countdown pause", command.c_str(), 16) == 0)
-            {
-                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown pause' is disabled, please use /pause instead **");
-            }
-            else if (strncmp("/countdown resume", command.c_str(), 17) == 0)
-            {
-                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown resume' is disabled, please use /resume instead **");
-            }
-            else if (strncmp("/countdown", command.c_str(), 10) == 0)
-            {
-                bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown TIME' is disabled, please use /official or /fm instead **");
             }
         }
         break;
@@ -821,6 +801,30 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
         return true;
     }
+    else if (command == "countdown")
+    {
+        if (params->size() > 0)
+        {
+            if (params->get(0) == "pause")
+            {
+                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown pause' is disabled, please use /pause instead **");
+            }
+            else if (params->get(0) == "resume")
+            {
+                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown resume' is disabled, please use /resume instead **");
+            }
+            else
+            {
+                bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown TIME' is disabled, please use /official or /fm instead **");
+            }
+        }
+        else
+        {
+            bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown' is disabled, please use /official or /fm instead **");
+        }
+        
+        return true;
+    }
     else if (command == "finish")
     {
         if (playerData->team == eObservers) // Observers can't cancel matches
@@ -897,6 +901,12 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             }
         }
 
+        return true;
+    }
+    else if (command == "gameover")
+    {
+        bz_sendTextMessagef(BZ_SERVER, playerID, "** '/gameover' is disabled, please use /finish or /cancel instead **");
+        
         return true;
     }
     else if (command == "offi" || command == "official")
@@ -1053,6 +1063,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
         return true;
     }
+    
+    return false;
 }
 
 // We got a response from one of our URL jobs

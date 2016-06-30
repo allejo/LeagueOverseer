@@ -38,39 +38,13 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 3;
-const int BUILD = 283;
+const int BUILD = 284;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
 
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
 #define ASSERT(x) { if (!(x)) { bz_debugMessagef(0, "ERROR :: League Overseer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }}
-
-// A function that will get the player record by their callsign
-static bz_BasePlayerRecord* bz_getPlayerByCallsign (const char* callsign)
-{
-    // Use a smart pointer so we don't have to worry about freeing up the memory
-    // when we're done. In other words, laziness.
-    std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
-
-    // Be sure the playerlist exists
-    if (playerList)
-    {
-        // Loop through all of the players' callsigns
-        for (unsigned int i = 0; i < playerList->size(); i++)
-        {
-            // Have we found the callsign we're looking for?
-            if (bz_getPlayerByIndex(playerList->get(i))->callsign == callsign)
-            {
-                // Return the record for that player
-                return bz_getPlayerByIndex(playerList->get(i));
-            }
-        }
-    }
-
-    // Return NULL if the callsign was not found
-    return NULL;
-}
 
 // Convert a bz_eTeamType value into a string literal with the option
 // of adding whitespace to format the string to return
@@ -995,53 +969,17 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             {
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s has executed the /spawn command.", playerData->callsign.c_str());
 
-                std::string callsignToLookup; // Store the callsign we're going to search for
+                std::unique_ptr<bz_BasePlayerRecord> target(bz_getPlayerBySlotOrCallsign(params->get(0).c_str()));
 
-                for (unsigned int i = 0; i < params->size(); i++) // Piece together the callsign from the slash command parameters
+                if (target)
                 {
-                    callsignToLookup += params->get(i).c_str();
+                    bz_grantPerm(target->playerID, "spawn");
+                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), target->callsign.c_str());
 
-                    if (i != params->size() - 1) // So we don't stick a whitespace on the end
-                    {
-                        callsignToLookup += " "; // Add a whitespace between each chat text parameter
-                    }
-                }
-
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Callsign or Player slot to look for: %s", callsignToLookup.c_str());
-
-                // We have a pound sign followed by a valid player index
-                if (std::string::npos != std::string(params->get(0).c_str()).find("#") && isValidPlayerID(atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str())))
-                {
-                    // Let's make some easy reference variables
-                    int victimPlayerID = atoi(std::string(params->get(0).c_str()).erase(0, 1).c_str());
-                    std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByIndex(victimPlayerID));
-
-                    if (!victim)
-                    {
-                        bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, something wrong happened to the player after you executed the command.");
-                        return true;
-                    }
-
-                    bz_grantPerm(victim->playerID, "spawn");
-                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), victim->callsign.c_str());
-                }
-                else if (bz_getPlayerByCallsign(callsignToLookup.c_str()) != NULL) // It's a valid callsign
-                {
-                    std::unique_ptr<bz_BasePlayerRecord> victim(bz_getPlayerByCallsign(callsignToLookup.c_str()));
-
-                    if (!victim)
-                    {
-                        bz_sendTextMessage(BZ_SERVER, playerID, "Sorry, something wrong happened to the player after you executed the command.");
-                        return true;
-                    }
-
-                    bz_grantPerm(victim->playerID, "spawn");
-                    bz_sendTextMessagef(BZ_SERVER, eAdministrators, "%s granted %s the ability to spawn.", playerData->callsign.c_str(), victim->callsign.c_str());
                 }
                 else
                 {
                     bz_sendTextMessagef(BZ_SERVER, playerID, "player %s not found", params->get(0).c_str());
-                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Player %s was not found.", callsignToLookup.c_str());
                 }
             }
             else
@@ -1069,16 +1007,6 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
     // Convert the data we get from the URL job to a std::string
     std::string siteData = (const char*)(data);
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: URL Job returned: %s", siteData.c_str());
-
-    /*
-        For whenever <regex> gets pushed out in the new version of GCC...
-
-        // Let's store this regex since that's how we'll get our team name data
-        std::regex teamNameRegex ("\\{\"bzid\":\"\\d+\",\"team\":\"[\\w\\s]+\"\\}");
-
-        // The data returned matches an expected regex syntax meaning we got team name information
-        if (std::regex_match(siteData, teamNameRegex))
-    */
 
     // The returned data starts with a '{' and ends with a '}' so chances are it's JSON data
     if (siteData.at(0) == '{' && siteData.at(siteData.length() - 1) == '}')

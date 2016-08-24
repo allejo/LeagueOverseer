@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 3;
-const int BUILD = 284;
+const int BUILD = 286;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;

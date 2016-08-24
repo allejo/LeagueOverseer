@@ -38,7 +38,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 3;
-const int BUILD = 286;
+const int BUILD = 287;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -596,7 +596,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 (teamScoreChange->team == TEAM_ONE) ? currentMatch->teamOnePoints++ : currentMatch->teamTwoPoints++;
 
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s team scored.", formatTeam(teamScoreChange->team).c_str());
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: Leauve Overseer :: Official Match Score %s [%i] vs %s [%i]",
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s Match Score %s [%i] vs %s [%i]",
+                                 (currentMatch->isOfficialMatch) ? "Official" : "Fun",
                                  formatTeam(TEAM_ONE).c_str(), currentMatch->teamOnePoints,
                                  formatTeam(TEAM_TWO).c_str(), currentMatch->teamTwoPoints);
             }
@@ -784,6 +785,10 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             {
                 bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown resume' is disabled, please use /resume instead **");
             }
+            else if (params->get(0) == "cancel")
+            {
+                bz_sendTextMessagef(BZ_SERVER, playerID, "** '/countdown cancel' is disabled, please use /cancel instead **");
+            }
             else
             {
                 bz_sendTextMessage(BZ_SERVER, playerID, "** '/countdown TIME' is disabled, please use /official or /fm instead **");
@@ -815,7 +820,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
                 // Let's check if we can report the match, in other words, at least half of the match has been reported
                 if (getMatchProgress() >= currentMatch->duration / 2)
                 {
-                    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: Match Over Seer :: Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
+                    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
                     bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match ended early by %s", playerData->callsign.c_str());
 
                     bz_gameOver(253, eObservers);

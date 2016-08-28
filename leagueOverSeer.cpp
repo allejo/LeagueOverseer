@@ -1163,7 +1163,7 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
     for (unsigned int i = 0; i < currentMatch->matchParticipants.size(); i++)
     {
         // If the player current player is part of the team we're formatting
-        if (currentMatch->matchParticipants.at(i).teamColor == team || !currentMatch->isOfficialMatch)
+        if (currentMatch->matchParticipants.at(i).teamColor == team)
         {
             // Add the BZID of the player to string with a comma at the end
             bzidString += std::string(bz_urlEncode(currentMatch->matchParticipants.at(i).bzID.c_str())) + ",";

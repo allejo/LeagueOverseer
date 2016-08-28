@@ -1179,12 +1179,8 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
     // Return the comma separated string minus the last character because the loop will always
     // add an extra comma at the end. If we leave it, it will cause issues with the PHP counterpart
     // which tokenizes the BZIDs by commas and we don't want an empty BZID
-    if (!bzidString.empty()) {
-        bzidString = bzidString.erase(bzidString.size() - 1);
-    }
-    if (!ipString.empty()) {
-        ipString = ipString.erase(ipString.size() - 1);
-    }
+    bzidString = bzidString.erase(bzidString.size() - 1);
+    ipString   = ipString.erase(ipString.size() - 1);
 }
 
 // Return the progress of a match in seconds. For example, 20:00 minutes remaining would return 600

@@ -1163,7 +1163,7 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
     for (unsigned int i = 0; i < currentMatch->matchParticipants.size(); i++)
     {
         // If the player current player is part of the team we're formatting
-        if (currentMatch->matchParticipants.at(i).teamColor == team)
+        if (currentMatch->matchParticipants.at(i).teamColor == team || !currentMatch->isOfficialMatch)
         {
             // Add the BZID of the player to string with a comma at the end
             bzidString += std::string(bz_urlEncode(currentMatch->matchParticipants.at(i).bzID.c_str())) + ",";
@@ -1179,8 +1179,12 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
     // Return the comma separated string minus the last character because the loop will always
     // add an extra comma at the end. If we leave it, it will cause issues with the PHP counterpart
     // which tokenizes the BZIDs by commas and we don't want an empty BZID
-    bzidString = bzidString.erase(bzidString.size() - 1);
-    ipString   = ipString.erase(ipString.size() - 1);
+    if (!bzidString.empty()) {
+        bzidString = bzidString.erase(bzidString.size() - 1);
+    }
+    if (!ipString.empty()) {
+        ipString = ipString.erase(ipString.size() - 1);
+    }
 }
 
 // Return the progress of a match in seconds. For example, 20:00 minutes remaining would return 600

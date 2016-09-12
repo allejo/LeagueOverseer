@@ -572,7 +572,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
             {
                 bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** There is currently %s match in progress, please be respectful. ***",
-                                    ((currentMatch != NULL) ? "an official" : "a fun"));
+                                    ((currentMatch->isOfficialMatch) ? "an official" : "a fun"));
             }
 
             if (!DISABLE_MOTTO)

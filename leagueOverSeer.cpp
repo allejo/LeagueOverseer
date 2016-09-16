@@ -358,6 +358,9 @@ void LeagueOverseer::Cleanup (void)
     bz_removeCustomSlashCommand("spawn");
     bz_removeCustomSlashCommand("pause");
     bz_removeCustomSlashCommand("resume");
+
+    bz_removeCustomSlashCommand("gameover");
+    bz_removeCustomSlashCommand("countdown");
 }
 
 void LeagueOverseer::Event (bz_EventData *eventData)

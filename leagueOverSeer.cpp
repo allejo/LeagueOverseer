@@ -442,7 +442,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     // Oops... I darn goofed. Somehow the players were not recorded properly
 
                     bz_debugMessage(DEBUG_LEVEL, "DEBUG :: League Overseer :: No recorded players for this official match.");
-                    bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Official match could not be reported due to not having a list of valid match participants.");
+                    bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Current match could not be reported due to not having a list of valid match participants.");
                 }
                 else
                 {
@@ -619,7 +619,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 if (currentMatch != NULL)
                 {
                     currentMatch->canceled = true;
-                    currentMatch->cancelationReason = "Official match automatically canceled due to all players leaving the match.";
+                    currentMatch->cancelationReason = "Current match automatically canceled due to all players leaving the match.";
                 }
 
                 // If there is a countdown active an no tanks are playing, then cancel it

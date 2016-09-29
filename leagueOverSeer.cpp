@@ -752,6 +752,8 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         else if (bz_isCountDownInProgress()) // Cancel the countdown if it's in progress
         {
             bz_cancelCountdown(playerID);
+
+            currentMatch = NULL;
         }
         else if (bz_isCountDownActive()) // We can only cancel a match if the countdown is active
         {

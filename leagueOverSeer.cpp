@@ -1206,6 +1206,11 @@ void LeagueOverseer::URLError(const char* /*URL*/, int errorCode, const char *er
 
 void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidString, std::string &ipString)
 {
+    if (currentMatch == NULL)
+    {
+        return;
+    }
+
     // Send a debug message of the players on the specified team
     bz_debugMessagef(0, "Match Data :: %s Team Players", formatTeam(team).c_str());
 

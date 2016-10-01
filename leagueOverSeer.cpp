@@ -43,8 +43,8 @@ const int BUILD = 287;
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
 
-const double FM_MIN_RATIO = 2/7;
-const double OFFI_MIN_TIME = 300;
+const double FM_MIN_RATIO = 2.0/7.0;
+const double OFFI_MIN_TIME = 300.0;
 const double IDLE_FORGIVENESS = 0.9;
 
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
@@ -684,8 +684,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (currentMatch != NULL)
             {
                 std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(dieData->playerID));
-
-                currentMatch->matchRoster[playerRecord->bzID].lastDeathTime = bz_getCurrentTime();
+                MatchParticipant &player = currentMatch->matchRoster[playerRecord->bzID];
+                player.lastDeathTime = bz_getCurrentTime();
             }
         }
         break;
@@ -1255,8 +1255,8 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
 
         double estimatedPlayTime = (player.totalPlayTime - (player.totalIdleTime * IDLE_FORGIVENESS));
 
-        bool officialMatchAndPlayTime = (currentMatch->isOfficialMatch && estimatedPlayTime >= OFFI_MIN_TIME); // It's an official match and they played at least than 5 minutes
-        bool funMatchAndPlayTime = (!currentMatch->isOfficialMatch && estimatedPlayTime >= (currentMatch->duration * FM_MIN_RATIO)); // It's a fun match and they played at least than 2/7 of the match
+        bool officialMatchAndPlayTime = (currentMatch->isOfficialMatch && estimatedPlayTime >= OFFI_MIN_TIME); // It's an official match and they played at least the minimum time
+        bool funMatchAndPlayTime = (!currentMatch->isOfficialMatch && estimatedPlayTime >= (currentMatch->duration * FM_MIN_RATIO)); // It's a fun match and they played at least the minimum time
 
         if (player.getLoyalty(TEAM_ONE, TEAM_TWO) == team)
         {

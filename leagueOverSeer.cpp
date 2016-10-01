@@ -191,6 +191,7 @@ public:
         MatchParticipant() :
             slotID(-1),
             startTime(-1),
+            totalIdleTime(0),
             totalPlayTime(0)
         {}
 
@@ -650,7 +651,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     MatchParticipant currentPlayer(playerRecord.get());
 
                     currentPlayer.teamName = teamMottos[bzid];
-                    currentPlayer.startTime = bz_getCurrentTime();
+                    currentPlayer.startTime = currentPlayer.lastDeathTime = bz_getCurrentTime();
 
                     currentMatch->matchRoster[bzid] = currentPlayer;
 

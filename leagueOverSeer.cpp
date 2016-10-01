@@ -43,6 +43,10 @@ const int BUILD = 287;
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
 
+const double FM_MIN_RATIO = 2/7;
+const double OFFI_MIN_TIME = 300;
+const double IDLE_FORGIVENESS = 0.9;
+
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
 #define ASSERT(x) { if (!(x)) { bz_debugMessagef(0, "ERROR :: League Overseer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }}
 
@@ -177,7 +181,9 @@ public:
         bz_eTeamType teamColor;
 
         double startTime;     // The time the player started playing their last session
+        double lastDeathTime; // The time the player last died
         double totalPlayTime; // The total amount of time a player has played in a match in seconds
+        double totalIdleTime; // An estimated amount of idle time a player has had during the match
 
         // The amount of seconds a player has played on each respective team
         std::map<bz_eTeamType, double> playTimeByTeam;
@@ -306,8 +312,10 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_eGameResumeEvent);
     Register(bz_eGameStartEvent);
     Register(bz_eGetPlayerMotto);
+    Register(bz_ePlayerDieEvent);
     Register(bz_ePlayerJoinEvent);
     Register(bz_ePlayerPartEvent);
+    Register(bz_ePlayerSpawnEvent);
     Register(bz_eTeamScoreChanged);
     Register(bz_eTickEvent);
 
@@ -669,6 +677,19 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         }
         break;
 
+        case bz_ePlayerDieEvent:
+        {
+            bz_PlayerDieEventData_V1 *dieData = (bz_PlayerDieEventData_V1*)eventData;
+
+            if (currentMatch != NULL)
+            {
+                std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(dieData->playerID));
+
+                currentMatch->matchRoster[playerRecord->bzID].lastDeathTime = bz_getCurrentTime();
+            }
+        }
+        break;
+
         case bz_ePlayerJoinEvent: // This event is called each time a player joins the game
         {
             bz_PlayerJoinPartEventData_V1* joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
@@ -720,6 +741,20 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s has left with %.0f seconds of playing time",
                                  participant.callsign.c_str(), participant.totalPlayTime);
+            }
+        }
+        break;
+
+        case bz_ePlayerSpawnEvent:
+        {
+            bz_PlayerSpawnEventData_V1 *spawnData = (bz_PlayerSpawnEventData_V1*)eventData;
+
+            if (currentMatch != NULL)
+            {
+                std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(spawnData->playerID));
+                MatchParticipant &player = currentMatch->matchRoster[playerRecord->bzID];
+
+                player.totalIdleTime += std::max(0.0, (bz_getCurrentTime() - player.lastDeathTime - (bz_getBZDBDouble("_explodeTime") * 1.5)));
             }
         }
         break;
@@ -1218,15 +1253,14 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
     {
         MatchParticipant &player = kv.second;
 
-        double idleTime = bz_getIdleTime(player.slotID);
+        double estimatedPlayTime = (player.totalPlayTime - (player.totalIdleTime * IDLE_FORGIVENESS));
 
-        bool officialMatchAndPlayTime = (currentMatch->isOfficialMatch && player.totalPlayTime >= 300); // It's an official match and they played for more than 5 minutes
-        bool funMatchAndPlayTime = (!currentMatch->isOfficialMatch && player.totalPlayTime >= (currentMatch->duration * 2/7)); // It's a fun match and they played for more than 2/7 of the match
-        bool isntIdle = (idleTime <= 90); // As long as the player hasn't been idle for the last 2 minutes of the match...
+        bool officialMatchAndPlayTime = (currentMatch->isOfficialMatch && estimatedPlayTime >= OFFI_MIN_TIME); // It's an official match and they played at least than 5 minutes
+        bool funMatchAndPlayTime = (!currentMatch->isOfficialMatch && estimatedPlayTime >= (currentMatch->duration * FM_MIN_RATIO)); // It's a fun match and they played at least than 2/7 of the match
 
         if (player.getLoyalty(TEAM_ONE, TEAM_TWO) == team)
         {
-            if ((officialMatchAndPlayTime || funMatchAndPlayTime) && isntIdle)
+            if (officialMatchAndPlayTime || funMatchAndPlayTime)
             {
                 // Add the BZID of the player to string with a comma at the end
                 bzidString += std::string(bz_urlEncode(player.bzID.c_str())) + ",";
@@ -1235,12 +1269,7 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
 
             // Output their information to the server logs
             bz_debugMessagef(0, "Match Data ::   %s [%s] (%s)", player.callsign.c_str(), player.bzID.c_str(), player.ipAddress.c_str());
-            bz_debugMessagef(0, "Match Data ::     %.0f seconds of play time", player.totalPlayTime);
-
-            if (!isntIdle)
-            {
-                bz_debugMessagef(0, "Match Data ::     Failed to meet idle requirement: %0.f seconds", idleTime);
-            }
+            bz_debugMessagef(0, "Match Data ::     %.0f seconds of estimated play time", estimatedPlayTime);
 
             if (!(officialMatchAndPlayTime || funMatchAndPlayTime))
             {

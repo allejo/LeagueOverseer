@@ -180,6 +180,8 @@ public:
         std::string teamName;
         bz_eTeamType teamColor;
 
+        bool hasSpawned; // Set to true if the player has ever spawned in the match
+
         double startTime;     // The time the player started playing their last session
         double lastDeathTime; // The time the player last died
         double totalPlayTime; // The total amount of time a player has played in a match in seconds
@@ -191,6 +193,7 @@ public:
         MatchParticipant() :
             slotID(-1),
             startTime(-1),
+            hasSpawned(false),
             totalIdleTime(0),
             totalPlayTime(0)
         {}
@@ -218,6 +221,11 @@ public:
 
         void updatePlayingTime (bz_eTeamType team)
         {
+            if (!hasSpawned)
+            {
+                return;
+            }
+
             double sessionPlaytime = bz_getCurrentTime() - startTime;
 
             totalPlayTime += sessionPlaytime;
@@ -490,6 +498,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     std::string bzid = playerRecord->bzID;
 
                     MatchParticipant &player = currentMatch->matchRoster[bzid];
+
                     player.updatePlayingTime(playerRecord->team);
                 }
             }
@@ -661,7 +670,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   IP Address : %s", currentPlayer.ipAddress.c_str());
                     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Name  : %s", currentPlayer.teamName.c_str());
                     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Color : %s", formatTeam(currentPlayer.teamColor).c_str());
-                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Start Time : %d", currentPlayer.startTime);
+                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Start Time : %0.f", currentPlayer.startTime);
                 }
             }
         }
@@ -715,7 +724,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             {
                 MatchParticipant player(joinData->record);
 
-                player.startTime = bz_getCurrentTime();
+                player.startTime = player.lastDeathTime = bz_getCurrentTime();
                 player.teamName  = teamMottos[joinData->record->bzID];
 
                 currentMatch->matchRoster[joinData->record->bzID] = player;
@@ -726,6 +735,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   IP Address : %s", player.ipAddress.c_str());
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Name  : %s", player.teamName.c_str());
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Color : %s", formatTeam(player.teamColor).c_str());
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Start Time : %0.f", player.startTime);
             }
         }
         break;
@@ -738,6 +748,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (currentMatch != NULL && currentMatch->matchRoster.find(bzid) != currentMatch->matchRoster.end() && partData->record->team != eObservers)
             {
                 MatchParticipant &participant = currentMatch->matchRoster[bzid];
+
                 participant.updatePlayingTime(partData->record->team);
 
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s has left with %.0f seconds of playing time",
@@ -753,9 +764,14 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (currentMatch != NULL)
             {
                 std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(spawnData->playerID));
-                MatchParticipant &player = currentMatch->matchRoster[playerRecord->bzID];
 
-                player.totalIdleTime += std::max(0.0, (bz_getCurrentTime() - player.lastDeathTime - (bz_getBZDBDouble("_explodeTime") * 1.5)));
+                if (playerRecord)
+                {
+                    MatchParticipant &player = currentMatch->matchRoster[playerRecord->bzID];
+
+                    player.hasSpawned = true;
+                    player.totalIdleTime += std::max(0.0, (bz_getCurrentTime() - player.lastDeathTime - (bz_getBZDBDouble("_explodeTime") * 1.5)));
+                }
             }
         }
         break;
@@ -1261,7 +1277,7 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
 
         if (player.getLoyalty(TEAM_ONE, TEAM_TWO) == team)
         {
-            if (officialMatchAndPlayTime || funMatchAndPlayTime)
+            if ((officialMatchAndPlayTime || funMatchAndPlayTime) && player.hasSpawned)
             {
                 // Add the BZID of the player to string with a comma at the end
                 bzidString += std::string(bz_urlEncode(player.bzID.c_str())) + ",";
@@ -1271,6 +1287,11 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
             // Output their information to the server logs
             bz_debugMessagef(0, "Match Data ::   %s [%s] (%s)", player.callsign.c_str(), player.bzID.c_str(), player.ipAddress.c_str());
             bz_debugMessagef(0, "Match Data ::     %.0f seconds of estimated play time", estimatedPlayTime);
+
+            if (!player.hasSpawned)
+            {
+                bz_debugMessagef(0, "Match Data ::     Player never spawned");
+            }
 
             if (!(officialMatchAndPlayTime || funMatchAndPlayTime))
             {

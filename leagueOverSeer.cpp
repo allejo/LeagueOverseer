@@ -764,7 +764,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_TeamScoreChangeEventData_V1* teamScoreChange = (bz_TeamScoreChangeEventData_V1*)eventData;
 
-            // We only need to keep track of the store if it's an official match
+            // We only need to keep track of the store if it's a match
             if (currentMatch != NULL && teamScoreChange->element == bz_eWins)
             {
                 (teamScoreChange->team == TEAM_ONE) ? currentMatch->teamOnePoints++ : currentMatch->teamTwoPoints++;

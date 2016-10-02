@@ -24,6 +24,14 @@ These individuals have assisted significantly with guiding the project in its cu
 - [JeffM](https://github.com/JeffM2501)
 - [the map](https://github.com/asinck)
 
+## Requirements
+
+- BZFlag 2.4.5+ (*latest version available on GitHub is recommended*)
+- C++11
+- json-c
+    - libjson0-dev (Debian/Ubuntu)
+    - json-c-devel (Fedora Linux)
+
 ## Documentation
 
 ### Configuration File

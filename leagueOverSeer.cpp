@@ -1,6 +1,7 @@
 /*
 League Overseer
     Copyright (C) 2013-2016 Vladimir Jimenez & Ned Anderson
+    Copyright (c) 2017 Vladimir Jimenez
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,8 +38,8 @@ League Overseer
 // Define plugin version numbering
 const int MAJOR = 1;
 const int MINOR = 1;
-const int REV = 4;
-const int BUILD = 302;
+const int REV = 5;
+const int BUILD = 306;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1275,8 +1276,22 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
         bool officialMatchAndPlayTime = (currentMatch->isOfficialMatch && estimatedPlayTime >= OFFI_MIN_TIME); // It's an official match and they played at least the minimum time
         bool funMatchAndPlayTime = (!currentMatch->isOfficialMatch && estimatedPlayTime >= (currentMatch->duration * FM_MIN_RATIO)); // It's a fun match and they played at least the minimum time
 
-        if (player.getLoyalty(TEAM_ONE, TEAM_TWO) == team)
+        bz_eTeamType loyalty = player.getLoyalty(TEAM_ONE, TEAM_TWO);
+
+        if (loyalty == team)
         {
+            if (currentMatch->isOfficialMatch && officialMatchAndPlayTime && !teamMottos[player.bzID].empty())
+            {
+                if (loyalty == TEAM_ONE)
+                {
+                    currentMatch->teamOneName = teamMottos[player.bzID];
+                }
+                else if (loyalty == TEAM_TWO)
+                {
+                    currentMatch->teamTwoName = teamMottos[player.bzID];
+                }
+            }
+
             if ((officialMatchAndPlayTime || funMatchAndPlayTime) && player.hasSpawned)
             {
                 // Add the BZID of the player to string with a comma at the end

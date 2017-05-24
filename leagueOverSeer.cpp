@@ -320,6 +320,7 @@ void LeagueOverseer::Init (const char* commandLine)
     Register(bz_eGameEndEvent);
     Register(bz_eGameResumeEvent);
     Register(bz_eGameStartEvent);
+    Register(bz_eGetAutoTeamEvent);
     Register(bz_eGetPlayerMotto);
     Register(bz_ePlayerDieEvent);
     Register(bz_ePlayerJoinEvent);
@@ -672,6 +673,18 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Color : %s", formatTeam(currentPlayer.teamColor).c_str());
                     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Start Time : %0.f", currentPlayer.startTime);
                 }
+            }
+        }
+        break;
+
+        case bz_eGetAutoTeamEvent:
+        {
+            bz_GetAutoTeamEventData_V1* autoTeamData = (bz_GetAutoTeamEventData_V1*)eventData;
+
+            if (bz_getTeamPlayerLimit(autoTeamData->team) == 0)
+            {
+                autoTeamData->handled = true;
+                autoTeamData->team = (rand() % 2) ? TEAM_ONE : TEAM_TWO;
             }
         }
         break;

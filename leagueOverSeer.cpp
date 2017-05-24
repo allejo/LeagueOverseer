@@ -1280,13 +1280,13 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
 
         if (loyalty == team)
         {
-            if (currentMatch->isOfficialMatch && officialMatchAndPlayTime && !teamMottos[player.bzID].empty())
+            if (officialMatchAndPlayTime && !teamMottos[player.bzID].empty())
             {
                 if (loyalty == TEAM_ONE)
                 {
                     currentMatch->teamOneName = teamMottos[player.bzID];
                 }
-                else if (loyalty == TEAM_TWO)
+                else
                 {
                     currentMatch->teamTwoName = teamMottos[player.bzID];
                 }

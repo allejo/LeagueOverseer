@@ -794,9 +794,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             bz_TeamScoreChangeEventData_V1* teamScoreChange = (bz_TeamScoreChangeEventData_V1*)eventData;
 
             // We only need to keep track of the store if it's a match
-            if (currentMatch != NULL && teamScoreChange->element == bz_eWins)
+            if (currentMatch != NULL && teamScoreChange->element == bz_eLosses)
             {
-                (teamScoreChange->team == TEAM_ONE) ? currentMatch->teamOnePoints++ : currentMatch->teamTwoPoints++;
+                (teamScoreChange->team == TEAM_ONE) ? currentMatch->teamTwoPoints++ : currentMatch->teamOnePoints++;
 
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s team scored.", formatTeam(teamScoreChange->team).c_str());
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s Match Score %s [%i] vs %s [%i]",

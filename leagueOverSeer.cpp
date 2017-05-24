@@ -37,8 +37,8 @@ League Overseer
 // Define plugin version numbering
 const int MAJOR = 1;
 const int MINOR = 1;
-const int REV = 4;
-const int BUILD = 302;
+const int REV = 5;
+const int BUILD = 307;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -720,7 +720,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 }
             }
 
-            if (bz_isCountDownActive() && joinData->record->team != eObservers)
+            if (bz_isCountDownActive() && joinData->record->team != eObservers && !currentMatch->matchRoster.count(joinData->record->bzID))
             {
                 MatchParticipant player(joinData->record);
 

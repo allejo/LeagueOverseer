@@ -12,6 +12,11 @@
 *.la
 *.a
 
+# Generated files
+.deps/
+Makefile
+Makefile.in
+
 # OS generated files
 .DS_Store
 .DS_Store?

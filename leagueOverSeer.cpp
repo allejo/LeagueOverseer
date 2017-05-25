@@ -440,6 +440,22 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             bz_Time standardTime;
             bz_getUTCtime(&standardTime);
 
+            std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+
+            for (unsigned int i = 0; i < playerList->size(); i++)
+            {
+                std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
+
+                if (playerRecord && bz_getPlayerTeam(playerList->get(i)) != eObservers) // If player is not an observer
+                {
+                    std::string bzid = playerRecord->bzID;
+
+                    MatchParticipant &player = currentMatch->matchRoster[bzid];
+
+                    player.updatePlayingTime(playerRecord->team);
+                }
+            }
+
             std::string recordingFileName = buildReplayName(standardTime);
 
             // Only save the recording buffer if we actually started recording when the match started
@@ -456,29 +472,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 // We're no longer recording, so set the boolean and announce to players that the file has been saved
                 RECORDING = false;
                 bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Match saved as: %s", recordingFileName.c_str());
-            }
-
-            std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
-
-            // We can't do a roll call if the player list wasn't created
-            if (!playerList)
-            {
-                bz_debugMessagef(VERBOSE_LEVEL, "ERROR :: League Overseer :: Failure to create player list for roll call.");
-                return;
-            }
-
-            for (unsigned int i = 0; i < playerList->size(); i++)
-            {
-                std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
-
-                if (playerRecord && bz_getPlayerTeam(playerList->get(i)) != eObservers) // If player is not an observer
-                {
-                    std::string bzid = playerRecord->bzID;
-
-                    MatchParticipant &player = currentMatch->matchRoster[bzid];
-
-                    player.updatePlayingTime(playerRecord->team);
-                }
             }
 
             if (!DISABLE_REPORT)
@@ -1302,7 +1295,13 @@ void LeagueOverseer::buildPlayerStrings(bz_eTeamType team, std::string &bzidStri
 
 bz_ApiString LeagueOverseer::buildReplayName(bz_Time &standardTime)
 {
-    bz_ApiString replayFileName;
+    bz_ApiString replayFileName = "";
+
+    if (!RECORDING)
+    {
+        return "";
+    }
+
     bool teamOfficial = (currentMatch->isOfficialMatch);
     std::map<bz_eTeamType, bz_ApiString> teamName;
 

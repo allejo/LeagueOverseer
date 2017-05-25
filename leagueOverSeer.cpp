@@ -1,6 +1,7 @@
 /*
 League Overseer
     Copyright (C) 2013-2016 Vladimir Jimenez & Ned Anderson
+    Copyright (C) 2017 Vladimir Jimenez
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +20,6 @@ League Overseer
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
@@ -27,9 +27,7 @@ League Overseer
 #include <math.h>
 #include <memory>
 #include <sstream>
-#include <string>
 #include <time.h>
-#include <vector>
 
 #include "bzfsAPI.h"
 #include "plugin_utils.h"
@@ -38,7 +36,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 5;
-const int BUILD = 307;
+const int BUILD = 310;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;

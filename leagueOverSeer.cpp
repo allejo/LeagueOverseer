@@ -209,7 +209,12 @@ public:
             teamColor = pr->team;
         }
 
-        bz_eTeamType getLoyalty(bz_eTeamType team1, bz_eTeamType team2)
+        double estimatedPlayTime ()
+        {
+            return (totalPlayTime - (totalIdleTime * IDLE_FORGIVENESS));
+        }
+
+        bz_eTeamType getLoyalty (bz_eTeamType team1, bz_eTeamType team2)
         {
             if (playTimeByTeam[team1] >= playTimeByTeam[team2])
             {
@@ -217,6 +222,14 @@ public:
             }
 
             return team2;
+        }
+
+        bool isEligible (bool isOfficial, double matchDuration)
+        {
+            return (
+                (isOfficial  && estimatedPlayTime() >= OFFI_MIN_TIME) ||  // It's an official match and they played at least the minimum time
+                (!isOfficial && estimatedPlayTime() >= (matchDuration * FM_MIN_RATIO))  // It's a fun match and they played at least the minimum time
+            );
         }
 
         void updatePlayingTime (bz_eTeamType team)
@@ -278,6 +291,7 @@ public:
     };
 
     virtual void buildPlayerStrings (bz_eTeamType team, std::string &bzidString, std::string &ipString);
+    virtual bz_ApiString buildReplayName (bz_Time &standardTime);
     virtual int getMatchProgress ();
     virtual std::string getMatchTime ();
     virtual void loadConfig (const char *cmdLine);
@@ -427,48 +441,13 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             // Get the current standard UTC time
             bz_Time standardTime;
             bz_getUTCtime(&standardTime);
-            std::string recordingFileName;
+
+            std::string recordingFileName = buildReplayName(standardTime);
 
             // Only save the recording buffer if we actually started recording when the match started
             if (RECORDING)
             {
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Recording was in progress during the match.");
-
-                // We'll be formatting the file name, so create a variable to store it
-                char tempRecordingFileName[512];
-
-                // Let's get started with formatting
-                if (currentMatch->isOfficialMatch)
-                {
-                    // If the official match was finished, then mark it as canceled
-                    std::string matchCanceled = (currentMatch->canceled) ? "-Canceled" : "",
-                                _teamOneName  = currentMatch->teamOneName.c_str(),
-                                _teamTwoName  = currentMatch->teamTwoName.c_str(),
-                                _matchTeams   = "";
-
-                    // We want to standardize the names, so replace all spaces with underscores and
-                    // any weird HTML symbols should have been stripped already by the PHP script
-                    std::replace(_teamOneName.begin(), _teamOneName.end(), ' ', '_');
-                    std::replace(_teamTwoName.begin(), _teamTwoName.end(), ' ', '_');
-
-                    if (!currentMatch->matchRoster.empty())
-                    {
-                        _matchTeams = _teamOneName + "-vs-" + _teamTwoName + "-";
-                    }
-
-                    sprintf(tempRecordingFileName, "offi-%d%02d%02d-%s%02d%02d%s.rec",
-                        standardTime.year, standardTime.month, standardTime.day, _matchTeams.c_str(),
-                        standardTime.hour, standardTime.minute, matchCanceled.c_str());
-                }
-                else
-                {
-                    sprintf(tempRecordingFileName, "fun-%d%02d%02d-%02d%02d.rec",
-                        standardTime.year, standardTime.month, standardTime.day,
-                        standardTime.hour, standardTime.minute);
-                }
-
-                // Move the char[] into a string to handle it better
-                recordingFileName = tempRecordingFileName;
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Replay file will be named: %s", recordingFileName.c_str());
 
                 // Save the recording buffer and stop recording
@@ -1269,7 +1248,7 @@ void LeagueOverseer::URLError(const char* /*URL*/, int errorCode, const char *er
     }
 }
 
-void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidString, std::string &ipString)
+void LeagueOverseer::buildPlayerStrings(bz_eTeamType team, std::string &bzidString, std::string &ipString)
 {
     if (currentMatch == NULL)
     {
@@ -1283,14 +1262,11 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
     {
         MatchParticipant &player = kv.second;
 
-        double estimatedPlayTime = (player.totalPlayTime - (player.totalIdleTime * IDLE_FORGIVENESS));
-
-        bool officialMatchAndPlayTime = (currentMatch->isOfficialMatch && estimatedPlayTime >= OFFI_MIN_TIME); // It's an official match and they played at least the minimum time
-        bool funMatchAndPlayTime = (!currentMatch->isOfficialMatch && estimatedPlayTime >= (currentMatch->duration * FM_MIN_RATIO)); // It's a fun match and they played at least the minimum time
+        bool isPlayerEligible = player.isEligible(currentMatch->isOfficialMatch, currentMatch->duration);
 
         if (player.getLoyalty(TEAM_ONE, TEAM_TWO) == team)
         {
-            if ((officialMatchAndPlayTime || funMatchAndPlayTime) && player.hasSpawned)
+            if (isPlayerEligible && player.hasSpawned)
             {
                 // Add the BZID of the player to string with a comma at the end
                 bzidString += std::string(bz_urlEncode(player.bzID.c_str())) + ",";
@@ -1299,14 +1275,14 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
 
             // Output their information to the server logs
             bz_debugMessagef(0, "Match Data ::   %s [%s] (%s)", player.callsign.c_str(), player.bzID.c_str(), player.ipAddress.c_str());
-            bz_debugMessagef(0, "Match Data ::     %.0f seconds of estimated play time", estimatedPlayTime);
+            bz_debugMessagef(0, "Match Data ::     %.0f seconds of estimated play time", player.estimatedPlayTime());
 
             if (!player.hasSpawned)
             {
                 bz_debugMessagef(0, "Match Data ::     Player never spawned");
             }
 
-            if (!(officialMatchAndPlayTime || funMatchAndPlayTime))
+            if (!isPlayerEligible)
             {
                 bz_debugMessagef(0, "Match Data ::     Failed to meet minimum playtime requirement: %0.f seconds", player.totalPlayTime);
             }
@@ -1324,6 +1300,49 @@ void LeagueOverseer::buildPlayerStrings (bz_eTeamType team, std::string &bzidStr
     {
         ipString = ipString.erase(ipString.size() - 1);
     }
+}
+
+bz_ApiString LeagueOverseer::buildReplayName(bz_Time &standardTime)
+{
+    bz_ApiString replayFileName;
+    bool teamOfficial = (currentMatch->isOfficialMatch);
+    std::map<bz_eTeamType, bz_ApiString> teamName;
+
+    if (currentMatch->isOfficialMatch)
+    {
+        for (auto &kv : currentMatch->matchRoster)
+        {
+            MatchParticipant p = kv.second;
+            bz_eTeamType loyalty = p.getLoyalty(TEAM_ONE, TEAM_TWO);
+
+            if (teamName.count(loyalty) && teamName[loyalty] != p.teamName)
+            {
+                teamOfficial = false;
+                break;
+            }
+            
+            teamName[loyalty] = p.teamName;
+        }
+    }
+
+    bz_ApiString teamNameString = "";
+
+    if (teamOfficial)
+    {
+        teamName[TEAM_ONE].replaceAll(" ", "_");
+        teamName[TEAM_TWO].replaceAll(" ", "_");
+
+        teamNameString.format("-%s-vs-%s", teamName[TEAM_ONE].c_str(), teamName[TEAM_TWO].c_str());
+    }
+
+    replayFileName.format("%d%02d%02d-%02d%02d-%s%s%s.rec",
+        standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute,
+        (currentMatch->isOfficialMatch ? "offi" : "fun"),
+        teamNameString.c_str(),
+        (currentMatch->canceled ? "-Canceled" : "")
+    );
+
+    return replayFileName;
 }
 
 // Return the progress of a match in seconds. For example, 20:00 minutes remaining would return 600

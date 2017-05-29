@@ -36,7 +36,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 5;
-const int BUILD = 313;
+const int BUILD = 314;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -719,6 +719,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Name  : %s", player.teamName.c_str());
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Color : %s", formatTeam(player.teamColor).c_str());
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Start Time : %0.f", player.startTime);
+            }
+
+            if (currentMatch && getMatchProgress() >= 120)
+            {
+                bz_setPlayerSpawnAtBase(joinData->playerID, false);
             }
         }
         break;

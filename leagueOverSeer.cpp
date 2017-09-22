@@ -35,8 +35,8 @@ League Overseer
 // Define plugin version numbering
 const int MAJOR = 1;
 const int MINOR = 1;
-const int REV = 5;
-const int BUILD = 315;
+const int REV = 6;
+const int BUILD = 316;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -1213,8 +1213,13 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
     }
     else if (siteData.find("<html>") == std::string::npos)
     {
-        bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s", siteData.c_str());
-        bz_debugMessagef(DEBUG_LEVEL, "%s", siteData.c_str());
+        std::vector<std::string> lines = tokenize(siteData.c_str(), "\n", 0, false);
+
+        for (auto line : lines)
+        {
+            bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "%s", line.c_str());
+            bz_debugMessagef(DEBUG_LEVEL, "%s", line.c_str());
+        }
     }
 }
 

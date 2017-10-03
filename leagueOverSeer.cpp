@@ -697,6 +697,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                                     ((currentMatch->isOfficialMatch) ? "an official" : "a fun"));
             }
 
+            bz_debugMessagef(0, "Player %s [%d] has joined the %s team", joinData->record->callsign.c_str(), joinData->playerID, formatTeam(joinData->record->team).c_str());
+
             // Nothing else for unregistered players
             if (!joinData->record->verified)
             {

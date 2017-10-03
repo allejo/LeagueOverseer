@@ -165,6 +165,9 @@ public:
     virtual void URLTimeout (const char* URL, int errorCode);
     virtual void URLError (const char* URL, int errorCode, const char *errorString);
 
+    // Type Definitions
+    typedef std::map<std::string, std::string> StringMap;
+
     // We will be storing information about the players who participated in a match so we will
     // be storing that information inside a struct
     struct MatchParticipant
@@ -299,6 +302,7 @@ public:
 
     MatchParticipant &getRecord(bz_BasePlayerRecord *pr);
     bz_eTeamType getOpponent(bz_eTeamType);
+    bz_ApiString buildQuery(StringMap parameters);
 
     // All the variables that will be used in the plugin
     bool         ROTATION_LEAGUE,  // Whether or not we are watching a league that uses different maps
@@ -324,7 +328,7 @@ public:
 
     // We will be using a map to handle the team name mottos in the format of
     // <BZID, Team Name>
-    std::map<std::string, std::string> teamMottos;
+    StringMap teamMottos;
 };
 
 BZ_PLUGIN(LeagueOverseer)
@@ -1538,14 +1542,16 @@ void LeagueOverseer::requestTeamName (bz_eTeamType team)
 // Because there will be different times where we request a team name motto, let's make into a function
 void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
 {
-    // Build the POST data for the URL job
-    std::string teamMotto = "query=teamNameQuery&apiVersion=" + intToString(API_VERSION);
-    teamMotto += "&teamPlayers=" + std::string(bzID.c_str());
-
     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Sending motto request for '%s'", callsign.c_str());
 
+    StringMap q;
+    q["query"] = "teamNameQuery";
+    q["apiVersion"]  = std::to_string(API_VERSION);
+    q["teamPlayers"] = bzID.c_str();
+    q["callsign"] = callsign.c_str();
+
     // Send the team update request to the league website
-    bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamMotto.c_str());
+    bz_addURLJob(TEAM_NAME_URL.c_str(), this, buildQuery(q).c_str());
 }
 
 void LeagueOverseer::updateTeamNames ()
@@ -1586,4 +1592,21 @@ LeagueOverseer::MatchParticipant &LeagueOverseer::getRecord(bz_BasePlayerRecord 
 bz_eTeamType LeagueOverseer::getOpponent(bz_eTeamType team)
 {
     return (team == TEAM_ONE) ? TEAM_TWO : TEAM_ONE;
+}
+
+bz_ApiString LeagueOverseer::buildQuery(std::map<std::string, std::string> parameters)
+{
+    std::string output;
+
+    for (auto param : parameters)
+    {
+        output += param.first + "=" + bz_urlEncode(param.second.c_str()) + "&";
+    }
+
+    if (output.length() >= 1)
+    {
+        output.pop_back();
+    }
+
+    return bz_ApiString(output);
 }

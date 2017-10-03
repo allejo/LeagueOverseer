@@ -447,21 +447,22 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             bz_Time standardTime;
             bz_getUTCtime(&standardTime);
 
-            std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+            bz_APIIntList *playerList = bz_getPlayerIndexList();
 
             for (unsigned int i = 0; i < playerList->size(); i++)
             {
-                std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
+                bz_BasePlayerRecord *pr = bz_getPlayerByIndex(playerList->get(i));
 
-                if (playerRecord && bz_getPlayerTeam(playerList->get(i)) != eObservers) // If player is not an observer
+                if (pr)
                 {
-                    std::string bzid = playerRecord->bzID;
+                    MatchParticipant &p = getRecord(pr);
+                    p.updatePlayingTime(pr->team);
 
-                    MatchParticipant &player = currentMatch->matchRoster[bzid];
-
-                    player.updatePlayingTime(playerRecord->team);
+                    bz_freePlayerRecord(pr);
                 }
             }
+
+            bz_deleteIntList(playerList);
 
             std::string recordingFileName = buildReplayName(standardTime);
 
@@ -618,7 +619,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             currentMatch->duration = bz_getTimeLimit();
 
             // Take an initial roll call of the players
-            std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
+            bz_APIIntList *playerList = bz_getPlayerIndexList();
 
             // We can't do a roll call if the player list wasn't created
             if (!playerList)
@@ -647,6 +648,8 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
                 bz_freePlayerRecord(pr);
             }
+
+            bz_deleteIntList(playerList);
         }
         break;
 
@@ -677,11 +680,19 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_PlayerDieEventData_V1 *dieData = (bz_PlayerDieEventData_V1*)eventData;
 
-            if (currentMatch != NULL)
+            if (!currentMatch)
             {
-                std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(dieData->playerID));
-                MatchParticipant &player = currentMatch->matchRoster[playerRecord->bzID];
-                player.lastDeathTime = bz_getCurrentTime();
+                return;
+            }
+
+            bz_BasePlayerRecord *pr = bz_getPlayerByIndex(dieData->playerID);
+
+            if (pr)
+            {
+                MatchParticipant &p = getRecord(pr);
+                p.lastDeathTime = bz_getCurrentTime();
+
+                bz_freePlayerRecord(pr);
             }
         }
         break;
@@ -730,14 +741,19 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             bz_PlayerJoinPartEventData_V1 *partData = (bz_PlayerJoinPartEventData_V1*)eventData;
             std::string bzid = partData->record->bzID;
 
-            if (currentMatch != NULL && currentMatch->matchRoster.find(bzid) != currentMatch->matchRoster.end() && partData->record->team != eObservers)
+            if (!currentMatch)
             {
-                MatchParticipant &participant = currentMatch->matchRoster[bzid];
+                return;
+            }
 
-                participant.updatePlayingTime(partData->record->team);
+            if (partData->record->team != eObservers)
+            {
+                MatchParticipant &p = getRecord(partData->record);
+
+                p.updatePlayingTime(partData->record->team);
 
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s has left with %.0f seconds of playing time",
-                                 participant.callsign.c_str(), participant.totalPlayTime);
+                                 p.callsign.c_str(), p.totalPlayTime);
             }
         }
         break;

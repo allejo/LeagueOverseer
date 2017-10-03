@@ -35,8 +35,8 @@ League Overseer
 // Define plugin version numbering
 const int MAJOR = 1;
 const int MINOR = 1;
-const int REV = 6;
-const int BUILD = 316;
+const int REV = 7;
+const int BUILD = 317;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -296,6 +296,9 @@ public:
     virtual void requestTeamName (bz_eTeamType team);
     virtual void requestTeamName (std::string callsign, std::string bzID);
     virtual void updateTeamNames (void);
+
+    MatchParticipant &getRecord(bz_BasePlayerRecord *pr);
+    bz_eTeamType getOpponent(bz_eTeamType);
 
     // All the variables that will be used in the plugin
     bool         ROTATION_LEAGUE,  // Whether or not we are watching a league that uses different maps
@@ -622,27 +625,23 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             for (unsigned int i = 0; i < playerList->size(); i++)
             {
-                std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
+                bz_BasePlayerRecord *pr = bz_getPlayerByIndex(playerList->get(i));
 
-                if (playerRecord && bz_getPlayerTeam(playerList->get(i)) != eObservers) // If player is not an observer
+                if (!pr)
                 {
-                    std::string bzid = playerRecord->bzID;
-
-                    MatchParticipant currentPlayer(playerRecord.get());
-
-                    currentPlayer.teamName = teamMottos[bzid];
-                    currentPlayer.startTime = currentPlayer.lastDeathTime = bz_getCurrentTime();
-
-                    currentMatch->matchRoster[bzid] = currentPlayer;
-
-                    // Some helpful debug messages
-                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Adding player '%s' to roll call...", currentPlayer.callsign.c_str());
-                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   BZID       : %s", currentPlayer.bzID.c_str());
-                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   IP Address : %s", currentPlayer.ipAddress.c_str());
-                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Name  : %s", currentPlayer.teamName.c_str());
-                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Color : %s", formatTeam(currentPlayer.teamColor).c_str());
-                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Start Time : %0.f", currentPlayer.startTime);
+                    continue;
                 }
+
+                if (pr->team != eObservers)
+                {
+                    MatchParticipant &mp = getRecord(pr);
+
+                    mp.teamName = teamMottos[pr->bzID];
+                    mp.startTime = mp.lastDeathTime = bz_getCurrentTime();
+                    mp.hasSpawned = pr->spawned;
+                }
+
+                bz_freePlayerRecord(pr);
             }
         }
         break;
@@ -694,31 +693,23 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                                     ((currentMatch->isOfficialMatch) ? "an official" : "a fun"));
             }
 
-            if (!DISABLE_MOTTO)
+            // Nothing else for unregistered players
+            if (!joinData->record->verified)
             {
-                // Only send a URL job if the user is verified
-                if (joinData->record->verified)
-                {
-                    requestTeamName(joinData->record->callsign.c_str(), joinData->record->bzID.c_str());
-                }
+                return;
             }
 
-            if (bz_isCountDownActive() && joinData->record->team != eObservers && !currentMatch->matchRoster.count(joinData->record->bzID))
+            if (!DISABLE_MOTTO)
             {
-                MatchParticipant player(joinData->record);
+                requestTeamName(joinData->record->callsign.c_str(), joinData->record->bzID.c_str());
+            }
+
+            if (bz_isCountDownActive() && joinData->record->team != eObservers)
+            {
+                MatchParticipant &player = getRecord(joinData->record);
 
                 player.startTime = player.lastDeathTime = bz_getCurrentTime();
                 player.teamName  = teamMottos[joinData->record->bzID];
-
-                currentMatch->matchRoster[joinData->record->bzID] = player;
-
-                // Some helpful debug messages
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Adding player '%s' to roll call...", player.callsign.c_str());
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   BZID       : %s", player.bzID.c_str());
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   IP Address : %s", player.ipAddress.c_str());
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Name  : %s", player.teamName.c_str());
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Color : %s", formatTeam(player.teamColor).c_str());
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Start Time : %0.f", player.startTime);
             }
 
             if (currentMatch && getMatchProgress() >= 30)
@@ -749,17 +740,21 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_PlayerSpawnEventData_V1 *spawnData = (bz_PlayerSpawnEventData_V1*)eventData;
 
-            if (currentMatch != NULL)
+            if (!currentMatch)
             {
-                std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(spawnData->playerID));
+                return;
+            }
 
-                if (playerRecord)
-                {
-                    MatchParticipant &player = currentMatch->matchRoster[playerRecord->bzID];
+            bz_BasePlayerRecord *pr = bz_getPlayerByIndex(spawnData->playerID);
 
-                    player.hasSpawned = true;
-                    player.totalIdleTime += std::max(0.0, (bz_getCurrentTime() - player.lastDeathTime - (bz_getBZDBDouble("_explodeTime") * 1.5)));
-                }
+            if (pr)
+            {
+                MatchParticipant &player = getRecord(pr);
+
+                player.hasSpawned = true;
+                player.totalIdleTime += std::max(0.0, (bz_getCurrentTime() - player.lastDeathTime - (bz_getBZDBDouble("_explodeTime") * 1.5)));
+
+                bz_freePlayerRecord(pr);
             }
         }
         break;
@@ -773,7 +768,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             {
                 (teamScoreChange->team == TEAM_ONE) ? currentMatch->teamTwoPoints++ : currentMatch->teamOnePoints++;
 
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s team scored.", formatTeam(teamScoreChange->team).c_str());
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s team scored.", formatTeam(getOpponent(teamScoreChange->team)).c_str());
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s Match Score %s [%i] vs %s [%i]",
                                  (currentMatch->isOfficialMatch) ? "Official" : "Fun",
                                  formatTeam(TEAM_ONE).c_str(), currentMatch->teamOnePoints,
@@ -1560,4 +1555,35 @@ void LeagueOverseer::updateTeamNames ()
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Updating Team name database...");
 
     bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamNameDump.c_str()); //Send the team update request to the league website
+}
+
+LeagueOverseer::MatchParticipant &LeagueOverseer::getRecord(bz_BasePlayerRecord *pr)
+{
+    if (currentMatch->matchRoster.count(pr->bzID))
+    {
+        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Found record for %s...", pr->callsign.c_str());
+        return currentMatch->matchRoster[pr->bzID];
+    }
+
+    MatchParticipant player(pr);
+
+    player.startTime = player.lastDeathTime = bz_getCurrentTime();
+    player.teamName  = teamMottos[pr->bzID];
+
+    currentMatch->matchRoster[pr->bzID] = player;
+
+    // Some helpful debug messages
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Adding player '%s' to roll call...", player.callsign.c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   BZID       : %s", player.bzID.c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   IP Address : %s", player.ipAddress.c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Name  : %s", player.teamName.c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Color : %s", formatTeam(player.teamColor).c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Start Time : %0.f", player.startTime);
+
+    return currentMatch->matchRoster[pr->bzID];
+}
+
+bz_eTeamType LeagueOverseer::getOpponent(bz_eTeamType team)
+{
+    return (team == TEAM_ONE) ? TEAM_TWO : TEAM_ONE;
 }

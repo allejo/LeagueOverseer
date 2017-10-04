@@ -48,49 +48,26 @@ const double IDLE_FORGIVENESS = 0.9;
 // Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
 #define ASSERT(x) { if (!(x)) { bz_debugMessagef(0, "ERROR :: League Overseer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }}
 
-// Convert a bz_eTeamType value into a string literal with the option
-// of adding whitespace to format the string to return
-static std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace = false)
+// Convert a bz_eTeamType value into a string literal
+static const char* eTeamTypeLiteral (bz_eTeamType teamColor)
 {
-    // Because we may have to format the string with white space padding, we need to store
-    // the value somewhere
-    std::string color;
-
-    // Switch through the supported team colors of this plugin
     switch (teamColor)
     {
         case eBlueTeam:
-            color = "Blue";
-            break;
+            return "Blue";
 
         case eGreenTeam:
-            color = "Green";
-            break;
+            return "Green";
 
         case ePurpleTeam:
-            color = "Purple";
-            break;
+            return "Purple";
 
         case eRedTeam:
-            color = "Red";
-            break;
+            return "Red";
 
         default:
-            break;
+            return "No";
     }
-
-    // We may want to format the team color name with white space for the debug messages
-    if (addWhiteSpace)
-    {
-        // Our max padding length will be 7 so add white space as needed
-        while (color.length() < 7)
-        {
-            color += " ";
-        }
-    }
-
-    // Return the team color with or without the padding
-    return color;
 }
 
 // Convert an int to a string
@@ -507,9 +484,9 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     sprintf(matchDate, "%02d-%02d-%02d %02d:%02d:%02d", standardTime.year, standardTime.month, standardTime.day, standardTime.hour, standardTime.minute, standardTime.second);
 
                     // Keep references to values for quick reference
-                    std::string teamOnePointsFinal = intToString(currentMatch->teamOnePoints);
-                    std::string teamTwoPointsFinal = intToString(currentMatch->teamTwoPoints);
-                    std::string matchDuration      = intToString(currentMatch->duration/60);
+                    std::string teamOnePointsFinal = std::to_string(currentMatch->teamOnePoints);
+                    std::string teamTwoPointsFinal = std::to_string(currentMatch->teamTwoPoints);
+                    std::string matchDuration      = std::to_string(currentMatch->duration/60);
                     std::string matchType          = (currentMatch->isOfficialMatch) ? "official" : "fm";
 
                     // Store match data in the logs
@@ -517,27 +494,28 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     bz_debugMessagef(0, "Match Data :: -----------------------------");
                     bz_debugMessagef(0, "Match Data :: Match Time      : %s", matchDate);
                     bz_debugMessagef(0, "Match Data :: Duration        : %s", matchDuration.c_str());
-                    bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_ONE, true).c_str(), teamOnePointsFinal.c_str());
-                    bz_debugMessagef(0, "Match Data :: %s  Score  : %s", formatTeam(TEAM_TWO, true).c_str(), teamTwoPointsFinal.c_str());
+                    bz_debugMessagef(0, "Match Data :: %16s: %s", bz_format("%s score", eTeamTypeLiteral(TEAM_ONE)), teamOnePointsFinal.c_str());
+                    bz_debugMessagef(0, "Match Data :: %16s: %s", bz_format("%s score", eTeamTypeLiteral(TEAM_TWO)), teamTwoPointsFinal.c_str());
 
                     // Start building POST data to be sent to the league website
-                    std::string matchToSend = "query=reportMatch";
-                                matchToSend += "&apiVersion="   + std::string(bz_urlEncode(intToString(API_VERSION).c_str()));
-                                matchToSend += "&matchType="    + std::string(bz_urlEncode(matchType.c_str()));
-                                matchToSend += "&teamOneColor=" + std::string(bz_urlEncode(formatTeam(TEAM_ONE).c_str()));
-                                matchToSend += "&teamTwoColor=" + std::string(bz_urlEncode(formatTeam(TEAM_TWO).c_str()));
-                                matchToSend += "&teamOneWins="  + std::string(bz_urlEncode(teamOnePointsFinal.c_str()));
-                                matchToSend += "&teamTwoWins="  + std::string(bz_urlEncode(teamTwoPointsFinal.c_str()));
-                                matchToSend += "&duration="     + std::string(bz_urlEncode(matchDuration.c_str()));
-                                matchToSend += "&matchTime="    + std::string(bz_urlEncode(matchDate));
-                                matchToSend += "&server="       + std::string(bz_urlEncode(bz_getPublicAddr().c_str()));
-                                matchToSend += "&port="         + std::string(bz_urlEncode(intToString(bz_getPublicPort()).c_str()));
-                                matchToSend += "&replayFile="   + std::string(bz_urlEncode(recordingFileName.c_str()));
+                    StringMap query;
+                    query["query"]        = "reportMatch";
+                    query["apiVersion"]   = std::to_string(API_VERSION);
+                    query["matchType"]    = matchType;
+                    query["teamOneColor"] = eTeamTypeLiteral(TEAM_ONE);
+                    query["teamTwoColor"] = eTeamTypeLiteral(TEAM_TWO);
+                    query["teamOneWins"]  = teamOnePointsFinal;
+                    query["teamTwoWins"]  = teamTwoPointsFinal;
+                    query["duration"]     = matchDuration;
+                    query["matchTime"]    = matchDate;
+                    query["server"]       = bz_getPublicAddr();
+                    query["port"]         = std::to_string(bz_getPublicPort());
+                    query["replayFile"]   = recordingFileName;
 
                     // Only add this parameter if it's a rotational league such as Leagues United
                     if (ROTATION_LEAGUE)
                     {
-                        matchToSend += "&mapPlayed=" + std::string(bz_urlEncode(MAP_NAME.c_str()));
+                        query["mapPlayed"] = MAP_NAME;
                     }
 
                     std::string teamOneBZIDs, teamOneIPs,
@@ -547,22 +525,23 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     buildPlayerStrings(TEAM_TWO, teamTwoBZIDs, teamTwoIPs);
 
                     // Build a string of BZIDs and also output the BZIDs to the server logs while we're at it
-                    matchToSend += "&teamOnePlayers=" + teamOneBZIDs;
-                    matchToSend += "&teamTwoPlayers=" + teamTwoBZIDs;
+                    query["teamOnePlayers"] = teamOneBZIDs;
+                    query["teamTwoPlayers"] = teamTwoBZIDs;
 
                     // Send the IPs that players used during the match
-                    matchToSend += "&teamOneIPs=" + teamOneIPs;
-                    matchToSend += "&teamTwoIPs=" + teamTwoIPs;
+                    query["teamOneIPs"] = teamOneIPs;
+                    query["teamTwoIPs"] = teamTwoIPs;
 
                     // Finish prettifying the server logs
                     bz_debugMessagef(0, "Match Data :: -----------------------------");
                     bz_debugMessagef(0, "Match Data :: End of Match Report");
-                    bz_debugMessagef(0, "DEBUG :: League Overseer :: Reporting match data...");
+                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Reporting match data...");
                     bz_sendTextMessage(BZ_SERVER, BZ_ALLUSERS, "Reporting match...");
 
                     // Send the match data to the league website
-                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Post data submitted: %s", matchToSend.c_str());
-                    bz_addURLJob(MATCH_REPORT_URL.c_str(), this, matchToSend.c_str());
+                    const char* urlQuery = buildQuery(query).c_str();
+                    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Post data submitted: %s", urlQuery);
+                    bz_addURLJob(MATCH_REPORT_URL.c_str(), this, urlQuery);
                     MATCH_INFO_SENT = true;
                 }
             }
@@ -708,7 +687,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                                     ((currentMatch->isOfficialMatch) ? "an official" : "a fun"));
             }
 
-            bz_debugMessagef(0, "Player %s [%d] has joined the %s team", joinData->record->callsign.c_str(), joinData->playerID, formatTeam(joinData->record->team).c_str());
+            bz_debugMessagef(0, "Player %s [%d] has joined the %s team", joinData->record->callsign.c_str(), joinData->playerID, eTeamTypeLiteral(joinData->record->team));
 
             // Nothing else for unregistered players
             if (!joinData->record->verified)
@@ -790,11 +769,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             {
                 (teamScoreChange->team == TEAM_ONE) ? currentMatch->teamTwoPoints++ : currentMatch->teamOnePoints++;
 
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s team scored.", formatTeam(getOpponent(teamScoreChange->team)).c_str());
+                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s team scored.", eTeamTypeLiteral(getOpponent(teamScoreChange->team)));
                 bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: %s Match Score %s [%i] vs %s [%i]",
                                  (currentMatch->isOfficialMatch) ? "Official" : "Fun",
-                                 formatTeam(TEAM_ONE).c_str(), currentMatch->teamOnePoints,
-                                 formatTeam(TEAM_TWO).c_str(), currentMatch->teamTwoPoints);
+                                 eTeamTypeLiteral(TEAM_ONE), currentMatch->teamOnePoints,
+                                 eTeamTypeLiteral(TEAM_TWO), currentMatch->teamTwoPoints);
             }
         }
         break;
@@ -1274,7 +1253,7 @@ void LeagueOverseer::buildPlayerStrings(bz_eTeamType team, std::string &bzidStri
     }
 
     // Send a debug message of the players on the specified team
-    bz_debugMessagef(0, "Match Data :: %s Team Players", formatTeam(team).c_str());
+    bz_debugMessagef(0, "Match Data :: %s Team Players", eTeamTypeLiteral(team));
 
     for (auto &kv : currentMatch->matchRoster)
     {
@@ -1535,7 +1514,7 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
 // Request a team name update for all the members of a team
 void LeagueOverseer::requestTeamName (bz_eTeamType team)
 {
-    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: A team name update for the '%s' team has been requested.", formatTeam(team).c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: A team name update for the '%s' team has been requested.", eTeamTypeLiteral(team));
     std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
 
     // Our player list couldn't be created so exit out of here
@@ -1551,7 +1530,7 @@ void LeagueOverseer::requestTeamName (bz_eTeamType team)
 
         if (playerRecord && playerRecord->team == team) // Only request a new team name for the players of a certain team
         {
-            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Player '%s' is a part of the '%s' team.", playerRecord->callsign.c_str(), formatTeam(team).c_str());
+            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Player '%s' is a part of the '%s' team.", playerRecord->callsign.c_str(), eTeamTypeLiteral(team));
             requestTeamName(playerRecord->callsign.c_str(), playerRecord->bzID.c_str());
         }
     }
@@ -1601,7 +1580,7 @@ LeagueOverseer::MatchParticipant &LeagueOverseer::getRecord(bz_BasePlayerRecord 
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   BZID       : %s", player.bzID.c_str());
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   IP Address : %s", player.ipAddress.c_str());
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Name  : %s", player.teamName.c_str());
-    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Color : %s", formatTeam(player.teamColor).c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Team Color : %s", eTeamTypeLiteral(player.teamColor));
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer ::   Start Time : %0.f", player.startTime);
 
     return currentMatch->matchRoster[pr->bzID];

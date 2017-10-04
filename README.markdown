@@ -52,6 +52,8 @@ A sample configuration is available in the repository, [leagueOverSeer.cfg](http
 
 League Overseer makes a number of POST requests to its API endpoints. While this plug-in follows BZiON's API specification, you are welcome to write your own endpoints to return custom data or handle matches in a custom website.
 
+The current specification defined below is API version 1. This mean defined POST parameters will **not** be renamed/deleted without a version bump. However, new parameters may be added at any given time.
+
 #### Match Reports
 
 This POST request is sent to `MATCH_REPORT_URL` or `LEAGUE_OVERSEER_URL` every time a match finishes. League Overseer will output whatever the API endpoint for this request returns as long as it's not an HTML document; in other words, the API endpoint should return plain text.
@@ -115,6 +117,8 @@ This POST request is sent to `MOTTO_FETCH_URL` or `LEAGUE_OVERSEER_URL` whenever
 | query | teamDump | The type of request the plug-in submitted |
 | apiVersion | 1 | The API version plug-in is using. This value is hardcoded in the plug-in and will require you to recompile League Overseer to change this value |
 | teamPlayers | `string` | The BZID of the player we're requesting a motto for |
+| callsign | `string` | The callsign of the player |
+| ipAddress | `string` | The IP address of the player |
 
 League Overseer expects a JSON response in the following structure:
 

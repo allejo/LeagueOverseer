@@ -30,6 +30,7 @@ League Overseer
 #include <time.h>
 
 #include "bzfsAPI.h"
+#include "plugin_files.h"
 #include "plugin_utils.h"
 
 // Define plugin version numbering
@@ -70,45 +71,6 @@ static const char* eTeamTypeLiteral (bz_eTeamType teamColor)
     }
 }
 
-// Convert an int to a string
-static std::string intToString (int number)
-{
-    std::stringstream string;
-    string << number;
-
-    return string.str();
-}
-
-// Return whether or not a specified player ID exists or not
-static bool isValidPlayerID (int playerID)
-{
-    // Use another smart pointer so we don't forget about freeing up memory
-    std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
-
-    // If the pointer doesn't exist, that means the playerID does not exist
-    return (playerData) ? true : false;
-}
-
-// Split a string by a delimeter and return a vector of elements
-static std::vector<std::string> split (const char *str, char c = ' ')
-{
-    std::vector<std::string> result;
-
-    do
-    {
-        const char *begin = str;
-
-        while(*str != c && *str)
-        {
-            str++;
-        }
-
-        result.push_back(std::string(begin, str));
-    } while (0 != *str++);
-
-    return result;
-}
-
 // Convert a string representation of a boolean to a boolean
 static bool toBool (std::string str)
 {
@@ -118,20 +80,7 @@ static bool toBool (std::string str)
 class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
 {
 public:
-    virtual const char* Name ()
-    {
-        static std::string pluginBuild = "";
-
-        if (!pluginBuild.size())
-        {
-            std::ostringstream pluginBuildStream;
-
-            pluginBuildStream << "League Overseer " << MAJOR << "." << MINOR << "." << REV << " (" << BUILD << ")";
-            pluginBuild = pluginBuildStream.str();
-        }
-
-        return pluginBuild.c_str();
-    }
+    virtual const char* Name ();
     virtual void Init (const char* config);
     virtual void Event (bz_EventData *eventData);
     virtual void Cleanup (void);
@@ -269,17 +218,24 @@ public:
     };
 
     virtual void buildPlayerStrings (bz_eTeamType team, std::string &bzidString, std::string &ipString);
-    virtual bz_ApiString buildReplayName (bz_Time &standardTime);
-    virtual int getMatchProgress ();
-    virtual std::string getMatchTime ();
-    virtual void loadConfig (const char *cmdLine);
-    virtual void requestTeamName (bz_eTeamType team);
-    virtual void requestTeamName (std::string callsign, std::string bzID);
-    virtual void updateTeamNames (void);
+
+    bz_eTeamType getOpponent(bz_eTeamType);
 
     MatchParticipant &getRecord(bz_BasePlayerRecord *pr);
-    bz_eTeamType getOpponent(bz_eTeamType);
+    
+    std::string getHumanMatchTime();
     bz_ApiString buildQuery(StringMap parameters);
+    bz_ApiString buildReplayName (bz_Time &standardTime);
+
+    int getTimeRemainingInSeconds();
+
+    bool isMatchActive();
+
+    void loadConfig(const char *cmdLine);
+    void requestTeamName(bz_BasePlayerRecord *pr);
+    void startRecording();
+    void stopRecording(const char* filename);
+    void updateTeamNames(void);
 
     // All the variables that will be used in the plugin
     bool         ROTATION_LEAGUE,  // Whether or not we are watching a league that uses different maps
@@ -310,6 +266,21 @@ public:
 
 BZ_PLUGIN(LeagueOverseer)
 
+const char* LeagueOverseer::Name()
+{
+    static std::string pluginBuild = "";
+
+    if (!pluginBuild.size())
+    {
+        std::ostringstream pluginBuildStream;
+
+        pluginBuildStream << "League Overseer " << MAJOR << "." << MINOR << "." << REV << " (" << BUILD << ")";
+        pluginBuild = pluginBuildStream.str();
+    }
+
+    return pluginBuild.c_str();
+}
+
 void LeagueOverseer::Init (const char* commandLine)
 {
     // Register our events with Register()
@@ -339,19 +310,15 @@ void LeagueOverseer::Init (const char* commandLine)
     bz_registerCustomSlashCommand("countdown", this);
 
     // Set some default values
-    currentMatch = NULL;
+    currentMatch = nullptr;
 
     // Load the configuration data when the plugin is loaded
     loadConfig(commandLine);
 
     // Check to see if the plugin is for a rotational league
-    if (MAPCHANGE_PATH != "" && ROTATION_LEAGUE)
+    if (!MAPCHANGE_PATH.empty() && ROTATION_LEAGUE)
     {
-        // Open the mapchange.out file to see what map is being used
-        std::ifstream infile;
-        infile.open(MAPCHANGE_PATH.c_str());
-        getline(infile, MAP_NAME);
-        infile.close();
+        MAP_NAME = getFileText(MAPCHANGE_PATH.c_str());
 
         bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Current map being played: %s", MAP_NAME.c_str());
     }
@@ -442,22 +409,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             bz_deleteIntList(playerList);
 
             std::string recordingFileName = buildReplayName(standardTime);
-
-            // Only save the recording buffer if we actually started recording when the match started
-            if (RECORDING)
-            {
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Recording was in progress during the match.");
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Replay file will be named: %s", recordingFileName.c_str());
-
-                // Save the recording buffer and stop recording
-                bz_saveRecBuf(recordingFileName.c_str(), 0);
-                bz_stopRecBuf();
-                bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Replay file has been saved and recording has stopped.");
-
-                // We're no longer recording, so set the boolean and announce to players that the file has been saved
-                RECORDING = false;
-                bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Match saved as: %s", recordingFileName.c_str());
-            }
+            stopRecording(recordingFileName.c_str());
 
             if (!DISABLE_REPORT)
             {
@@ -547,7 +499,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             }
 
             // We're done with the struct, so make it NULL until the next match
-            currentMatch = NULL;
+            currentMatch = nullptr;
         }
         break;
 
@@ -561,7 +513,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             modMatchStart.tm_sec += timePaused;
 
             currentMatch->matchStart = mktime(&modMatchStart);
-            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match paused for %.f seconds. Match continuing at %s.", timePaused, getMatchTime().c_str());
+            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match paused for %.f seconds. Match continuing at %s.", timePaused, getHumanMatchTime().c_str());
 
             // Go through our roster and offset their playing time to behave like there was never a game pause
             for (auto &kv : currentMatch->matchRoster)
@@ -577,20 +529,6 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         case bz_eGameStartEvent: // This event is triggered when a timed game begins
         {
             bz_debugMessage(VERBOSE_LEVEL, "DEBUG :: League Overseer :: A match has started");
-
-            // We started recording a match, so save the status
-            RECORDING = bz_startRecBuf();
-
-            // We want to notify the logs if we couldn't start recording just in case an issue were to occur and the server
-            // owner needs to check to see if players were lying about there no replay
-            if (RECORDING)
-            {
-                bz_debugMessage(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match recording has started successfully");
-            }
-            else
-            {
-                bz_debugMessage(0, "ERROR :: League Overseer :: This match could not be recorded");
-            }
 
             // Reset scores in case Caps happened during countdown delay.
             currentMatch->teamOnePoints = currentMatch->teamTwoPoints = 0;
@@ -636,6 +574,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_GetAutoTeamEventData_V1* autoTeamData = (bz_GetAutoTeamEventData_V1*)eventData;
 
+            // Redirect players to existing teams if they join a non-existant team (e.g. joining blue on HiX) so they don't get kicked
             if (bz_getTeamPlayerLimit(autoTeamData->team) == 0)
             {
                 autoTeamData->handled = true;
@@ -644,7 +583,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         }
         break;
 
-        case bz_eGetPlayerMotto: // This event is called when the player joins. It gives us the motto of the player
+        case bz_eGetPlayerMotto:
         {
             bz_GetPlayerMottoData_V2* mottoData = (bz_GetPlayerMottoData_V2*)eventData;
 
@@ -676,12 +615,12 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         }
         break;
 
-        case bz_ePlayerJoinEvent: // This event is called each time a player joins the game
+        case bz_ePlayerJoinEvent:
         {
             bz_PlayerJoinPartEventData_V1* joinData = (bz_PlayerJoinPartEventData_V1*)eventData;
 
             // Only notify a player if they exist, have joined the observer team, and there is a match in progress
-            if ((bz_isCountDownActive() || bz_isCountDownInProgress()) && isValidPlayerID(joinData->playerID) && joinData->record->team == eObservers)
+            if (isMatchActive() && joinData->record->team == eObservers)
             {
                 bz_sendTextMessagef(BZ_SERVER, joinData->playerID, "*** There is currently %s match in progress, please be respectful. ***",
                                     ((currentMatch->isOfficialMatch) ? "an official" : "a fun"));
@@ -697,10 +636,16 @@ void LeagueOverseer::Event (bz_EventData *eventData)
 
             if (!DISABLE_MOTTO)
             {
-                requestTeamName(joinData->record->callsign.c_str(), joinData->record->bzID.c_str());
+                requestTeamName(joinData->record);
             }
 
-            if (bz_isCountDownActive() && joinData->record->team != eObservers)
+            // Nothing else if there's no match active
+            if (!isMatchActive())
+            {
+                return;
+            }
+
+            if (joinData->record->team != eObservers)
             {
                 MatchParticipant &player = getRecord(joinData->record);
 
@@ -708,7 +653,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                 player.teamName  = teamMottos[joinData->record->bzID];
             }
 
-            if (currentMatch && getMatchProgress() >= 30)
+            if (getTimeRemainingInSeconds() >= 30)
             {
                 bz_setPlayerSpawnAtBase(joinData->playerID, false);
             }
@@ -720,7 +665,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             bz_PlayerJoinPartEventData_V1 *partData = (bz_PlayerJoinPartEventData_V1*)eventData;
             std::string bzid = partData->record->bzID;
 
-            if (!currentMatch)
+            if (!isMatchActive())
             {
                 return;
             }
@@ -741,7 +686,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
         {
             bz_PlayerSpawnEventData_V1 *spawnData = (bz_PlayerSpawnEventData_V1*)eventData;
 
-            if (!currentMatch)
+            if (!isMatchActive())
             {
                 return;
             }
@@ -765,7 +710,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             bz_TeamScoreChangeEventData_V1* teamScoreChange = (bz_TeamScoreChangeEventData_V1*)eventData;
 
             // We only need to keep track of the store if it's a match
-            if (currentMatch != NULL && teamScoreChange->element == bz_eLosses)
+            if (isMatchActive() && teamScoreChange->element == bz_eLosses)
             {
                 (teamScoreChange->team == TEAM_ONE) ? currentMatch->teamTwoPoints++ : currentMatch->teamOnePoints++;
 
@@ -787,7 +732,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
             if (totaltanks == 0)
             {
                 // If there is an official match and no tanks playing, we need to cancel it
-                if (currentMatch != NULL)
+                if (isMatchActive())
                 {
                     currentMatch->canceled = true;
                     currentMatch->cancelationReason = "Current match automatically canceled due to all players leaving the match.";
@@ -834,7 +779,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_cancelCountdown(playerID);
 
-            currentMatch = NULL;
+            currentMatch = nullptr;
         }
         else if (bz_isCountDownActive()) // We can only cancel a match if the countdown is active
         {
@@ -904,7 +849,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
             if (currentMatch->isOfficialMatch)
             {
                 // Let's check if we can report the match, in other words, at least half of the match has been reported
-                if (getMatchProgress() >= currentMatch->duration / 2)
+                if (getTimeRemainingInSeconds() >= currentMatch->duration / 2)
                 {
                     bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Official match ended early by %s (%s)", playerData->callsign.c_str(), playerData->ipAddress.c_str());
                     bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Official match ended early by %s", playerData->callsign.c_str());
@@ -935,12 +880,14 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "Observers are not allowed to start matches.");
         }
-        else if (currentMatch != NULL || bz_isCountDownActive() || bz_isCountDownInProgress()) // There is already a countdown
+        else if (isMatchActive()) // There is already a countdown
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
         }
         else // They are verified, not an observer, there is no match. So start one
         {
+            startRecording();
+
             currentMatch.reset(new CurrentMatch());
 
             // We signify an FM whenever the 'currentMatch' variable is set to NULL so set it to null
@@ -983,12 +930,14 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "You may not have an official match with less than 2 players per team.");
         }
-        else if (currentMatch != NULL || bz_isCountDownActive() || bz_isCountDownInProgress()) // A countdown is in progress already
+        else if (isMatchActive()) // A countdown is in progress already
         {
             bz_sendTextMessage(BZ_SERVER, playerID, "There is already a game in progress; you cannot start another.");
         }
         else // They are verified non-observer with valid team sizes and no existing match. Start one!
         {
+            startRecording();
+
             currentMatch.reset(new CurrentMatch());
 
             // Log the actions so admins can bug brad to look at detailed information
@@ -1024,7 +973,7 @@ bool LeagueOverseer::SlashCommand (int playerID, bz_ApiString command, bz_ApiStr
 
             // We've paused an official match, so we need to delay the approxTimeProgress in order to calculate the roll call time properly
             currentMatch->matchPaused = time(NULL);
-            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match paused at %s by %s.", getMatchTime().c_str(), playerData->callsign.c_str());
+            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match paused at %s by %s.", getHumanMatchTime().c_str(), playerData->callsign.c_str());
         }
         else
         {
@@ -1153,13 +1102,12 @@ void LeagueOverseer::URLDone(const char* /*URL*/, const void* data, unsigned int
                                 {
                                     // Now we need to handle each BZID separately so we will split the elements
                                     // by each comma and stuff it into a vector
-                                    std::vector<std::string> bzIDs = split(json_object_get_string(_value), ',');
+                                    std::vector<std::string> bzIDs = tokenize(json_object_get_string(_value), ",", 0, false);
 
                                     // Now iterate through the vector of team members so we can save them to our
                                     // map
-                                    for (std::vector<std::string>::const_iterator it = bzIDs.begin(); it != bzIDs.end(); ++it)
+                                    for (auto bzID : bzIDs)
                                     {
-                                        std::string bzID = std::string(*it);
                                         teamMottos[bzID.c_str()] = teamName.c_str();
 
                                         bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: BZID %s set to team %s.", bzID.c_str(), teamName.c_str());
@@ -1247,17 +1195,22 @@ void LeagueOverseer::URLError(const char* /*URL*/, int errorCode, const char *er
 
 void LeagueOverseer::buildPlayerStrings(bz_eTeamType team, std::string &bzidString, std::string &ipString)
 {
-    if (currentMatch == NULL)
+    if (!isMatchActive())
     {
         return;
     }
 
     // Send a debug message of the players on the specified team
-    bz_debugMessagef(0, "Match Data :: %s Team Players", eTeamTypeLiteral(team));
+    bz_debugMessagef(0, "Match Data :: %s team players", eTeamTypeLiteral(team));
 
     for (auto &kv : currentMatch->matchRoster)
     {
         MatchParticipant &player = kv.second;
+
+        if (kv.first.empty())
+        {
+            continue;
+        }
 
         bool isPlayerEligible = player.isEligible(currentMatch->isOfficialMatch, currentMatch->duration);
 
@@ -1291,11 +1244,11 @@ void LeagueOverseer::buildPlayerStrings(bz_eTeamType team, std::string &bzidStri
     // which tokenizes the BZIDs by commas and we don't want an empty BZID
     if (!bzidString.empty())
     {
-        bzidString = bzidString.erase(bzidString.size() - 1);
+        bzidString.pop_back();
     }
     if (!ipString.empty())
     {
-        ipString = ipString.erase(ipString.size() - 1);
+        ipString.pop_back();
     }
 }
 
@@ -1349,9 +1302,9 @@ bz_ApiString LeagueOverseer::buildReplayName(bz_Time &standardTime)
 }
 
 // Return the progress of a match in seconds. For example, 20:00 minutes remaining would return 600
-int LeagueOverseer::getMatchProgress()
+int LeagueOverseer::getTimeRemainingInSeconds()
 {
-    if (currentMatch != NULL)
+    if (isMatchActive())
     {
         time_t now = time(NULL);
 
@@ -1362,21 +1315,20 @@ int LeagueOverseer::getMatchProgress()
 }
 
 // Get the literal time remaining in a match in the format of MM:SS
-std::string LeagueOverseer::getMatchTime()
+std::string LeagueOverseer::getHumanMatchTime()
 {
-    int time = getMatchProgress();
+    int time = getTimeRemainingInSeconds();
 
     // Let's covert the seconds of a match's progress into minutes and seconds
     int minutes = (currentMatch->duration/60) - ceil(time / 60.0);
     int seconds = 60 - (time % 60);
 
-    // We need to store the literal values
     std::string minutesLiteral,
                 secondsLiteral;
 
     // If the minutes remaining are less than 10 (only has one digit), then prepend a 0 to keep the format properly
     minutesLiteral = (minutes < 10) ? "0" : "";
-    minutesLiteral += intToString(minutes);
+    minutesLiteral += std::to_string(minutes);
 
     // Do some formatting for seconds similarly to minutes
     if (seconds == 60)
@@ -1386,7 +1338,7 @@ std::string LeagueOverseer::getMatchTime()
     else
     {
         secondsLiteral = (seconds < 10) ? "0" : "";
-        secondsLiteral += intToString(seconds);
+        secondsLiteral += std::to_string(seconds);
     }
 
     return minutesLiteral + ":" + secondsLiteral;
@@ -1511,53 +1463,31 @@ void LeagueOverseer::loadConfig(const char* cmdLine)
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Verbose level set to      : %d", VERBOSE_LEVEL);
 }
 
-// Request a team name update for all the members of a team
-void LeagueOverseer::requestTeamName (bz_eTeamType team)
-{
-    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: A team name update for the '%s' team has been requested.", eTeamTypeLiteral(team));
-    std::unique_ptr<bz_APIIntList> playerList(bz_getPlayerIndexList());
-
-    // Our player list couldn't be created so exit out of here
-    if (!playerList)
-    {
-        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: The player list to process team names failed to be created.");
-        return;
-    }
-
-    for (unsigned int i = 0; i < playerList->size(); i++)
-    {
-        std::unique_ptr<bz_BasePlayerRecord> playerRecord(bz_getPlayerByIndex(playerList->get(i)));
-
-        if (playerRecord && playerRecord->team == team) // Only request a new team name for the players of a certain team
-        {
-            bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Player '%s' is a part of the '%s' team.", playerRecord->callsign.c_str(), eTeamTypeLiteral(team));
-            requestTeamName(playerRecord->callsign.c_str(), playerRecord->bzID.c_str());
-        }
-    }
-}
-
 // Because there will be different times where we request a team name motto, let's make into a function
-void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
+void LeagueOverseer::requestTeamName(bz_BasePlayerRecord *pr)
 {
-    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Sending motto request for '%s'", callsign.c_str());
+    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Sending motto request for '%s'", pr->callsign.c_str());
 
     StringMap q;
     q["query"] = "teamNameQuery";
     q["apiVersion"]  = std::to_string(API_VERSION);
-    q["teamPlayers"] = bzID.c_str();
-    q["callsign"] = callsign.c_str();
+    q["teamPlayers"] = pr->bzID.c_str();
+    q["callsign"]    = pr->callsign.c_str();
+    q["ipAddress"]   = pr->ipAddress.c_str();
 
     // Send the team update request to the league website
     bz_addURLJob(TEAM_NAME_URL.c_str(), this, buildQuery(q).c_str());
 }
 
-void LeagueOverseer::updateTeamNames ()
+void LeagueOverseer::updateTeamNames()
 {
-    // Build the POST data for the URL job
-    std::string teamNameDump = "query=teamDump&apiVersion=" + intToString(API_VERSION);
     bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Updating Team name database...");
 
-    bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamNameDump.c_str()); //Send the team update request to the league website
+    StringMap query;
+    query["query"] = "teamDump";
+    query["apiVersion"] = std::to_string(API_VERSION);
+
+    bz_addURLJob(TEAM_NAME_URL.c_str(), this, buildQuery(query).c_str());
 }
 
 LeagueOverseer::MatchParticipant &LeagueOverseer::getRecord(bz_BasePlayerRecord *pr)
@@ -1591,7 +1521,7 @@ bz_eTeamType LeagueOverseer::getOpponent(bz_eTeamType team)
     return (team == TEAM_ONE) ? TEAM_TWO : TEAM_ONE;
 }
 
-bz_ApiString LeagueOverseer::buildQuery(std::map<std::string, std::string> parameters)
+bz_ApiString LeagueOverseer::buildQuery(StringMap parameters)
 {
     std::string output;
 
@@ -1606,4 +1536,45 @@ bz_ApiString LeagueOverseer::buildQuery(std::map<std::string, std::string> param
     }
 
     return bz_ApiString(output);
+}
+
+bool LeagueOverseer::isMatchActive()
+{
+    return (currentMatch != nullptr);
+}
+
+void LeagueOverseer::startRecording()
+{
+    // We started recording a match, so save the status
+    RECORDING = bz_startRecBuf();
+
+    // We want to notify the logs if we couldn't start recording just in case an issue were to occur and the server
+    // owner needs to check to see if players were lying about there no replay
+    if (RECORDING)
+    {
+        bz_debugMessage(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Match recording has started successfully");
+    }
+    else
+    {
+        bz_debugMessage(0, "ERROR :: League Overseer :: This match could not be recorded");
+    }
+}
+
+void LeagueOverseer::stopRecording(const char* filename)
+{
+    // Only save the recording buffer if we actually started recording when the match started
+    if (RECORDING)
+    {
+        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Recording was in progress during the match.");
+        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Replay file will be named: %s", filename);
+
+        // Save the recording buffer and stop recording
+        bz_saveRecBuf(filename, 0);
+        bz_stopRecBuf();
+        bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Replay file has been saved and recording has stopped.");
+
+        // We're no longer recording, so set the boolean and announce to players that the file has been saved
+        RECORDING = false;
+        bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "Match saved as: %s", filename);
+    }
 }

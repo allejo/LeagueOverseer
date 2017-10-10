@@ -422,10 +422,11 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     // Store match data in the logs
                     bz_debugMessagef(0, "Match Data :: League Overseer Match Report");
                     bz_debugMessagef(0, "Match Data :: -----------------------------");
+                    bz_debugMessagef(0, "Match Data :: Match Type      : %s", matchType.c_str());
                     bz_debugMessagef(0, "Match Data :: Match Time      : %s", matchDate);
                     bz_debugMessagef(0, "Match Data :: Duration        : %s", matchDuration.c_str());
-                    bz_debugMessagef(0, "Match Data :: %16s: %s", bz_format("%s score", bzu_GetTeamName(TEAM_ONE)), teamOnePointsFinal.c_str());
-                    bz_debugMessagef(0, "Match Data :: %16s: %s", bz_format("%s score", bzu_GetTeamName(TEAM_TWO)), teamTwoPointsFinal.c_str());
+                    bz_debugMessagef(0, "Match Data :: %-16s: %s", bz_format("%s score", bzu_GetTeamName(TEAM_ONE)), teamOnePointsFinal.c_str());
+                    bz_debugMessagef(0, "Match Data :: %-16s: %s", bz_format("%s score", bzu_GetTeamName(TEAM_TWO)), teamTwoPointsFinal.c_str());
 
                     // Start building POST data to be sent to the league website
                     StringMap query;
@@ -446,6 +447,7 @@ void LeagueOverseer::Event (bz_EventData *eventData)
                     if (ROTATION_LEAGUE)
                     {
                         query["mapPlayed"] = MAP_NAME;
+                        bz_debugMessagef(0, "Match Data :: Map             : %s", MAP_NAME.c_str());
                     }
 
                     std::string teamOneBZIDs, teamOneIPs,

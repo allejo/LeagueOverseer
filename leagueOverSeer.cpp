@@ -37,7 +37,7 @@ League Overseer
 const int MAJOR = 1;
 const int MINOR = 1;
 const int REV = 7;
-const int BUILD = 317;
+const int BUILD = 324;
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -65,6 +65,9 @@ static const char* eTeamTypeLiteral (bz_eTeamType teamColor)
 
         case eRedTeam:
             return "Red";
+
+        case eObservers:
+            return "Observer";
 
         default:
             return "No";

@@ -23,20 +23,28 @@ League Overseer
 #include <fstream>
 #include <iostream>
 #include <iomanip>
-#include <json/json.h>
 #include <math.h>
 #include <memory>
 #include <sstream>
 #include <time.h>
 
 #include "bzfsAPI.h"
+#include "plugin_files.h"
 #include "plugin_utils.h"
+
+#include "nlohmann/json.hpp"
+
+using json = nlohmann::json;
+
+// Define plug-in name
+const std::string PLUGIN_NAME = "VPN Blocker";
 
 // Define plugin version numbering
 const int MAJOR = 1;
-const int MINOR = 1;
-const int REV = 6;
+const int MINOR = 2;
+const int REV = 0;
 const int BUILD = 316;
+const std::string SUFFIX = "Dev";
 
 // The API number used to notify the PHP counterpart about how to handle the data
 const int API_VERSION = 1;
@@ -45,205 +53,377 @@ const double FM_MIN_RATIO = 2.0/7.0;
 const double OFFI_MIN_TIME = 300.0;
 const double IDLE_FORGIVENESS = 0.9;
 
-// Log failed assertions at debug level 0 since this will work for non-member functions and it is important enough.
-#define ASSERT(x) { if (!(x)) { bz_debugMessagef(0, "ERROR :: League Overseer :: Failed assertion '%s' at %s:%d", #x, __FILE__, __LINE__); }}
-
-// Convert a bz_eTeamType value into a string literal with the option
-// of adding whitespace to format the string to return
-static std::string formatTeam (bz_eTeamType teamColor, bool addWhiteSpace = false)
+static const char* rightPad(const char* value, int count = 7)
 {
-    // Because we may have to format the string with white space padding, we need to store
-    // the value somewhere
-    std::string color;
+    std::string output = value;
 
-    // Switch through the supported team colors of this plugin
-    switch (teamColor)
+    for (int i = 0; i < count; i++)
     {
-        case eBlueTeam:
-            color = "Blue";
-            break;
-
-        case eGreenTeam:
-            color = "Green";
-            break;
-
-        case ePurpleTeam:
-            color = "Purple";
-            break;
-
-        case eRedTeam:
-            color = "Red";
-            break;
-
-        default:
-            break;
+        output += " ";
     }
 
-    // We may want to format the team color name with white space for the debug messages
-    if (addWhiteSpace)
-    {
-        // Our max padding length will be 7 so add white space as needed
-        while (color.length() < 7)
-        {
-            color += " ";
-        }
-    }
+    const char* response = output.c_str();
 
-    // Return the team color with or without the padding
-    return color;
+    return response;
 }
 
-// Convert an int to a string
-static std::string intToString (int number)
+static std::string strJoin(const std::vector<std::string> &vector, std::string delimiter = ",")
 {
-    std::stringstream string;
-    string << number;
+    auto list = bz_APIStringList(vector);
 
-    return string.str();
+    return list.join(delimiter.c_str());
 }
 
-// Return whether or not a specified player ID exists or not
-static bool isValidPlayerID (int playerID)
+static std::vector<std::string> strSplit(std::string raw, std::string delimiter = ",")
 {
-    // Use another smart pointer so we don't forget about freeing up memory
-    std::unique_ptr<bz_BasePlayerRecord> playerData(bz_getPlayerByIndex(playerID));
-
-    // If the pointer doesn't exist, that means the playerID does not exist
-    return (playerData) ? true : false;
+    return tokenize(raw, delimiter);
 }
 
-// Split a string by a delimeter and return a vector of elements
-static std::vector<std::string> split (const char *str, char c = ' ')
-{
-    std::vector<std::string> result;
-
-    do
-    {
-        const char *begin = str;
-
-        while(*str != c && *str)
-        {
-            str++;
-        }
-
-        result.push_back(std::string(begin, str));
-    } while (0 != *str++);
-
-    return result;
-}
-
-// Convert a string representation of a boolean to a boolean
+/**
+ * Convert a string representation of a boolean to a boolean
+ */
 static bool toBool (std::string str)
 {
     return !str.empty() && (strcasecmp(str.c_str (), "true") == 0 || atoi(str.c_str ()) != 0);
 }
 
-class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_BaseURLHandler
+namespace logging
 {
-public:
-    virtual const char* Name ()
+	static void logMessage(const char *type, int level, const char *message, va_list args)
+	{
+		char buffer[4096];
+		vsnprintf(buffer, 4096, message, args);
+
+		bz_debugMessagef(level, "%s :: %s :: %s", bz_toupper(type), PLUGIN_NAME.c_str(), buffer);
+	}
+
+	static void debug(int level, const char *message, ...)
+	{
+		va_list args;
+		va_start(args, message);
+		logMessage("debug", level, message, args);
+		va_end(args);
+	}
+
+	static void notice(int level, const char *message, ...)
+	{
+		va_list args;
+		va_start(args, message);
+		logMessage("notice", level, message, args);
+		va_end(args);
+	}
+
+	static void warn(int level, const char *message, ...)
+	{
+		va_list args;
+		va_start(args, message);
+		logMessage("warning", level, message, args);
+		va_end(args);
+	}
+
+	static void error(int level, const char *message, ...)
+	{
+		va_list args;
+		va_start(args, message);
+		logMessage("error", level, message, args);
+		va_end(args);
+	}
+}
+
+namespace api
+{
+    struct TeamRoster
     {
-        static std::string pluginBuild = "";
+        std::string team;
+        std::vector<std::string> members;
+    };
 
-        if (!pluginBuild.size())
-        {
-            std::ostringstream pluginBuildStream;
+    struct TeamDump
+    {
+        std::vector<TeamRoster> teamDump;
+    };
 
-            pluginBuildStream << "League Overseer " << MAJOR << "." << MINOR << "." << REV << " (" << BUILD << ")";
-            pluginBuild = pluginBuildStream.str();
-        }
+    struct MottoRequest
+    {
+        std::string bzid;
+        std::string team;
+    };
 
-        return pluginBuild.c_str();
+    void from_json(const json &j, TeamRoster &r)
+    {
+        j.at("team").get_to(r.team);
+
+        auto membersDelimited = j.at("members").get<std::string>();
+        auto members = strSplit(membersDelimited, ",");
+
+        r.members = members;
     }
-    virtual void Init (const char* config);
-    virtual void Event (bz_EventData *eventData);
-    virtual void Cleanup (void);
 
-    virtual bool SlashCommand (int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
-
-    virtual void URLDone (const char* URL, const void* data, unsigned int size, bool complete);
-    virtual void URLTimeout (const char* URL, int errorCode);
-    virtual void URLError (const char* URL, int errorCode, const char *errorString);
-
-    // We will be storing information about the players who participated in a match so we will
-    // be storing that information inside a struct
-    struct MatchParticipant
+    void to_json(json &j, const TeamRoster &r)
     {
-        // Basic player info
-        int slotID;
-        std::string bzID;
-        std::string callsign;
-        std::string ipAddress;
+        j = json{
+            {"team", r.team},
+            {"members", strJoin(r.members, ",")},
+        };
+    }
 
-        std::string teamName;
-        bz_eTeamType teamColor;
+    void from_json(json &j, const TeamDump &d)
+    {
+        j.at("teamDump").get_to(d.teamDump);
+    }
 
-        bool hasSpawned; // Set to true if the player has ever spawned in the match
+    void to_json(json &j, const TeamDump &d)
+    {
+        j = json{
+            {"teamDump", json(d.teamDump)},
+        };
+    }
 
-        double startTime;     // The time the player started playing their last session
-        double lastDeathTime; // The time the player last died
-        double totalPlayTime; // The total amount of time a player has played in a match in seconds
-        double totalIdleTime; // An estimated amount of idle time a player has had during the match
+    void from_json(json &, const MottoRequest &m)
+    {
+        j.at("bzid").get_to(m.bzid);
+        j.at("team").get_to(m.team);
+    }
 
-        // The amount of seconds a player has played on each respective team
-        std::map<bz_eTeamType, double> playTimeByTeam;
+    void to_json(json &j, const MottoRequest &m)
+    {
+        j = json{
+            {"bzid", m.bzid},
+            {"team", m.team},
+        };
+    }
+}
 
-        MatchParticipant() :
-            slotID(-1),
-            startTime(-1),
-            hasSpawned(false),
-            totalIdleTime(0),
-            totalPlayTime(0)
-        {}
-
-        MatchParticipant(bz_BasePlayerRecord *pr)
+namespace http
+{
+    class QueryBuilder
+    {
+    public:
+        QueryBuilder()
         {
-            MatchParticipant();
-
-            slotID    = pr->playerID;
-            bzID      = pr->bzID;
-            callsign  = pr->callsign;
-            ipAddress = pr->ipAddress;
-            teamColor = pr->team;
+            queryParameters = bz_APIStringList();
         }
 
-        double estimatedPlayTime ()
+        void addQueryParameter(const std::string &key, const std::string &value)
         {
-            return (totalPlayTime - (totalIdleTime * IDLE_FORGIVENESS));
+            queryParameters.push_back(key + "=" + bz_urlEncode(value.c_str()));
         }
 
-        bz_eTeamType getLoyalty (bz_eTeamType team1, bz_eTeamType team2)
+        const bool empty() const
         {
-            if (playTimeByTeam[team1] >= playTimeByTeam[team2])
+            return queryParameters.size() == 0;
+        }
+
+        const std::string toString() const
+        {
+            std::string query = queryParameters.join("&");
+
+            return query;
+        }
+
+    private:
+        bz_APIStringList queryParameters;
+    };
+
+    class HttpApiClient
+    {
+    public:
+        HttpApiClient(bz_URLHandler_V2* handler, std::string baseUrl)
+        {
+            urlHandler = handler;
+            baseUrl = baseUrl;
+            requestHeaders = bz_newStringList();
+        }
+
+        void sendGet()
+        {
+            auto qb = QueryBuilder();
+            sendGet(qb);
+        }
+
+        void sendGet(const QueryBuilder &query)
+        {
+            auto url = getUrl(query);
+            bz_addURLJob(url.c_str(), urlHandler, (void *) this, NULL, requestHeaders);
+        }
+
+        void sendPost(const std::string &body)
+        {
+            auto qb = QueryBuilder();
+            sendPost(qb, body);
+        }
+
+        void sendPost(const QueryBuilder &postData)
+        {
+            sendPost(postData.toString());
+        }
+
+        void sendPost(const QueryBuilder &postData, const QueryBuilder &query)
+        {
+            sendPost(query, postData.toString());
+        }
+
+        void sendPost(const std::string &body, const QueryBuilder &query)
+        {
+            auto url = getUrl(query);
+            bz_addURLJob(url.c_str(), urlHandler, (void *) this, body.c_str(), requestHeaders);
+        }
+
+        void clearHeaders()
+        {
+            requestHeaders->clear();
+        }
+
+        void setHeader(std::string header, std::string value)
+        {
+            bz_ApiString header_raw = bz_format("%s: %s", header.c_str(), value.c_str());
+            requestHeaders->push_back(header_raw);
+        }
+
+    private:
+        bz_APIStringList* requestHeaders;
+        bz_URLHandler_V2* urlHandler;
+        std::string baseUrl;
+
+        std::string getUrl(const QueryBuilder &query)
+        {
+            std::string url = baseUrl;
+
+            if (!query.empty())
             {
-                return team1;
+                url += "?";
+                url += query.toString();
             }
 
-            return team2;
-        }
-
-        bool isEligible (bool isOfficial, double matchDuration)
-        {
-            return (
-                (isOfficial  && estimatedPlayTime() >= OFFI_MIN_TIME) ||  // It's an official match and they played at least the minimum time
-                (!isOfficial && estimatedPlayTime() >= (matchDuration * FM_MIN_RATIO))  // It's a fun match and they played at least the minimum time
-            );
-        }
-
-        void updatePlayingTime (bz_eTeamType team)
-        {
-            if (!hasSpawned)
-            {
-                return;
-            }
-
-            double sessionPlaytime = bz_getCurrentTime() - startTime;
-
-            totalPlayTime += sessionPlaytime;
-            playTimeByTeam[team] += sessionPlaytime;
-            startTime = -1;
+            return url;
         }
     };
+}
+
+struct TimeKeeper
+{
+    TimeKeeper()
+    {
+        totalSeconds = 0;
+        stopped = true;
+    }
+
+    void start()
+    {
+        startTime = std::chrono::steady_clock::now();
+        stopped = false;
+    }
+
+    const double stop()
+    {
+        auto now = std::chrono::steady_clock::now();
+        auto timeDiff = now - startTime;
+
+        totalSeconds += timeDiff.count();
+        stopped = true;
+
+        const timeDiff.count();
+    }
+
+    const double getTotal() const
+    {
+        return totalSeconds;
+    }
+
+    const bool isStopped() const
+    {
+        return stopped;
+    }
+
+private:
+    std::chrono::time_point startTime;
+    double totalSeconds;
+    bool stopped;
+};
+
+struct MatchParticipant
+{
+    // Basic player info
+    int playerID;
+    std::string bzID;
+    std::string callsign;
+    std::string ipAddress;
+    std::string teamName;
+    bz_eTeamType teamColor;
+
+    // Set to true if the player has ever spawned in the match
+    bool hasSpawned = false;
+
+    TimeKeeper idleTime;
+    TimeKeeper playTime;
+
+    // The amount of seconds a player has played on each respective team
+    std::map<bz_eTeamType, double> playTimeByTeam;
+
+    MatchParticipant(bz_BasePlayerRecord *pr)
+    {
+        playerID  = pr->playerID;
+        bzID      = pr->bzID;
+        callsign  = pr->callsign;
+        ipAddress = pr->ipAddress;
+        teamColor = pr->team;
+    }
+
+    double estimatedPlayTime()
+    {
+        return playTime.getTotal();
+    }
+
+    bz_eTeamType getLoyalty(bz_eTeamType team1, bz_eTeamType team2)
+    {
+        if (playTimeByTeam[team1] >= playTimeByTeam[team2])
+        {
+            return team1;
+        }
+
+        return team2;
+    }
+
+    bool isEligible(bool isOfficial, double matchDuration)
+    {
+        const isOfficialAndPlayedMin = isOfficial  && estimatedPlayTime() >= OFFI_MIN_TIME;
+        const isFunAndPlayedMin = !isOfficial && estimatedPlayTime() >= (matchDuration * FM_MIN_RATIO);
+
+        return isOfficialAndPlayedMin || isFunAndPlayedMin;
+    }
+
+    void startedPlaying()
+    {
+        playTime.start();
+        idleTime.stop();
+    }
+
+    void stoppedPlaying()
+    {
+        idleTime.start();
+
+        auto timePlayed = playTime.stop();
+        auto team = bz_getPlayerTeam(playerID);
+
+        playTimeByTeam[team] += timePlayed;
+    }
+};
+
+class LeagueOverseer : public bz_Plugin, public bz_CustomSlashCommandHandler, public bz_URLHandler_V2
+{
+public:
+    virtual const char* Name(); // DONE
+    virtual void Init(const char* config); // DONE
+    virtual void Event(bz_EventData *eventData); // @TODO
+    virtual void Cleanup(void); // DONE
+
+    // @TODO
+    virtual bool SlashCommand(int playerID, bz_ApiString, bz_ApiString, bz_APIStringList*);
+
+    // @TODO
+    virtual void URLDone(const char* URL, const void* data, unsigned int size, bool complete);
+    virtual void URLTimeout(const char* URL, int errorCode);
+    virtual void URLError(const char* URL, int errorCode, const char *errorString);
 
     // Simply out of preference, we will be storing all the information regarding a match inside
     // of a struct where the struct will be NULL if it is current a fun match
@@ -288,14 +468,16 @@ public:
         {}
     };
 
+    // @TODO
     virtual void buildPlayerStrings (bz_eTeamType team, std::string &bzidString, std::string &ipString);
     virtual bz_ApiString buildReplayName (bz_Time &standardTime);
     virtual int getMatchProgress ();
     virtual std::string getMatchTime ();
     virtual void loadConfig (const char *cmdLine);
     virtual void requestTeamName (bz_eTeamType team);
-    virtual void requestTeamName (std::string callsign, std::string bzID);
-    virtual void updateTeamNames (void);
+
+    virtual void requestTeamName(std::string callsign, std::string bzID) const; // DONE
+    virtual void updateTeamNames() const; // DONE
 
     // All the variables that will be used in the plugin
     bool         ROTATION_LEAGUE,  // Whether or not we are watching a league that uses different maps
@@ -317,7 +499,7 @@ public:
 
     // This is the only pointer of the struct for the official match that we will be using. If this
     // variable is set to NULL, that means that there is currently no official match occurring.
-    std::unique_ptr<CurrentMatch> currentMatch;
+    CurrentMatch* currentMatch;
 
     // We will be using a map to handle the team name mottos in the format of
     // <BZID, Team Name>
@@ -325,6 +507,22 @@ public:
 };
 
 BZ_PLUGIN(LeagueOverseer)
+
+const char* LeagueOverseer::Name() {
+    static const char* pluginBuild;
+
+    if (!pluginBuild)
+    {
+        pluginBuild = bz_format("%s %d.%d.%d (%d)", PLUGIN_NAME.c_str(), MAJOR, MINOR, REV, BUILD);
+
+        if (!SUFFIX.empty())
+        {
+            pluginBuild = bz_format("%s - %s", pluginBuild, SUFFIX.c_str());
+        }
+    }
+
+    return pluginBuild;
+}
 
 void LeagueOverseer::Init (const char* commandLine)
 {
@@ -361,15 +559,11 @@ void LeagueOverseer::Init (const char* commandLine)
     loadConfig(commandLine);
 
     // Check to see if the plugin is for a rotational league
-    if (MAPCHANGE_PATH != "" && ROTATION_LEAGUE)
+    if (ROTATION_LEAGUE && MAPCHANGE_PATH != "")
     {
-        // Open the mapchange.out file to see what map is being used
-        std::ifstream infile;
-        infile.open(MAPCHANGE_PATH.c_str());
-        getline(infile, MAP_NAME);
-        infile.close();
+        MAP_NAME = getFileText(MAPCHANGE_PATH);
 
-        bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Current map being played: %s", MAP_NAME.c_str());
+        logging::debug(DEBUG_LEVEL, "Current map being played: %s", MAP_NAME.c_str());
     }
 
     // Assign our two team colors to eNoTeam simply so we have something to check for
@@ -399,13 +593,16 @@ void LeagueOverseer::Init (const char* commandLine)
     }
 
     // Make sure both teams were found, if they weren't then notify in the logs
-    ASSERT(TEAM_ONE != eNoTeam && TEAM_TWO != eNoTeam);
+    if (TEAM_ONE == eNoTeam || TEAM_TWO == eNoTeam)
+    {
+        logging::error(0, "Two team colors could not be gathered from the server configuration");
+    }
 
     updateTeamNames();
 
     if (bz_getTimeLimit() == 0.0)
     {
-        bz_debugMessage(DEBUG_LEVEL, "WARNING :: League Overseer :: No time limit is specified with '-time'. Default value used: 1800 seconds.");
+        logging::warn(DEBUG_LEVEL, "No time limit is specified with '-time'. Default value used: 1800 seconds.");
         bz_setTimeLimit(1800);
     }
 }
@@ -1540,24 +1737,27 @@ void LeagueOverseer::requestTeamName (bz_eTeamType team)
     }
 }
 
-// Because there will be different times where we request a team name motto, let's make into a function
-void LeagueOverseer::requestTeamName (std::string callsign, std::string bzID)
+void LeagueOverseer::requestTeamName(std::string callsign, std::string bzID) const
 {
-    // Build the POST data for the URL job
-    std::string teamMotto = "query=teamNameQuery&apiVersion=" + intToString(API_VERSION);
-    teamMotto += "&teamPlayers=" + std::string(bzID.c_str());
+    logging::debug(DEBUG_LEVEL, "Sending motto request for '%s'", callsign.c_str());
 
-    bz_debugMessagef(DEBUG_LEVEL, "DEBUG :: League Overseer :: Sending motto request for '%s'", callsign.c_str());
+    auto query = http::QueryBuilder();
+    query.addQueryParameter("query", "teamNameQuery");
+    query.addQueryParameter("apiVersion", std::to_string(API_VERSION));
+    query.addQueryParameter("teamPlayers", bzID);
 
-    // Send the team update request to the league website
-    bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamMotto.c_str());
+    auto client = http::HttpApiClient(this, TEAM_NAME_URL);
+    client.sendPost(query);
 }
 
-void LeagueOverseer::updateTeamNames ()
+void LeagueOverseer::updateTeamNames() const
 {
-    // Build the POST data for the URL job
-    std::string teamNameDump = "query=teamDump&apiVersion=" + intToString(API_VERSION);
-    bz_debugMessagef(VERBOSE_LEVEL, "DEBUG :: League Overseer :: Updating Team name database...");
+    logging::debug(VERBOSE_LEVEL, "Updating Team name database...");
 
-    bz_addURLJob(TEAM_NAME_URL.c_str(), this, teamNameDump.c_str()); //Send the team update request to the league website
+    auto query = http::QueryBuilder();
+    query.addQueryParameter("query", "teamDump");
+    query.addQueryParameter("apiVersion", std::to_string(API_VERSION));
+
+    auto client = http::HttpApiClient(this, TEAM_NAME_URL);
+    client.sendPost(query);
 }
